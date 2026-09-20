@@ -1,0 +1,16 @@
+# macOS and editor files
+.DS_Store
+.AppleDouble
+.LSOverride
+.vscode/
+.idea/
+
+# Local cluster, runtime, and temporary output
+.env
+.env.*
+*.log
+tmp/
+Failure 1/
+
+# Duplicate source archive; the unpacked source files are kept in the repo
+files.zip

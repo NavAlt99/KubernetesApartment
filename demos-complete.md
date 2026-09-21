@@ -73,33 +73,15 @@ The topics build from cluster internals to application operations. Use this map 
 BEFORE YOU START
 ----------------------------------------------------------------
 1. Use a disposable local cluster. Some demos delete Pods, stop a kubelet, or drain a node.
-2. These demos target kind on macOS with Docker Desktop. Docker is the host-side
-   runtime that creates the kind node containers; inside each kind node, kubelet
-   talks to containerd through CRI.
-3. Recommended: a multi-node kind cluster (1 control-plane + 2 workers).
-     kind create cluster --name zine --config kind-multinode.yaml
-   kind-multinode.yaml:
-     kind: Cluster
-     apiVersion: kind.x-k8s.io/v1alpha4
-     nodes:
-     - role: control-plane
-       kubeadmConfigPatches:
-       - |
-         kind: InitConfiguration
-         nodeRegistration:
-           kubeletExtraArgs:
-             node-labels: "ingress-ready=true"
-       extraPortMappings:
-       - containerPort: 80
-         hostPort: 80
-         protocol: TCP
-       - containerPort: 443
-         hostPort: 443
-         protocol: TCP
-     - role: worker
-     - role: worker
-   The extra port mappings are used by the kind Ingress demo. If the cluster
-   already exists without them, recreate it before running demo 18.
+2. These demos use kind with Docker as the host provider. Linux uses Docker Engine;
+   macOS uses Docker Desktop. Inside every kind node, kubelet talks to containerd
+   through CRI. The runtime should show as containerd://...
+3. From the repository root, create the recommended multi-node cluster:
+     ./scripts/kind-up.sh
+   This uses the checked-in kind-multinode.yaml (1 control-plane + 2 workers),
+   maps Ingress to localhost:8080/8443, and waits for every node to become Ready.
+   If the cluster already exists without these port mappings, recreate it before
+   running demo 18.
 4. Every demo uses its own namespace (zine-demo, or demo-ns / other-ns where stated)
    and cleans up after itself, so demos can be run in ANY order.
 5. Save each YAML block to the file named above it, then run the commands.
@@ -109,13 +91,23 @@ BEFORE YOU START
      - 39 HPA: metrics-server
      - 40 VPA: the VPA add-on
      - 41 PDB and 28 Node controller: two or more worker nodes
-7. Commands marked 'run on the node' use Docker Desktop to enter a kind node:
+7. Commands marked 'run on the node' enter a kind node through the host Docker provider:
      docker exec -it zine-control-plane bash
      docker exec -it zine-worker bash
    Kind node names for this cluster are zine-control-plane, zine-worker,
    and zine-worker2. Run crictl and host-network checks inside those containers,
    not on the macOS host.
 8. Text after # on a command line is an explanation, not part of the command.
+
+LIVE OBSERVATION
+----------------------------------------------------------------
+For a practical, realtime run, keep a second terminal open while executing a demo:
+     kubectl get pods -A -o wide -w
+     kubectl get events -A --sort-by=.lastTimestamp -w
+     kubectl get nodes -w
+Use Ctrl+C to stop a watch. The STEPS below favor wait/watch commands so
+rollouts, scheduling, replacement Pods, endpoints, and autoscaling are visible
+as they converge instead of being checked only after the fact.
 
 Quick reference - demos that need something extra:
   add-on:      18, 19, 39, 40
@@ -147,7 +139,7 @@ Quick reference - demos that need something extra:
 
 ### Demo — The Cluster (Why Kubernetes?)
 
-```text
+<div style="background:#000;color:#fff;border-radius:8px;padding:1rem;overflow:auto;box-shadow:0 2px 8px rgba(0,0,0,.25);"><pre style="background:transparent;color:#fff;margin:0;white-space:pre-wrap;">
 SETUP
   (none: uses what is already in the cluster)
 
@@ -163,7 +155,7 @@ CLEANUP
 
 NOTE
   One command shows the whole 'complex' instead of logging into each machine.
-```
+</pre></div>
 
 ## 2. Control Plane vs. Worker Nodes
 
@@ -190,7 +182,7 @@ NOTE
 
 ### Demo — Control Plane vs. Worker Nodes
 
-```text
+<div style="background:#000;color:#fff;border-radius:8px;padding:1rem;overflow:auto;box-shadow:0 2px 8px rgba(0,0,0,.25);"><pre style="background:transparent;color:#fff;margin:0;white-space:pre-wrap;">
 SETUP
   (none: uses what is already in the cluster)
 
@@ -206,7 +198,7 @@ CLEANUP
 
 NOTE
   This guide assumes the three-node kind cluster above, so the control plane and workers are separate Docker containers.
-```
+</pre></div>
 
 ## 3. kube-apiserver
 
@@ -233,7 +225,7 @@ NOTE
 
 ### Demo — kube-apiserver
 
-```text
+<div style="background:#000;color:#fff;border-radius:8px;padding:1rem;overflow:auto;box-shadow:0 2px 8px rgba(0,0,0,.25);"><pre style="background:transparent;color:#fff;margin:0;white-space:pre-wrap;">
 SETUP
   (none: uses what is already in the cluster)
 
@@ -251,7 +243,7 @@ CLEANUP
 
 NOTE
   Bypass kubectl and hit the 'front desk' directly with curl.
-```
+</pre></div>
 
 ## 4. etcd
 
@@ -278,7 +270,7 @@ NOTE
 
 ### Demo — etcd
 
-```text
+<div style="background:#000;color:#fff;border-radius:8px;padding:1rem;overflow:auto;box-shadow:0 2px 8px rgba(0,0,0,.25);"><pre style="background:transparent;color:#fff;margin:0;white-space:pre-wrap;">
 SETUP
   ETCD_POD=$(kubectl get pods -n kube-system -l component=etcd -o jsonpath='{.items[0].metadata.name}')
   echo $ETCD_POD
@@ -287,14 +279,14 @@ STEPS
   1. kubectl -n kube-system exec $ETCD_POD -- etcdctl --endpoints=https://127.0.0.1:2379 --cacert=/etc/kubernetes/pki/etcd/ca.crt --cert=/etc/kubernetes/pki/etcd/server.crt --key=/etc/kubernetes/pki/etcd/server.key get /registry/pods --prefix --keys-only | head -20
 
 WHAT YOU SHOULD SEE
-  A list of keys such as /registry/pods/kube-system/etcd-<node>. These are the 'filing cabinets' behind the API server.
+  A list of keys such as /registry/pods/kube-system/etcd-&lt;node&gt;. These are the 'filing cabinets' behind the API server.
 
 CLEANUP
   (nothing to clean up)
 
 NOTE
   Works on the kubeadm-style control plane used by kind. Managed clusters (EKS, GKE, AKS) hide etcd, so this will not work there. Do not use -it with a piped command.
-```
+</pre></div>
 
 ## 5. kube-scheduler
 
@@ -321,7 +313,7 @@ NOTE
 
 ### Demo — kube-scheduler
 
-```text
+<div style="background:#000;color:#fff;border-radius:8px;padding:1rem;overflow:auto;box-shadow:0 2px 8px rgba(0,0,0,.25);"><pre style="background:transparent;color:#fff;margin:0;white-space:pre-wrap;">
 SETUP
   kubectl create namespace zine-demo
 
@@ -332,14 +324,14 @@ STEPS
   4. kubectl describe pod demo-pod -n zine-demo | grep -A6 Events
 
 WHAT YOU SHOULD SEE
-  Events shows 'Scheduled ... Successfully assigned zine-demo/demo-pod to <node>'. The NODE column matches.
+  Events shows 'Scheduled ... Successfully assigned zine-demo/demo-pod to &lt;node&gt;'. The NODE column matches.
 
 CLEANUP
   kubectl delete namespace zine-demo
 
 NOTE
   The Scheduled event is the exact moment the scheduler picked a node.
-```
+</pre></div>
 
 ## 6. kube-controller-manager
 
@@ -365,7 +357,7 @@ NOTE
 
 ### Demo — kube-controller-manager
 
-```text
+<div style="background:#000;color:#fff;border-radius:8px;padding:1rem;overflow:auto;box-shadow:0 2px 8px rgba(0,0,0,.25);"><pre style="background:transparent;color:#fff;margin:0;white-space:pre-wrap;">
 SETUP
   kubectl create namespace zine-demo
   kubectl create deployment demo --image=nginx --replicas=3 -n zine-demo
@@ -384,7 +376,7 @@ CLEANUP
 
 NOTE
   The control loop noticed the gap and closed it with no command from you.
-```
+</pre></div>
 
 ## 7. cloud-controller-manager
 
@@ -410,7 +402,7 @@ NOTE
 
 ### Demo — cloud-controller-manager
 
-```text
+<div style="background:#000;color:#fff;border-radius:8px;padding:1rem;overflow:auto;box-shadow:0 2px 8px rgba(0,0,0,.25);"><pre style="background:transparent;color:#fff;margin:0;white-space:pre-wrap;">
 SETUP
   kubectl create namespace zine-demo
   kubectl create deployment demo --image=nginx --replicas=3 -n zine-demo
@@ -421,14 +413,14 @@ STEPS
   2. kubectl get svc demo -n zine-demo -w   # Ctrl+C when done
 
 WHAT YOU SHOULD SEE
-  On a cloud cluster EXTERNAL-IP moves from <pending> to a real IP. On kind it stays <pending> unless a cloud provider integration is installed.
+  On a cloud cluster EXTERNAL-IP moves from &lt;pending&gt; to a real IP. On kind it stays &lt;pending&gt; unless a cloud provider integration is installed.
 
 CLEANUP
   kubectl delete namespace zine-demo
 
 NOTE
-  Kind has no cloud provider by default, so <pending> is the expected result. To provision a real LoadBalancer on kind, install and run cloud-provider-kind separately; for a simple local HTTP test, use a NodePort instead.
-```
+  Kind has no cloud provider by default, so &lt;pending&gt; is the expected result. To provision a real LoadBalancer on kind, install and run cloud-provider-kind separately; for a simple local HTTP test, use a NodePort instead.
+</pre></div>
 
 ## 8. Static Pods
 
@@ -454,7 +446,7 @@ NOTE
 
 ### Demo — Static Pods
 
-```text
+<div style="background:#000;color:#fff;border-radius:8px;padding:1rem;overflow:auto;box-shadow:0 2px 8px rgba(0,0,0,.25);"><pre style="background:transparent;color:#fff;margin:0;white-space:pre-wrap;">
 SETUP
   (none: uses what is already in the cluster)
 
@@ -472,7 +464,7 @@ CLEANUP
 
 NOTE
   The kubelet reads those files directly, with no API server round-trip. Run the ls on the control-plane node itself, not your laptop.
-```
+</pre></div>
 
 ## 9. kubelet
 
@@ -498,7 +490,7 @@ NOTE
 
 ### Demo — kubelet
 
-```text
+<div style="background:#000;color:#fff;border-radius:8px;padding:1rem;overflow:auto;box-shadow:0 2px 8px rgba(0,0,0,.25);"><pre style="background:transparent;color:#fff;margin:0;white-space:pre-wrap;">
 SETUP
   kubectl create namespace zine-demo
   kubectl run demo-pod --image=nginx -n zine-demo
@@ -516,7 +508,7 @@ CLEANUP
 
 NOTE
   The Pod's conditions are reported by the kubelet on that node.
-```
+</pre></div>
 
 ## 10. kube-proxy
 
@@ -543,7 +535,7 @@ NOTE
 
 ### Demo — kube-proxy
 
-```text
+<div style="background:#000;color:#fff;border-radius:8px;padding:1rem;overflow:auto;box-shadow:0 2px 8px rgba(0,0,0,.25);"><pre style="background:transparent;color:#fff;margin:0;white-space:pre-wrap;">
 SETUP
   kubectl create namespace zine-demo
   kubectl create deployment demo --image=nginx --replicas=3 -n zine-demo
@@ -562,7 +554,7 @@ CLEANUP
 
 NOTE
   If your cluster runs kube-proxy in IPVS mode, use 'sudo ipvsadm -Ln' instead. The Endpoints list and the rules line up.
-```
+</pre></div>
 
 ## 11. Container Runtime & CRI
 
@@ -589,7 +581,7 @@ NOTE
 
 ### Demo — Container Runtime & CRI
 
-```text
+<div style="background:#000;color:#fff;border-radius:8px;padding:1rem;overflow:auto;box-shadow:0 2px 8px rgba(0,0,0,.25);"><pre style="background:transparent;color:#fff;margin:0;white-space:pre-wrap;">
 SETUP
   docker ps --filter name=zine-
 
@@ -605,7 +597,7 @@ CLEANUP
 
 NOTE
   crictl bypasses Kubernetes and talks to the runtime through CRI. Run it on the node, not your laptop.
-```
+</pre></div>
 
 ## 12. Sidecar Containers
 
@@ -631,7 +623,7 @@ NOTE
 
 ### Demo — Sidecar Containers
 
-```text
+<div style="background:#000;color:#fff;border-radius:8px;padding:1rem;overflow:auto;box-shadow:0 2px 8px rgba(0,0,0,.25);"><pre style="background:transparent;color:#fff;margin:0;white-space:pre-wrap;">
 SETUP
   kubectl create namespace zine-demo
 
@@ -662,7 +654,7 @@ CLEANUP
 
 NOTE
   Two containers share one Pod: one address, one lifecycle.
-```
+</pre></div>
 
 ## 13. Init Containers
 
@@ -688,7 +680,7 @@ NOTE
 
 ### Demo — Init Containers
 
-```text
+<div style="background:#000;color:#fff;border-radius:8px;padding:1rem;overflow:auto;box-shadow:0 2px 8px rgba(0,0,0,.25);"><pre style="background:transparent;color:#fff;margin:0;white-space:pre-wrap;">
 SETUP
   kubectl create namespace zine-demo
 
@@ -719,7 +711,7 @@ CLEANUP
 
 NOTE
   The init container sleeps 10 seconds so the Init:0/1 state is easy to catch on screen.
-```
+</pre></div>
 
 ## 14. CNI (Container Network Interface)
 
@@ -746,7 +738,7 @@ NOTE
 
 ### Demo — CNI (Container Network Interface)
 
-```text
+<div style="background:#000;color:#fff;border-radius:8px;padding:1rem;overflow:auto;box-shadow:0 2px 8px rgba(0,0,0,.25);"><pre style="background:transparent;color:#fff;margin:0;white-space:pre-wrap;">
 SETUP
   kubectl create namespace zine-demo
   kubectl create deployment demo --image=nginx --replicas=3 -n zine-demo
@@ -764,7 +756,7 @@ CLEANUP
 
 NOTE
   Flat Pod addressing works because the CNI plugin paved the roads between nodes.
-```
+</pre></div>
 
 ## 15. CoreDNS
 
@@ -791,7 +783,7 @@ NOTE
 
 ### Demo — CoreDNS
 
-```text
+<div style="background:#000;color:#fff;border-radius:8px;padding:1rem;overflow:auto;box-shadow:0 2px 8px rgba(0,0,0,.25);"><pre style="background:transparent;color:#fff;margin:0;white-space:pre-wrap;">
 SETUP
   kubectl create namespace zine-demo
   kubectl create deployment demo --image=nginx --replicas=3 -n zine-demo
@@ -809,7 +801,7 @@ CLEANUP
 
 NOTE
   The name resolves through CoreDNS, like asking the directory board.
-```
+</pre></div>
 
 ## 16. Services
 
@@ -835,7 +827,7 @@ NOTE
 
 ### Demo — Services
 
-```text
+<div style="background:#000;color:#fff;border-radius:8px;padding:1rem;overflow:auto;box-shadow:0 2px 8px rgba(0,0,0,.25);"><pre style="background:transparent;color:#fff;margin:0;white-space:pre-wrap;">
 SETUP
   kubectl create namespace zine-demo
   kubectl create deployment demo --image=nginx --replicas=3 -n zine-demo
@@ -856,7 +848,7 @@ CLEANUP
 
 NOTE
   The mailbox stayed bolted to the wall while the tenants changed.
-```
+</pre></div>
 
 ## 17. Endpoints
 
@@ -882,7 +874,7 @@ NOTE
 
 ### Demo — Endpoints
 
-```text
+<div style="background:#000;color:#fff;border-radius:8px;padding:1rem;overflow:auto;box-shadow:0 2px 8px rgba(0,0,0,.25);"><pre style="background:transparent;color:#fff;margin:0;white-space:pre-wrap;">
 SETUP
   kubectl create namespace zine-demo
   kubectl create deployment demo --image=nginx --replicas=3 -n zine-demo
@@ -903,7 +895,7 @@ CLEANUP
 
 NOTE
   That is the forwarding list being rewritten live. On Kubernetes 1.33+ you may see a deprecation warning for Endpoints; 'kubectl get endpointslices -n zine-demo' shows the same data.
-```
+</pre></div>
 
 ## 18. Ingress
 
@@ -929,7 +921,7 @@ NOTE
 
 ### Demo — Ingress
 
-```text
+<div style="background:#000;color:#fff;border-radius:8px;padding:1rem;overflow:auto;box-shadow:0 2px 8px rgba(0,0,0,.25);"><pre style="background:transparent;color:#fff;margin:0;white-space:pre-wrap;">
 SETUP
   kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/kind/deploy.yaml
   kubectl wait --namespace ingress-nginx --for=condition=Ready pod -l app.kubernetes.io/component=controller --timeout=120s
@@ -960,7 +952,7 @@ YAML  (demo-ingress.yaml)
 STEPS
   1. kubectl apply -f demo-ingress.yaml -n zine-demo
   2. kubectl get ingress demo-ingress -n zine-demo   # wait until ADDRESS is filled
-  3. curl -H "Host: demo.local" http://localhost/
+  3. curl -i -H "Host: demo.local" http://localhost:8080/
 
 WHAT YOU SHOULD SEE
   curl returns the nginx welcome page. Changing the Host header to something else returns a 404 from the gatekeeper.
@@ -969,8 +961,8 @@ CLEANUP
   kubectl delete namespace zine-demo
 
 NOTE
-  One external address, and the hostname in the request decides which Service you reach. This demo needs the kind ingress-nginx manifest and the port 80 mapping in the cluster config above.
-```
+  One external address, and the hostname in the request decides which Service you reach. This demo needs the kind ingress-nginx manifest and the 8080 -> 80 mapping in kind-multinode.yaml.
+</pre></div>
 
 ## 19. NetworkPolicy
 
@@ -996,7 +988,7 @@ NOTE
 
 ### Demo — NetworkPolicy
 
-```text
+<div style="background:#000;color:#fff;border-radius:8px;padding:1rem;overflow:auto;box-shadow:0 2px 8px rgba(0,0,0,.25);"><pre style="background:transparent;color:#fff;margin:0;white-space:pre-wrap;">
 SETUP
   kubectl create namespace zine-demo
   kubectl create deployment demo --image=nginx --replicas=3 -n zine-demo
@@ -1029,7 +1021,7 @@ CLEANUP
 
 NOTE
   The default kind CNI (kindnet) does not enforce NetworkPolicy, so the second request will still succeed. Run this demo on a separate kind cluster configured with Calico or Cilium; do not try to replace kindnet in an already-running cluster.
-```
+</pre></div>
 
 ## 20. PersistentVolume (PV)
 
@@ -1055,7 +1047,7 @@ NOTE
 
 ### Demo — PersistentVolume (PV)
 
-```text
+<div style="background:#000;color:#fff;border-radius:8px;padding:1rem;overflow:auto;box-shadow:0 2px 8px rgba(0,0,0,.25);"><pre style="background:transparent;color:#fff;margin:0;white-space:pre-wrap;">
 SETUP
   kubectl create namespace zine-demo
   kubectl apply -f pv-setup.yaml -n zine-demo
@@ -1104,7 +1096,7 @@ CLEANUP
 
 NOTE
   This setup creates a claim and Pod so a PV exists to look at. The PV outlives the Pod.
-```
+</pre></div>
 
 ## 21. PersistentVolumeClaim (PVC)
 
@@ -1130,7 +1122,7 @@ NOTE
 
 ### Demo — PersistentVolumeClaim (PVC)
 
-```text
+<div style="background:#000;color:#fff;border-radius:8px;padding:1rem;overflow:auto;box-shadow:0 2px 8px rgba(0,0,0,.25);"><pre style="background:transparent;color:#fff;margin:0;white-space:pre-wrap;">
 SETUP
   kubectl create namespace zine-demo
 
@@ -1177,7 +1169,7 @@ CLEANUP
 
 NOTE
   The claim is matched to a real volume without anyone creating the PV by hand.
-```
+</pre></div>
 
 ## 22. StorageClass
 
@@ -1203,7 +1195,7 @@ NOTE
 
 ### Demo — StorageClass
 
-```text
+<div style="background:#000;color:#fff;border-radius:8px;padding:1rem;overflow:auto;box-shadow:0 2px 8px rgba(0,0,0,.25);"><pre style="background:transparent;color:#fff;margin:0;white-space:pre-wrap;">
 SETUP
   (none: uses what is already in the cluster)
 
@@ -1220,7 +1212,7 @@ CLEANUP
 
 NOTE
   This is the blueprint used automatically when a PVC names no class, which is why the PV in entry 21 appeared with no manual step. The default class in this kind cluster is commonly named 'standard'. Verify with 'kubectl get storageclass' because the name depends on the provisioner installed.
-```
+</pre></div>
 
 ## 23. Role
 
@@ -1246,7 +1238,7 @@ NOTE
 
 ### Demo — Role
 
-```text
+<div style="background:#000;color:#fff;border-radius:8px;padding:1rem;overflow:auto;box-shadow:0 2px 8px rgba(0,0,0,.25);"><pre style="background:transparent;color:#fff;margin:0;white-space:pre-wrap;">
 SETUP
   kubectl create namespace zine-demo
 
@@ -1263,7 +1255,7 @@ CLEANUP
 
 NOTE
   The house rules are posted, but no name is attached to them yet.
-```
+</pre></div>
 
 ## 24. RoleBinding
 
@@ -1289,7 +1281,7 @@ NOTE
 
 ### Demo — RoleBinding
 
-```text
+<div style="background:#000;color:#fff;border-radius:8px;padding:1rem;overflow:auto;box-shadow:0 2px 8px rgba(0,0,0,.25);"><pre style="background:transparent;color:#fff;margin:0;white-space:pre-wrap;">
 SETUP
   kubectl create namespace zine-demo
   kubectl create role pod-reader --verb=get,list,watch --resource=pods -n zine-demo
@@ -1307,7 +1299,7 @@ CLEANUP
 
 NOTE
   The name got added to the sign-up sheet.
-```
+</pre></div>
 
 ## 25. ClusterRole
 
@@ -1333,7 +1325,7 @@ NOTE
 
 ### Demo — ClusterRole
 
-```text
+<div style="background:#000;color:#fff;border-radius:8px;padding:1rem;overflow:auto;box-shadow:0 2px 8px rgba(0,0,0,.25);"><pre style="background:transparent;color:#fff;margin:0;white-space:pre-wrap;">
 SETUP
   (none: uses what is already in the cluster)
 
@@ -1350,7 +1342,7 @@ CLEANUP
 
 NOTE
   Nodes are cluster-scoped, so this had to be a ClusterRole and could not be a plain Role.
-```
+</pre></div>
 
 ## 26. ClusterRoleBinding
 
@@ -1376,7 +1368,7 @@ NOTE
 
 ### Demo — ClusterRoleBinding
 
-```text
+<div style="background:#000;color:#fff;border-radius:8px;padding:1rem;overflow:auto;box-shadow:0 2px 8px rgba(0,0,0,.25);"><pre style="background:transparent;color:#fff;margin:0;white-space:pre-wrap;">
 SETUP
   kubectl create clusterrole node-reader --verb=get,list,watch --resource=nodes
 
@@ -1395,7 +1387,7 @@ CLEANUP
 
 NOTE
   The master key is not scoped to any one building.
-```
+</pre></div>
 
 ## 27. ServiceAccount
 
@@ -1422,7 +1414,7 @@ NOTE
 
 ### Demo — ServiceAccount
 
-```text
+<div style="background:#000;color:#fff;border-radius:8px;padding:1rem;overflow:auto;box-shadow:0 2px 8px rgba(0,0,0,.25);"><pre style="background:transparent;color:#fff;margin:0;white-space:pre-wrap;">
 SETUP
   kubectl create namespace zine-demo
   kubectl create serviceaccount demo-bot -n zine-demo
@@ -1438,7 +1430,7 @@ CLEANUP
 
 NOTE
   Every Pod gets a token mounted automatically: its staff ID badge. The token is short-lived and rotated by the kubelet.
-```
+</pre></div>
 
 ## 28. Node (controller)
 
@@ -1465,7 +1457,7 @@ NOTE
 
 ### Demo — Node (controller)
 
-```text
+<div style="background:#000;color:#fff;border-radius:8px;padding:1rem;overflow:auto;box-shadow:0 2px 8px rgba(0,0,0,.25);"><pre style="background:transparent;color:#fff;margin:0;white-space:pre-wrap;">
 SETUP
   (none: uses what is already in the cluster)
 
@@ -1485,7 +1477,7 @@ CLEANUP
 
 NOTE
   Needs a multi-node cluster. Do NOT stop the kubelet on your only node or the control plane goes dark.
-```
+</pre></div>
 
 ## 29. Namespace (controller)
 
@@ -1511,7 +1503,7 @@ NOTE
 
 ### Demo — Namespace (controller)
 
-```text
+<div style="background:#000;color:#fff;border-radius:8px;padding:1rem;overflow:auto;box-shadow:0 2px 8px rgba(0,0,0,.25);"><pre style="background:transparent;color:#fff;margin:0;white-space:pre-wrap;">
 SETUP
   (none: uses what is already in the cluster)
 
@@ -1530,7 +1522,7 @@ CLEANUP
 
 NOTE
   The fence does not come down until the section is empty.
-```
+</pre></div>
 
 ## 30. ResourceQuota
 
@@ -1556,7 +1548,7 @@ NOTE
 
 ### Demo — ResourceQuota
 
-```text
+<div style="background:#000;color:#fff;border-radius:8px;padding:1rem;overflow:auto;box-shadow:0 2px 8px rgba(0,0,0,.25);"><pre style="background:transparent;color:#fff;margin:0;white-space:pre-wrap;">
 SETUP
   kubectl create namespace demo-ns
 
@@ -1584,7 +1576,7 @@ CLEANUP
 
 NOTE
   The namespace hit its posted occupancy limit. The namespace is set with -n, so the YAML has no namespace field.
-```
+</pre></div>
 
 ## 31. Garbage Collector
 
@@ -1610,7 +1602,7 @@ NOTE
 
 ### Demo — Garbage Collector
 
-```text
+<div style="background:#000;color:#fff;border-radius:8px;padding:1rem;overflow:auto;box-shadow:0 2px 8px rgba(0,0,0,.25);"><pre style="background:transparent;color:#fff;margin:0;white-space:pre-wrap;">
 SETUP
   kubectl create namespace zine-demo
 
@@ -1630,7 +1622,7 @@ CLEANUP
 
 NOTE
   Nobody deleted the Pods or ReplicaSet directly; deletion cascaded through owner references.
-```
+</pre></div>
 
 ## 32. ReplicaSet
 
@@ -1656,7 +1648,7 @@ NOTE
 
 ### Demo — ReplicaSet
 
-```text
+<div style="background:#000;color:#fff;border-radius:8px;padding:1rem;overflow:auto;box-shadow:0 2px 8px rgba(0,0,0,.25);"><pre style="background:transparent;color:#fff;margin:0;white-space:pre-wrap;">
 SETUP
   kubectl create namespace zine-demo
   kubectl create deployment rs-demo --image=nginx --replicas=3 -n zine-demo
@@ -1675,7 +1667,7 @@ CLEANUP
 
 NOTE
   The ReplicaSet only cares about the number, not which Pods make it up.
-```
+</pre></div>
 
 ## 33. Deployment
 
@@ -1701,7 +1693,7 @@ NOTE
 
 ### Demo — Deployment
 
-```text
+<div style="background:#000;color:#fff;border-radius:8px;padding:1rem;overflow:auto;box-shadow:0 2px 8px rgba(0,0,0,.25);"><pre style="background:transparent;color:#fff;margin:0;white-space:pre-wrap;">
 SETUP
   kubectl create namespace zine-demo
   kubectl create deployment deploy-demo --image=nginx:1.24 --replicas=3 -n zine-demo
@@ -1723,7 +1715,7 @@ CLEANUP
 
 NOTE
   The container is named 'nginx' because create deployment names it after the image. Rolling update, then rollback with zero downtime.
-```
+</pre></div>
 
 ## 34. StatefulSet
 
@@ -1749,7 +1741,7 @@ NOTE
 
 ### Demo — StatefulSet
 
-```text
+<div style="background:#000;color:#fff;border-radius:8px;padding:1rem;overflow:auto;box-shadow:0 2px 8px rgba(0,0,0,.25);"><pre style="background:transparent;color:#fff;margin:0;white-space:pre-wrap;">
 SETUP
   kubectl create namespace zine-demo
 
@@ -1799,7 +1791,7 @@ CLEANUP
 
 NOTE
   A StatefulSet needs a headless Service (clusterIP: None), so the YAML includes one. The tenant returns to the same numbered unit.
-```
+</pre></div>
 
 ## 35. DaemonSet
 
@@ -1825,7 +1817,7 @@ NOTE
 
 ### Demo — DaemonSet
 
-```text
+<div style="background:#000;color:#fff;border-radius:8px;padding:1rem;overflow:auto;box-shadow:0 2px 8px rgba(0,0,0,.25);"><pre style="background:transparent;color:#fff;margin:0;white-space:pre-wrap;">
 SETUP
   kubectl create namespace zine-demo
 
@@ -1862,7 +1854,7 @@ CLEANUP
 
 NOTE
   Add a toleration for node-role.kubernetes.io/control-plane:NoSchedule to the Pod template if you want the control-plane node included; the Pod count then equals the node count.
-```
+</pre></div>
 
 ## 36. Job
 
@@ -1888,7 +1880,7 @@ NOTE
 
 ### Demo — Job
 
-```text
+<div style="background:#000;color:#fff;border-radius:8px;padding:1rem;overflow:auto;box-shadow:0 2px 8px rgba(0,0,0,.25);"><pre style="background:transparent;color:#fff;margin:0;white-space:pre-wrap;">
 SETUP
   kubectl create namespace zine-demo
 
@@ -1919,7 +1911,7 @@ CLEANUP
 
 NOTE
   Once it hits 1/1 the Job stops; the crew finished the move.
-```
+</pre></div>
 
 ## 37. CronJob
 
@@ -1945,7 +1937,7 @@ NOTE
 
 ### Demo — CronJob
 
-```text
+<div style="background:#000;color:#fff;border-radius:8px;padding:1rem;overflow:auto;box-shadow:0 2px 8px rgba(0,0,0,.25);"><pre style="background:transparent;color:#fff;margin:0;white-space:pre-wrap;">
 SETUP
   kubectl create namespace zine-demo
 
@@ -1980,7 +1972,7 @@ CLEANUP
 
 NOTE
   The schedule is every 2 minutes for the demo; a real nightly job would use 0 2 * * *.
-```
+</pre></div>
 
 ## 38. ReplicationController (legacy)
 
@@ -2006,7 +1998,7 @@ NOTE
 
 ### Demo — ReplicationController (legacy)
 
-```text
+<div style="background:#000;color:#fff;border-radius:8px;padding:1rem;overflow:auto;box-shadow:0 2px 8px rgba(0,0,0,.25);"><pre style="background:transparent;color:#fff;margin:0;white-space:pre-wrap;">
 SETUP
   kubectl create namespace zine-demo
 
@@ -2043,7 +2035,7 @@ CLEANUP
 
 NOTE
   Still works, but nobody builds new systems on it. Use a Deployment instead.
-```
+</pre></div>
 
 ## 39. HorizontalPodAutoscaler (HPA)
 
@@ -2070,7 +2062,7 @@ NOTE
 
 ### Demo — HorizontalPodAutoscaler (HPA)
 
-```text
+<div style="background:#000;color:#fff;border-radius:8px;padding:1rem;overflow:auto;box-shadow:0 2px 8px rgba(0,0,0,.25);"><pre style="background:transparent;color:#fff;margin:0;white-space:pre-wrap;">
 SETUP
   kubectl get deployment metrics-server -n kube-system || (kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml && kubectl patch deployment metrics-server -n kube-system --type='json' -p='[{"op":"add","path":"/spec/template/spec/containers/0/args/-","value":"--kubelet-insecure-tls"}]')
   kubectl create namespace zine-demo
@@ -2093,8 +2085,8 @@ CLEANUP
   kubectl delete namespace zine-demo
 
 NOTE
-  Needs metrics-server. Until it reports, TARGETS shows <unknown>. Scale-down is deliberately slow (about 5 minutes).
-```
+  Needs metrics-server. Until it reports, TARGETS shows &lt;unknown&gt;. Scale-down is deliberately slow (about 5 minutes).
+</pre></div>
 
 ## 40. VerticalPodAutoscaler (VPA)
 
@@ -2121,7 +2113,7 @@ NOTE
 
 ### Demo — VerticalPodAutoscaler (VPA)
 
-```text
+<div style="background:#000;color:#fff;border-radius:8px;padding:1rem;overflow:auto;box-shadow:0 2px 8px rgba(0,0,0,.25);"><pre style="background:transparent;color:#fff;margin:0;white-space:pre-wrap;">
 SETUP
   # Install the VPA add-on first: git clone https://github.com/kubernetes/autoscaler.git && cd autoscaler/vertical-pod-autoscaler && ./hack/vpa-up.sh
   kubectl get pods -n kube-system | grep vpa   # recommender, updater, admission-controller must be Running
@@ -2156,7 +2148,7 @@ CLEANUP
 
 NOTE
   In Auto mode VPA evicts and recreates the Pod with the new sizes; use updateMode: "Off" if you only want recommendations. The Deployment is created fresh here, so this demo does not depend on entry 39.
-```
+</pre></div>
 
 ## 41. Pod Disruption Budget (PDB)
 
@@ -2183,7 +2175,7 @@ NOTE
 
 ### Demo — Pod Disruption Budget (PDB)
 
-```text
+<div style="background:#000;color:#fff;border-radius:8px;padding:1rem;overflow:auto;box-shadow:0 2px 8px rgba(0,0,0,.25);"><pre style="background:transparent;color:#fff;margin:0;white-space:pre-wrap;">
 SETUP
   kubectl create namespace zine-demo
   kubectl create deployment demo --image=nginx --replicas=3 -n zine-demo
@@ -2216,4 +2208,4 @@ CLEANUP
 
 NOTE
   Needs 2 or more worker nodes so evicted Pods have somewhere to go. Do not drain your only node.
-```
+</pre></div>

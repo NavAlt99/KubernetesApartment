@@ -2,7 +2,69 @@
 
 ![Kubernetes Apartment Complex overview](generated/kubernetes-apartment-complex/01-zine.png)
 
-This guide combines the Kubernetes Apartment Complex zine entries with the runnable demos. Each entry presents the subject knowledge, technical illustration, apartment-complex explanation, zine illustration, further reading, and the original demo in code formatting.
+This guide combines the Kubernetes Apartment Complex zine entries with runnable demos. It is both a visual introduction and a technical reference: each entry explains the Kubernetes object or component, shows where it fits in the cluster architecture, calls out operational trade-offs, links to authoritative documentation, and ends with an observable command-line experiment.
+
+## Technical description
+
+Kubernetes is a declarative, API-driven control system. A user or automation client submits objects such as Deployments, Services, and PersistentVolumeClaims to the `kube-apiserver`. The API server authenticates and authorizes the request, applies admission and validation, and persists the accepted state in `etcd`. Controllers continuously compare that desired state with the state reported by Nodes and other resources. When they detect drift, they create, update, or remove objects until the system converges.
+
+For a normal workload, the flow is:
+
+1. A workload object declares the desired state, including the container image, replica count, resource requests, probes, labels, and policy references.
+2. The scheduler filters and scores eligible Nodes using resources, taints and tolerations, affinity, topology, and other constraints, then binds each unscheduled Pod to a Node.
+3. The kubelet on that Node asks the CRI runtime to create the Pod sandbox, pull images, start containers, mount volumes, and execute probes.
+4. The CNI plugin supplies Pod networking, while Services and their EndpointSlices provide stable discovery and traffic routing. Ingress or Gateway controllers can add externally reachable HTTP routing.
+5. Controllers, the kubelet, and status reporters publish observed state back through the API. A Deployment, for example, replaces failed replicas and coordinates a rollout; an HPA changes replica count when metrics indicate that demand has changed.
+
+This separation is important: the control plane stores intent and makes decisions, while Nodes execute Pods. A Service is a stable network abstraction rather than a process, a PVC is a request for storage rather than a disk itself, and a PDB limits voluntary disruption rather than protecting against every failure. The “Technical perspective” paragraph in each entry expands these boundaries, failure modes, and production considerations; the demo then verifies the behavior in the cluster.
+
+### Technical coverage map
+
+The topics build from cluster internals to application operations. Use this map to see the engineering concern emphasized by each entry:
+
+| Topic | Engineering focus |
+| --- | --- |
+| Cluster | Declarative management, scheduling, reconciliation, and platform trade-offs |
+| Control Plane vs. Worker Nodes | Failure boundaries, high availability, and workload continuity |
+| kube-apiserver | Authentication, authorization, admission, validation, watches, and API consistency |
+| etcd | Strong consistency, quorum, encryption, backup, restore, and control-plane dependency |
+| kube-scheduler | Feasibility filtering, scoring, resource requests, placement constraints, and topology |
+| kube-controller-manager | Reconciliation, ownership, idempotency, eventual convergence, and drift correction |
+| cloud-controller-manager | Provider APIs, cloud identity, quotas, load balancers, routes, and volumes |
+| Static Pods | Node-local bootstrapping, manifest drift, and control-plane initialization |
+| kubelet | Pod lifecycle enforcement, probes, volumes, status reporting, and node health |
+| kube-proxy | Service datapath, virtual IPs, endpoint updates, and proxy implementation choices |
+| Container Runtime & CRI | Runtime abstraction, image pulling, sandboxes, cgroups, logging, and isolation |
+| Sidecar Containers | Shared namespaces and volumes, lifecycle coupling, telemetry, and resource overhead |
+| Init Containers | Ordered initialization, retries, migrations, dependency checks, and startup latency |
+| CNI | Pod interfaces, IP allocation, routing, encryption, and policy-capable dataplanes |
+| CoreDNS | Service discovery, search paths, caching, forwarding, readiness, and DNS capacity |
+| Services | Stable virtual endpoints, selectors, exposure types, and client decoupling |
+| Endpoints | EndpointSlice scalability, readiness, serving state, topology, and backend convergence |
+| Ingress | Layer-7 routing, TLS termination, controller responsibility, and Gateway API direction |
+| NetworkPolicy | Namespaced allow rules, ingress/egress isolation, CNI enforcement, and DNS dependencies |
+| PersistentVolume | Storage lifecycle, reclaim policy, access modes, topology, and backup limits |
+| PersistentVolumeClaim | Workload storage requests, binding constraints, provisioning, and Pending diagnosis |
+| StorageClass | Dynamic provisioning, parameters, binding mode, performance, cost, and retention |
+| Role | Namespaced API permissions, verbs, resources, least privilege, and escalation risk |
+| RoleBinding | Attaching permissions to identities and auditing effective namespace access |
+| ClusterRole | Reusable or cluster-scoped permissions and the impact of broad rules |
+| ClusterRoleBinding | Cluster-wide grants, platform automation, and high-impact access review |
+| ServiceAccount | Workload identity, projected tokens, RBAC, and API credential hygiene |
+| Node controller | Heartbeats, leases, failure detection, eviction timing, and redundancy |
+| Namespace controller | Resource scope, cleanup, finalizers, and deletion stuck in Terminating |
+| ResourceQuota | Aggregate resource/object limits, admission behavior, and capacity governance |
+| Garbage Collector | Owner references, cascading deletion, propagation policy, and orphan prevention |
+| ReplicaSet | Replica-count reconciliation, label selection, and why Deployments are preferred |
+| Deployment | Rolling updates, readiness, revision history, rollback, and state migration concerns |
+| StatefulSet | Stable identity, ordered operations, storage association, quorum, and recovery semantics |
+| DaemonSet | Per-node coverage, selectors, tolerations, agent resources, and node lifecycle |
+| Job | Finite work, completion tracking, retries, parallelism, and cleanup policy |
+| CronJob | Scheduling, missed runs, concurrency, deadlines, history, and idempotency |
+| ReplicationController | Legacy replica management, selector limitations, and migration to Deployments |
+| HorizontalPodAutoscaler | Metric-driven replica scaling, requests, startup behavior, and traffic distribution |
+| VerticalPodAutoscaler | Resource recommendations, evictions, update modes, and interaction with HPA |
+| Pod Disruption Budget | Voluntary eviction limits, maintenance progress, replica count, and capacity |
 
 ## Before you start
 
@@ -62,7 +124,7 @@ Quick reference - demos that need something extra:
 
 ## 1. The Cluster (Why Kubernetes?)
 
-**Part 1 — Technical Discussion:** Kubernetes lets you manage many machines as one cluster. You describe the application you want to run, and Kubernetes chooses a suitable machine and keeps the application running there. You do not have to log in to each server and place every workload yourself.
+**Part 1 — Technical Discussion:** Kubernetes is a declarative control system for managing compute, networking, and storage across a group of machines. You submit desired state through the API, and the control plane schedules Pods, reconciles drift, and reports status while Nodes execute the work. This removes manual placement from the normal workflow, but the cluster itself still requires capacity planning, security, upgrades, and observability.
 
 ![The Cluster (Why Kubernetes?) technical illustration](generated/kubernetes-apartment-complex/01-technical.png)
 
@@ -105,7 +167,7 @@ NOTE
 
 ## 2. Control Plane vs. Worker Nodes
 
-**Part 1 — Technical Discussion:** The Control Plane is the cluster's decision-maker. Worker Nodes are the machines that run your applications. If a Worker Node fails, Kubernetes can move or replace workloads on healthy nodes. If the Control Plane fails, running workloads may continue, but Kubernetes cannot make new scheduling or change decisions until it recovers.
+**Part 1 — Technical Discussion:** The control plane exposes the API, stores cluster state, schedules Pods, and runs controllers; worker Nodes provide the kubelet, container runtime, and networking needed to execute them. A worker failure can trigger replacement or rescheduling when replicas and capacity are available, while an isolated control-plane failure may leave existing processes running but stops reliable changes and new placement decisions. High availability therefore requires redundant control-plane components and workloads spread across failure domains.
 
 ![Control Plane vs. Worker Nodes technical illustration](generated/kubernetes-apartment-complex/02-technical.png)
 
@@ -148,7 +210,7 @@ NOTE
 
 ## 3. kube-apiserver
 
-**Part 1 — Technical Discussion:** kube-apiserver is the front door of Kubernetes. kubectl, the scheduler, controllers, and other clients send requests to it. It checks and processes those requests, and it is the only Control Plane component that talks directly to etcd.
+**Part 1 — Technical Discussion:** kube-apiserver is the authenticated and validated HTTP API boundary for Kubernetes. kubectl, controllers, the scheduler, admission webhooks, and external automation all use it to read objects, submit desired state, and watch changes. It performs authentication, authorization, admission, conversion, and concurrency handling, and is the only control-plane component that directly reads or writes etcd.
 
 ![kube-apiserver technical illustration](generated/kubernetes-apartment-complex/03-technical.png)
 
@@ -193,7 +255,7 @@ NOTE
 
 ## 4. etcd
 
-**Part 1 — Technical Discussion:** etcd is Kubernetes' database. It stores the important facts about the cluster, such as which Pods, Services, and Nodes should exist. Kubernetes uses it as the source of truth, so losing access to etcd means the Control Plane loses its reliable memory of the cluster.
+**Part 1 — Technical Discussion:** etcd is a strongly consistent distributed key-value store that holds Kubernetes API state, including specifications, metadata, and status needed by controllers. The API server uses it as the authoritative record, so quorum, disk latency, encryption, access control, snapshots, and restore testing directly affect control-plane reliability. Existing containers may continue briefly during an etcd outage, but new decisions and durable state changes cannot safely converge.
 
 ![etcd technical illustration](generated/kubernetes-apartment-complex/04-technical.png)
 
@@ -236,7 +298,7 @@ NOTE
 
 ## 5. kube-scheduler
 
-**Part 1 — Technical Discussion:** kube-scheduler chooses a machine for a new Pod. It looks for a Node with enough CPU and memory and checks rules such as where the Pod is allowed or preferred to run. After it makes the choice, the kubelet on that Node can start the Pod.
+**Part 1 — Technical Discussion:** kube-scheduler assigns an unscheduled Pod to a feasible Node; it does not start the container itself. It filters Nodes using resource requests, taints, tolerations, affinity, topology, volumes, and other constraints, then scores the remaining candidates and writes a binding. The kubelet notices that assignment and performs the actual launch.
 
 ![kube-scheduler technical illustration](generated/kubernetes-apartment-complex/05-technical.png)
 
@@ -281,7 +343,7 @@ NOTE
 
 ## 6. kube-controller-manager
 
-**Part 1 — Technical Discussion:** kube-controller-manager runs several watchers called control loops. Each loop compares what you asked for with what is actually running. When something is missing or wrong, a controller takes action, such as creating a replacement when a Pod crashes.
+**Part 1 — Technical Discussion:** kube-controller-manager hosts independent reconciliation loops for objects such as Nodes, endpoints, namespaces, and replication resources. Each controller watches API events, compares desired and observed state, and makes idempotent API changes until the difference converges. This eventual-consistency model enables self-healing, but bad probes, ownership, or resource settings can cause repeated ineffective repairs.
 
 ![kube-controller-manager technical illustration](generated/kubernetes-apartment-complex/06-technical.png)
 
@@ -326,7 +388,7 @@ NOTE
 
 ## 7. cloud-controller-manager
 
-**Part 1 — Technical Discussion:** cloud-controller-manager connects Kubernetes to a cloud provider. When you ask for something such as a LoadBalancer or cloud disk, it translates that Kubernetes request into the provider's API call and reports the result back to the cluster.
+**Part 1 — Technical Discussion:** cloud-controller-manager isolates provider-specific integrations from the Kubernetes core. Its controllers translate Services, Nodes, routes, and persistent volumes into cloud API operations, then write the resulting addresses, identities, and status back to Kubernetes. Provisioning depends on cloud credentials, quotas, API latency, regional topology, and provider-specific behavior.
 
 ![cloud-controller-manager technical illustration](generated/kubernetes-apartment-complex/07-technical.png)
 
@@ -370,7 +432,7 @@ NOTE
 
 ## 8. Static Pods
 
-**Part 1 — Technical Discussion:** A Static Pod is started from a manifest file on a Node's local disk. The kubelet watches that file and runs the Pod directly, without asking the API server. This lets a machine start important Control Plane Pods while the API server is still coming up.
+**Part 1 — Technical Discussion:** A Static Pod is defined by a manifest on a Node’s filesystem and is launched directly by that Node’s kubelet. The kubelet mirrors it into the API as a read-only-style mirror Pod, but the API server is not the source of its desired state. This bootstrap path can start control-plane components before the API is available, while making distribution, updates, and drift node-local concerns.
 
 ![Static Pods technical illustration](generated/kubernetes-apartment-complex/08-technical.png)
 
@@ -414,7 +476,7 @@ NOTE
 
 ## 9. kubelet
 
-**Part 1 — Technical Discussion:** kubelet is the agent on each Node. It reads the Pod instructions assigned to that Node, asks the container runtime to run the containers, and reports whether they are healthy. It is the local worker that turns Kubernetes instructions into running processes.
+**Part 1 — Technical Discussion:** kubelet is the per-Node agent that reconciles assigned PodSpecs into running sandboxes and containers. It coordinates with the CRI runtime, mounts volumes, executes startup/readiness/liveness probes, applies restart policy, and reports conditions and container status to the API server. It can enforce local state, but it does not schedule Pods or replace the control plane’s higher-level controllers.
 
 ![kubelet technical illustration](generated/kubernetes-apartment-complex/09-technical.png)
 
@@ -458,7 +520,7 @@ NOTE
 
 ## 10. kube-proxy
 
-**Part 1 — Technical Discussion:** kube-proxy helps traffic reach a Service's Pods. It installs network rules on each Node so a request sent to the Service can be forwarded to a healthy Pod. When Pods are replaced, kube-proxy updates those rules to use the current Pod addresses.
+**Part 1 — Technical Discussion:** kube-proxy implements the node-local datapath for Service virtual IPs. It watches Services and EndpointSlices, then programs packet rules—commonly iptables or IPVS—so traffic is translated and load-balanced toward eligible Pod addresses. The Service abstraction remains stable even as Pods change; some CNI or eBPF implementations can provide an equivalent datapath without the traditional kube-proxy process.
 
 ![kube-proxy technical illustration](generated/kubernetes-apartment-complex/10-technical.png)
 
@@ -504,7 +566,7 @@ NOTE
 
 ## 11. Container Runtime & CRI
 
-**Part 1 — Technical Discussion:** The container runtime is the software that downloads images and starts containers. Kubernetes does not need to know every runtime's private details because it uses the Container Runtime Interface, or CRI, as a common set of instructions. This lets a cluster use runtimes such as containerd or CRI-O.
+**Part 1 — Technical Discussion:** The container runtime pulls images, creates Pod sandboxes, starts processes, applies isolation, and reports their status. kubelet reaches it through the Container Runtime Interface, a standard gRPC contract that hides runtime-specific APIs and allows implementations such as containerd or CRI-O. Runtime configuration still affects cgroups, filesystem behavior, logging, image security, resource accounting, and node performance.
 
 ![Container Runtime & CRI technical illustration](generated/kubernetes-apartment-complex/11-technical.png)
 
@@ -547,7 +609,7 @@ NOTE
 
 ## 12. Sidecar Containers
 
-**Part 1 — Technical Discussion:** A sidecar is an extra container in the same Pod as the main application. The containers share the Pod's network and can share storage, so the sidecar can help with a supporting task such as collecting logs, handling a proxy, or exporting metrics.
+**Part 1 — Technical Discussion:** A sidecar is a supporting container in the same Pod as an application container. Containers in one Pod share a network namespace and can share volumes, enabling local proxies, log shippers, certificate agents, or telemetry adapters to cooperate over localhost or files. The trade-off is coupled scheduling and failure behavior: resource requests, readiness, shutdown order, and restart semantics must cover the whole Pod.
 
 ![Sidecar Containers technical illustration](generated/kubernetes-apartment-complex/12-technical.png)
 
@@ -604,7 +666,7 @@ NOTE
 
 ## 13. Init Containers
 
-**Part 1 — Technical Discussion:** An init container runs before the main application containers. It must finish successfully before the application starts. This is useful for one-time preparation, such as downloading configuration or running a database migration.
+**Part 1 — Technical Discussion:** An init container runs to completion before ordinary application containers are started. Init containers execute sequentially, and Kubernetes retries a failed init phase according to Pod restart behavior, making them useful for configuration generation, schema preparation, permissions, or dependency checks. Because they gate readiness, slow or non-idempotent initialization directly affects rollout and recovery time.
 
 ![Init Containers technical illustration](generated/kubernetes-apartment-complex/13-technical.png)
 
@@ -661,7 +723,7 @@ NOTE
 
 ## 14. CNI (Container Network Interface)
 
-**Part 1 — Technical Discussion:** CNI plugins provide the network that Pods use. They give Pods IP addresses and set up the routes that let Pods communicate, even when they are on different Nodes. Examples include Calico and Cilium.
+**Part 1 — Technical Discussion:** The Container Network Interface is the plugin contract used to create Pod interfaces, allocate addresses, and configure routes or tunnels between Nodes. Implementations such as Calico and Cilium may also enforce NetworkPolicy, encrypt traffic, expose observability, or use eBPF datapaths. Kubernetes defines the expected Pod network model, while the CNI determines performance, failure behavior, and troubleshooting tools.
 
 ![CNI (Container Network Interface) technical illustration](generated/kubernetes-apartment-complex/14-technical.png)
 
@@ -706,7 +768,7 @@ NOTE
 
 ## 15. CoreDNS
 
-**Part 1 — Technical Discussion:** CoreDNS is the cluster's phone book. It translates a friendly Service name into the Service's network address. Applications can call a name such as a Service name instead of trying to remember changing IP addresses.
+**Part 1 — Technical Discussion:** CoreDNS provides cluster-local DNS for Services, Pods, and configured external names. It watches Kubernetes records and answers names using zones and search paths, allowing clients to resolve a stable Service name while backend Pod IPs change. DNS latency, cache behavior, upstream forwarding, readiness, and CoreDNS capacity are operational dependencies for many applications.
 
 ![CoreDNS technical illustration](generated/kubernetes-apartment-complex/15-technical.png)
 
@@ -751,7 +813,7 @@ NOTE
 
 ## 16. Services
 
-**Part 1 — Technical Discussion:** A Service gives an application a stable name and virtual IP even though the Pods behind it may change. It sends incoming requests to matching healthy Pods, so clients do not need to track individual Pod IP addresses.
+**Part 1 — Technical Discussion:** A Service selects Pods by labels and exposes them through a stable virtual endpoint independent of their ephemeral IPs. ClusterIP supports internal access, while NodePort and LoadBalancer extend exposure; headless Services deliberately return backend addresses for clients that need direct discovery. Correct selectors and readiness determine which backends receive traffic during rollout, termination, and failure.
 
 ![Services technical illustration](generated/kubernetes-apartment-complex/16-technical.png)
 
@@ -798,7 +860,7 @@ NOTE
 
 ## 17. Endpoints
 
-**Part 1 — Technical Discussion:** Endpoints record which Pod addresses currently belong behind a Service. Kubernetes updates this list as matching Pods start, stop, or become unready. The Service uses the current list when it forwards traffic.
+**Part 1 — Technical Discussion:** EndpointSlices are the scalable, controller-maintained representation of Service backends. They record addresses and conditions such as ready, serving, terminating, and sometimes topology hints, allowing proxies to avoid sending new traffic to unsuitable Pods. The older Endpoints object is useful for inspection but is less efficient for large Services and is being superseded by EndpointSlices.
 
 ![Endpoints technical illustration](generated/kubernetes-apartment-complex/17-technical.png)
 
@@ -845,7 +907,7 @@ NOTE
 
 ## 18. Ingress
 
-**Part 1 — Technical Discussion:** Ingress describes how web traffic from outside the cluster should enter. An Ingress controller reads rules such as a hostname or URL path and sends each request to the correct internal Service.
+**Part 1 — Technical Discussion:** An Ingress resource declares layer-7 HTTP or HTTPS matches, such as hostnames and URL paths, and maps them to Services. An Ingress controller supplies the reverse proxy, listener, TLS termination, reload behavior, and integration with an external load balancer; the resource alone does not expose traffic. Gateway API is a newer option when teams need richer routing and clearer separation of responsibilities.
 
 ![Ingress technical illustration](generated/kubernetes-apartment-complex/18-technical.png)
 
@@ -912,7 +974,7 @@ NOTE
 
 ## 19. NetworkPolicy
 
-**Part 1 — Technical Discussion:** A NetworkPolicy is a traffic rule for Pods. It can allow or block connections based on labels, namespaces, ports, and traffic direction. The network plugin enforces the rule; without restrictive policies, Pods are generally allowed to communicate.
+**Part 1 — Technical Discussion:** NetworkPolicy is a declarative allow-list boundary for Pod ingress and egress. Policies select Pods and permit traffic by namespace, Pod labels, ports, and protocol, but enforcement is supplied by a policy-capable CNI rather than the API object itself. A rollout must account for DNS, health checks, control-plane access, default-allow behavior, and the fact that network policy is not application authentication.
 
 ![NetworkPolicy technical illustration](generated/kubernetes-apartment-complex/19-technical.png)
 
@@ -971,7 +1033,7 @@ NOTE
 
 ## 20. PersistentVolume (PV)
 
-**Part 1 — Technical Discussion:** A PersistentVolume, or PV, represents storage that Kubernetes can attach to a workload. The storage can be created ahead of time or created through a StorageClass. It can outlive a Pod, so data does not have to disappear when that Pod is replaced.
+**Part 1 — Technical Discussion:** A PersistentVolume is a cluster storage resource whose lifecycle is decoupled from an individual Pod. Its provisioner, access mode, volume mode, reclaim policy, topology, and attachment semantics determine how it can be used and what happens after a claim is released. A PV preserves data across ordinary Pod replacement, but does not by itself provide backups, replication, consistency, or protection from deletion.
 
 ![PersistentVolume (PV) technical illustration](generated/kubernetes-apartment-complex/20-technical.png)
 
@@ -1046,7 +1108,7 @@ NOTE
 
 ## 21. PersistentVolumeClaim (PVC)
 
-**Part 1 — Technical Discussion:** A PersistentVolumeClaim, or PVC, is a request for storage. It says how much storage is needed and sometimes describes the required access or storage class. Kubernetes finds a suitable PersistentVolume and binds the request to it.
+**Part 1 — Technical Discussion:** A PersistentVolumeClaim is a workload-facing request for capacity and storage characteristics rather than a provider-specific disk definition. Kubernetes binds it to a compatible PV—or triggers dynamic provisioning—using capacity, access mode, volume mode, StorageClass, and topology constraints. A Pending claim is therefore a useful diagnostic signal for missing capacity, an unavailable provisioner, or incompatible scheduling requirements.
 
 ![PersistentVolumeClaim (PVC) technical illustration](generated/kubernetes-apartment-complex/21-technical.png)
 
@@ -1119,7 +1181,7 @@ NOTE
 
 ## 22. StorageClass
 
-**Part 1 — Technical Discussion:** A StorageClass is a recipe for creating storage. It tells Kubernetes which storage provider and settings to use when a PVC asks for space. This allows storage to be created on demand instead of requiring an administrator to prepare every PV first.
+**Part 1 — Technical Discussion:** A StorageClass defines the policy for dynamically provisioning volumes. It selects a provisioner and parameters such as disk type, filesystem, replication, encryption, reclaim policy, and volume-binding mode. Dynamic provisioning reduces manual work, but its defaults directly affect cost, performance, data retention, and whether a volume can be placed in the same topology as its consumer.
 
 ![StorageClass technical illustration](generated/kubernetes-apartment-complex/22-technical.png)
 
@@ -1162,7 +1224,7 @@ NOTE
 
 ## 23. Role
 
-**Part 1 — Technical Discussion:** A Role is a list of actions that are allowed inside one Namespace. For example, it can allow reading Pods or creating ConfigMaps. A Role is only a rule; it does not give anyone access until a binding connects it to a user, group, or ServiceAccount.
+**Part 1 — Technical Discussion:** A Role defines namespaced RBAC permissions as API groups, resources, resource names, and verbs such as get, list, create, or update. It is a permission rule—not an identity or a grant—and has no effect until a RoleBinding attaches it to a subject. Least privilege requires avoiding unnecessary wildcards and treating access to Secrets or workload creation as potentially sensitive.
 
 ![Role technical illustration](generated/kubernetes-apartment-complex/23-technical.png)
 
@@ -1205,7 +1267,7 @@ NOTE
 
 ## 24. RoleBinding
 
-**Part 1 — Technical Discussion:** A RoleBinding connects a Role to a person, group, or ServiceAccount. That connection gives the subject the listed permissions in the Role's Namespace. Without the binding, the Role's permissions are not assigned to anyone.
+**Part 1 — Technical Discussion:** A RoleBinding grants a Role or ClusterRole to a user, group, or ServiceAccount within one Namespace. The binding is the effective assignment: reviewing a Role without reviewing its bindings can miss broad groups or automation identities that receive the permission. Namespace scope limits where the grant applies, even when the referenced role is cluster-scoped.
 
 ![RoleBinding technical illustration](generated/kubernetes-apartment-complex/24-technical.png)
 
@@ -1249,7 +1311,7 @@ NOTE
 
 ## 25. ClusterRole
 
-**Part 1 — Technical Discussion:** A ClusterRole is a permission list that is not limited to one Namespace. It can describe access across many Namespaces or to cluster-wide objects such as Nodes. It still needs a binding before it grants access.
+**Part 1 — Technical Discussion:** A ClusterRole describes reusable RBAC permissions that can apply across namespaces or to cluster-scoped resources such as Nodes and PersistentVolumes. A namespaced RoleBinding can use a ClusterRole while restricting the grant to that namespace, whereas a ClusterRoleBinding grants it cluster-wide. This reuse improves consistency, but broad rules can expose or mutate resources far beyond one application.
 
 ![ClusterRole technical illustration](generated/kubernetes-apartment-complex/25-technical.png)
 
@@ -1292,7 +1354,7 @@ NOTE
 
 ## 26. ClusterRoleBinding
 
-**Part 1 — Technical Discussion:** A ClusterRoleBinding connects a ClusterRole to a subject for the whole cluster. The subject receives those permissions across Namespaces and for any cluster-scoped resources covered by the role.
+**Part 1 — Technical Discussion:** A ClusterRoleBinding attaches a ClusterRole to a subject at cluster scope, making its permissions effective across namespaces and for covered cluster-scoped resources. It is appropriate for tightly controlled platform controllers, but it is one of the highest-impact RBAC grants. Prefer a namespaced RoleBinding where possible and audit effective permissions rather than relying only on role names.
 
 ![ClusterRoleBinding technical illustration](generated/kubernetes-apartment-complex/26-technical.png)
 
@@ -1337,7 +1399,7 @@ NOTE
 
 ## 27. ServiceAccount
 
-**Part 1 — Technical Discussion:** A ServiceAccount is an identity for software running in a Pod. An application can use that identity when it calls the Kubernetes API. It is separate from the account a human uses with kubectl.
+**Part 1 — Technical Discussion:** A ServiceAccount is a Kubernetes identity intended for workloads rather than human operators. A Pod can receive a projected, usually short-lived token for that identity, and the API server uses RBAC to decide what the application may do. Dedicated accounts, automount controls, rotation, and minimal permissions reduce the impact of a compromised workload.
 
 ![ServiceAccount technical illustration](generated/kubernetes-apartment-complex/27-technical.png)
 
@@ -1380,7 +1442,7 @@ NOTE
 
 ## 28. Node (controller)
 
-**Part 1 — Technical Discussion:** The Node controller watches for regular health messages from each kubelet. If a Node stops reporting, the controller marks it NotReady. After a period of time, Kubernetes can remove the Node's workloads so they can be recreated elsewhere.
+**Part 1 — Technical Discussion:** The Node controller combines kubelet heartbeats and lease updates into a cluster-level health decision. When communication stops, it marks the Node unhealthy and, after configured toleration periods, enables eviction or replacement of eligible workloads. Detection is deliberately delayed to avoid reacting to transient partitions, so replicas, topology spread, and graceful shutdown remain necessary for resilience.
 
 ![Node (controller) technical illustration](generated/kubernetes-apartment-complex/28-technical.png)
 
@@ -1427,7 +1489,7 @@ NOTE
 
 ## 29. Namespace (controller)
 
-**Part 1 — Technical Discussion:** The Namespace controller manages the lifetime of a Namespace. When the Namespace is deleted, it helps remove the objects inside it first. Only after the contents are cleaned up can the Namespace disappear completely.
+**Part 1 — Technical Discussion:** Namespaces scope namespaced objects and provide a boundary for RBAC, quotas, and many policy resources. The Namespace controller coordinates deletion by discovering and removing contained objects before finalizing the Namespace. Finalizers or unavailable controllers can leave deletion in Terminating, so forced removal should be treated as a repair action with possible orphaned resources.
 
 ![Namespace (controller) technical illustration](generated/kubernetes-apartment-complex/29-technical.png)
 
@@ -1472,7 +1534,7 @@ NOTE
 
 ## 30. ResourceQuota
 
-**Part 1 — Technical Discussion:** A ResourceQuota sets a limit for one Namespace. The limit can cover CPU and memory or the number of objects such as Pods and Services. Kubernetes rejects new objects when they would push the Namespace over its quota.
+**Part 1 — Technical Discussion:** ResourceQuota limits aggregate resource consumption or object counts within a namespace. Admission can reject new or updated objects when their requests, limits, storage, or count would exceed the quota, protecting shared clusters from one tenant exhausting capacity. Quotas work best with LimitRanges, accurate requests, monitoring, and enough headroom for controllers and system objects.
 
 ![ResourceQuota technical illustration](generated/kubernetes-apartment-complex/30-technical.png)
 
@@ -1526,7 +1588,7 @@ NOTE
 
 ## 31. Garbage Collector
 
-**Part 1 — Technical Discussion:** The Garbage Collector removes Kubernetes objects that were left behind without their owner. It follows owner references, such as a ReplicaSet owning its Pods. If the owner is deleted, Kubernetes can clean up the dependent objects too.
+**Part 1 — Technical Discussion:** The garbage collector follows ownerReferences to identify dependent objects and remove them when an owner is deleted. Foreground, background, and orphan propagation policies control whether dependents block deletion, disappear asynchronously, or are intentionally retained. Controllers must set ownership deliberately because incorrect references can cause unexpected cleanup or leave unmanaged objects behind.
 
 ![Garbage Collector technical illustration](generated/kubernetes-apartment-complex/31-technical.png)
 
@@ -1572,7 +1634,7 @@ NOTE
 
 ## 32. ReplicaSet
 
-**Part 1 — Technical Discussion:** A ReplicaSet keeps a chosen number of matching Pods running. If one Pod disappears, it creates another to restore the count. It focuses on keeping the number of identical replicas correct.
+**Part 1 — Technical Discussion:** A ReplicaSet reconciles a target count of interchangeable Pods selected by labels. It replaces missing or excess replicas, but it does not provide application-version strategy, rollout pacing, or rollback history. Deployments normally own ReplicaSets so that this low-level count reconciliation is combined with controlled releases.
 
 ![ReplicaSet technical illustration](generated/kubernetes-apartment-complex/32-technical.png)
 
@@ -1617,7 +1679,7 @@ NOTE
 
 ## 33. Deployment
 
-**Part 1 — Technical Discussion:** A Deployment manages ReplicaSets and makes application updates safer. It replaces old Pods with new Pods gradually, so the application can keep serving traffic during the update. If the new version is bad, the Deployment can roll back to the previous version.
+**Part 1 — Technical Discussion:** A Deployment manages ReplicaSets and turns a Pod-template change into a controlled rollout. Rolling-update limits, readiness, progress deadlines, revision history, and rollback determine how quickly a new version replaces the old one and whether traffic remains available. Deployments suit stateless or externally coordinated workloads; database migrations, API compatibility, and probe quality still require application-level planning.
 
 ![Deployment technical illustration](generated/kubernetes-apartment-complex/33-technical.png)
 
@@ -1665,7 +1727,7 @@ NOTE
 
 ## 34. StatefulSet
 
-**Part 1 — Technical Discussion:** A StatefulSet is for applications whose Pods need lasting identities. Each Pod gets a predictable name and can keep its own storage. When the Pod restarts, Kubernetes brings it back with the same identity instead of treating it as an interchangeable copy.
+**Part 1 — Technical Discussion:** A StatefulSet gives replicas stable ordinal names, network identities, and commonly one persistent volume per replica. Ordered creation, updates, and termination can support quorum systems and clustered databases, but the controller does not create replication, consensus, or backups for the application. Operators must understand failover, storage attachment, recovery order, and disruption limits before using it for stateful systems.
 
 ![StatefulSet technical illustration](generated/kubernetes-apartment-complex/34-technical.png)
 
@@ -1741,7 +1803,7 @@ NOTE
 
 ## 35. DaemonSet
 
-**Part 1 — Technical Discussion:** A DaemonSet places one copy of a Pod on every matching Node. It is useful for Node-level work, such as collecting logs or monitoring the machine. When a new matching Node joins, the DaemonSet adds the Pod there too.
+**Part 1 — Technical Discussion:** A DaemonSet expresses node coverage rather than a fixed replica count: one Pod is scheduled on every matching Node, including eligible Nodes added later. It is suited to log collectors, monitoring agents, storage helpers, and networking components that need local access. Selectors, taints, tolerations, host access, and resource requests determine coverage and the amount of workload capacity consumed.
 
 ![DaemonSet technical illustration](generated/kubernetes-apartment-complex/35-technical.png)
 
@@ -1804,7 +1866,7 @@ NOTE
 
 ## 36. Job
 
-**Part 1 — Technical Discussion:** A Job runs Pods for a task that should finish. It keeps track of successful completions and can retry failures. Once the requested work is complete, the Job stops instead of keeping a service running forever.
+**Part 1 — Technical Discussion:** A Job represents finite work and tracks successful and failed Pod completions. It can retry failures, run completions in parallel, and retain or clean up finished Pods according to policy, making it appropriate for migrations, batch processing, and maintenance. The task should be idempotent or otherwise safe to retry because a failure can occur after work has partially completed.
 
 ![Job technical illustration](generated/kubernetes-apartment-complex/36-technical.png)
 
@@ -1861,7 +1923,7 @@ NOTE
 
 ## 37. CronJob
 
-**Part 1 — Technical Discussion:** A CronJob starts Jobs on a schedule. You can use a cron expression to say when the work should run, such as every night at 2:00 AM. Each scheduled run creates a separate Job.
+**Part 1 — Technical Discussion:** A CronJob creates Jobs according to a cron schedule and transfers the actual work and retry behavior to each Job. Concurrency policy, missed-run handling, starting deadlines, history limits, time zones, and idempotency determine whether recurring execution is safe. Scheduling is not an exactly-once guarantee, so jobs must tolerate retries, controller restarts, and—depending on policy—overlap.
 
 ![CronJob technical illustration](generated/kubernetes-apartment-complex/37-technical.png)
 
@@ -1922,7 +1984,7 @@ NOTE
 
 ## 38. ReplicationController (legacy)
 
-**Part 1 — Technical Discussion:** ReplicationController is the older Kubernetes object for keeping a fixed number of matching Pods alive. It is similar to a ReplicaSet but has less flexible label matching. New applications normally use Deployments, which manage ReplicaSets instead.
+**Part 1 — Technical Discussion:** ReplicationController is the predecessor to ReplicaSet and maintains a fixed count of Pods selected by its older selector model. It can repair replica-count drift but lacks the expressive selectors and modern rollout relationship provided by ReplicaSet and Deployment. It remains relevant when operating legacy manifests, but new workloads should normally use Deployments.
 
 ![ReplicationController (legacy) technical illustration](generated/kubernetes-apartment-complex/38-technical.png)
 
@@ -1985,7 +2047,7 @@ NOTE
 
 ## 39. HorizontalPodAutoscaler (HPA)
 
-**Part 1 — Technical Discussion:** The HorizontalPodAutoscaler, or HPA, changes how many Pod copies are running. It watches metrics such as CPU or memory use, adds Pods when demand rises, and removes Pods when demand falls. It changes the number of copies, not the size of each Pod.
+**Part 1 — Technical Discussion:** HPA adjusts a scalable target’s replica count from observed resource, custom, or external metrics. It compares current values with a target, applies stabilization and scaling policies, and changes the workload’s desired replicas; it does not resize an individual Pod. Effective horizontal scaling requires usable metrics, meaningful resource requests, startup tolerance, sufficient cluster capacity, and an application that can distribute traffic across replicas.
 
 ![HorizontalPodAutoscaler (HPA) technical illustration](generated/kubernetes-apartment-complex/39-technical.png)
 
@@ -2036,7 +2098,7 @@ NOTE
 
 ## 40. VerticalPodAutoscaler (VPA)
 
-**Part 1 — Technical Discussion:** The VerticalPodAutoscaler, or VPA, recommends or changes the CPU and memory sizes requested by a Pod. It uses observed usage to decide whether each Pod needs more or less capacity. Unlike HPA, it changes Pod size rather than adding more Pod copies, and it requires the VPA add-on.
+**Part 1 — Technical Discussion:** VPA analyzes historical usage and produces CPU and memory recommendations, or applies them according to its update mode. Applying a new recommendation may evict and recreate Pods so that scheduling can use the new requests, which makes disruption and capacity planning important. VPA is complementary to some workloads but can conflict with HPA when both react to the same resource signal, and it requires the VPA add-on.
 
 ![VerticalPodAutoscaler (VPA) technical illustration](generated/kubernetes-apartment-complex/40-technical.png)
 
@@ -2098,7 +2160,7 @@ NOTE
 
 ## 41. Pod Disruption Budget (PDB)
 
-**Part 1 — Technical Discussion:** A PodDisruptionBudget, or PDB, protects an application during planned maintenance. It sets how many matching Pods may be voluntarily taken down at the same time, such as during a Node drain. It cannot prevent an unexpected failure like a crashed Node.
+**Part 1 — Technical Discussion:** A PodDisruptionBudget limits voluntary evictions of selected Pods during operations such as node drain or voluntary cluster maintenance. `minAvailable` and `maxUnavailable` express an availability requirement, but the budget does not prevent crashes, hardware loss, or every involuntary disruption. A strict budget can also block maintenance when there are too few replicas or no spare schedulable Nodes, so it must match real capacity and recovery behavior.
 
 ![Pod Disruption Budget (PDB) technical illustration](generated/kubernetes-apartment-complex/41-technical.png)
 

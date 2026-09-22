@@ -1,0 +1,948 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Kubernetes Apartment Complex — Architecture Explorer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0b1120;
+    --panel: #111a2e;
+    --panel-hover: #16223b;
+    --panel-border: #1e2b47;
+    --cp-tint: #0f1f38;
+    --wn-tint: #14231c;
+    --accent: #38bdf8;
+    --accent-glow: rgba(56, 189, 248, 0.55);
+    --accent-dim: rgba(56, 189, 248, 0.15);
+    --packet: #f59e0b;
+    --packet-glow: rgba(245, 158, 11, 0.6);
+    --text-main: #e5edf7;
+    --text-dim: #7f93b3;
+    --line: #24324f;
+    --region-cp-border: #2b3f66;
+    --region-wn-border: #234030;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    background: var(--bg);
+    color: var(--text-main);
+    font-family: 'JetBrains Mono', 'Fira Code', ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+  a { color: var(--accent); text-decoration: none; transition: color 0.2s; }
+  a:hover { text-decoration: underline; }
+
+  /* App Shell */
+  .site-header {
+    background: #080d1a;
+    border-bottom: 1px solid var(--panel-border);
+    padding: 16px 24px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .logo {
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+  }
+  .logo span { color: var(--text-main); }
+  .header-actions {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+  }
+  .btn {
+    font-family: inherit;
+    font-size: 12px;
+    letter-spacing: 0.03em;
+    background: var(--panel);
+    color: var(--accent);
+    border: 1px solid var(--panel-border);
+    border-radius: 6px;
+    padding: 7px 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .btn:hover {
+    border-color: var(--accent);
+    box-shadow: 0 0 12px rgba(56, 189, 248, 0.25);
+    color: #fff;
+  }
+  .btn:active { transform: translateY(1px); }
+  .btn-primary {
+    background: var(--accent);
+    color: #0b1120;
+    font-weight: 600;
+  }
+  .btn-primary:hover {
+    background: #7dd3fc;
+    color: #0b1120;
+    box-shadow: 0 0 16px var(--accent-glow);
+  }
+
+  /* Container */
+  .main-wrap {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 28px 16px 60px;
+  }
+
+  /* Home Architecture View */
+  .hero-heading {
+    text-align: center;
+    margin-bottom: 24px;
+  }
+  .hero-heading h1 {
+    font-size: 17px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 6px;
+  }
+  .hero-heading p {
+    color: var(--text-dim);
+    font-size: 12px;
+  }
+
+  .arch-diagram-card {
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    border-radius: 12px;
+    padding: 24px 18px 20px;
+    margin-bottom: 36px;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.4);
+  }
+  .stage-label-bar {
+    text-align: center;
+    min-height: 28px;
+    font-size: 13px;
+    color: var(--text-main);
+    margin-bottom: 12px;
+    letter-spacing: 0.02em;
+    line-height: 1.4;
+  }
+  .controls-bar {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    margin-bottom: 18px;
+  }
+
+  /* SVG interactive styles */
+  svg { display: block; width: 100%; height: auto; overflow: visible; }
+  .region-box { fill: none; stroke-width: 1.2; stroke-dasharray: 3 4; }
+  .region-cp { stroke: var(--region-cp-border); }
+  .region-wn { stroke: var(--region-wn-border); }
+  .region-neutral { stroke: var(--panel-border); }
+  .region-label { fill: var(--text-dim); font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; }
+
+  .node-box {
+    stroke-width: 1.2;
+    transition: stroke 0.25s ease, filter 0.25s ease, fill 0.25s ease;
+    cursor: pointer;
+  }
+  .node-box.cp { fill: var(--cp-tint); stroke: var(--panel-border); }
+  .node-box.wn { fill: var(--wn-tint); stroke: var(--panel-border); }
+  .node-box.client { fill: #132238; stroke: var(--panel-border); }
+  .node-box.neutral { fill: var(--panel); stroke: var(--panel-border); }
+  
+  .interactive-node:hover .node-box {
+    stroke: var(--accent);
+    filter: drop-shadow(0 0 10px var(--accent-glow));
+  }
+  .interactive-node:hover .node-title {
+    fill: var(--accent);
+  }
+  .node-box.active {
+    stroke: var(--accent) !important;
+    filter: drop-shadow(0 0 10px var(--accent-glow)) !important;
+  }
+  .node-title { fill: var(--text-main); font-size: 12px; font-weight: 600; transition: fill 0.25s ease; cursor: pointer; }
+  .node-title.active { fill: var(--accent); }
+  .node-sub { fill: var(--text-dim); font-size: 9.5px; cursor: pointer; }
+  .node-tag { fill: var(--accent); font-size: 8.5px; font-weight: 600; opacity: 0.85; }
+
+  .connector { stroke: var(--line); stroke-width: 1.4; fill: none; transition: stroke 0.3s ease; }
+  .connector.active { stroke: var(--accent); }
+  .connector-dash {
+    stroke-dasharray: 4 5; animation: dash-flow 0.9s linear infinite;
+    opacity: 0; transition: opacity 0.25s ease;
+  }
+  .connector-dash.on { opacity: 1; }
+  @keyframes dash-flow { to { stroke-dashoffset: -18; } }
+
+  .packet {
+    fill: var(--packet); filter: drop-shadow(0 0 8px var(--packet-glow));
+    opacity: 0; transition: opacity 0.2s ease, cx 0.55s cubic-bezier(.4,0,.2,1), cy 0.55s cubic-bezier(.4,0,.2,1);
+  }
+  .packet.on { opacity: 1; }
+
+  /* Topics Directory */
+  .section-title {
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .filter-controls {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .search-input {
+    flex: 1;
+    min-width: 260px;
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    color: var(--text-main);
+    font-family: inherit;
+    font-size: 12px;
+    padding: 9px 14px;
+    border-radius: 6px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .search-input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 10px rgba(56, 189, 248, 0.2);
+  }
+  .cat-pill {
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    color: var(--text-dim);
+    font-size: 11px;
+    padding: 6px 12px;
+    border-radius: 20px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .cat-pill:hover, .cat-pill.active {
+    background: var(--accent-dim);
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  .topics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 16px;
+  }
+  .topic-card {
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    border-radius: 8px;
+    padding: 16px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+  .topic-card:hover {
+    border-color: var(--accent);
+    box-shadow: 0 4px 18px rgba(0,0,0,0.3);
+    transform: translateY(-2px);
+  }
+  .topic-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 8px;
+  }
+  .topic-badge {
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--accent);
+    background: var(--accent-dim);
+    padding: 2px 8px;
+    border-radius: 4px;
+    letter-spacing: 0.05em;
+  }
+  .topic-cat {
+    font-size: 10px;
+    color: var(--text-dim);
+  }
+  .topic-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-main);
+    margin-bottom: 8px;
+  }
+  .topic-desc {
+    font-size: 11px;
+    color: var(--text-dim);
+    line-height: 1.5;
+    margin-bottom: 12px;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .topic-footer {
+    font-size: 11px;
+    color: var(--accent);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  /* Topic View */
+  .topic-view-wrap { display: none; }
+  .topic-nav-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    border-radius: 8px;
+    padding: 12px 18px;
+    margin-bottom: 24px;
+  }
+  .topic-crumb {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .topic-heading-block {
+    margin-bottom: 28px;
+  }
+  .topic-heading-block h1 {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--accent);
+    letter-spacing: 0.04em;
+    margin-bottom: 6px;
+  }
+  .topic-heading-block .meta {
+    font-size: 12px;
+    color: var(--text-dim);
+  }
+
+  /* 5-Part Layout in Topic View */
+  .part-section {
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    border-radius: 10px;
+    padding: 22px 20px;
+    margin-bottom: 28px;
+  }
+  .part-header {
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border-bottom: 1px solid var(--panel-border);
+    padding-bottom: 8px;
+  }
+  .part-text {
+    font-size: 12.5px;
+    color: var(--text-main);
+    line-height: 1.7;
+    margin-bottom: 16px;
+  }
+  .part-persp {
+    font-size: 12px;
+    color: var(--text-dim);
+    line-height: 1.65;
+    background: #0d1527;
+    border-left: 3px solid var(--accent);
+    padding: 12px 16px;
+    border-radius: 0 6px 6px 0;
+    margin-top: 14px;
+  }
+  .illustration-wrap {
+    text-align: center;
+    margin: 18px 0;
+    background: #080d1a;
+    border-radius: 8px;
+    padding: 12px;
+    border: 1px solid var(--panel-border);
+  }
+  .illustration-wrap img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 6px;
+    display: block;
+    margin: 0 auto;
+  }
+  .diagram-iframe-wrap {
+    width: 100%;
+    border-radius: 8px;
+    overflow: hidden;
+    background: #080d1a;
+    border: 1px solid var(--panel-border);
+  }
+  .diagram-iframe {
+    width: 100%;
+    height: 580px;
+    border: none;
+    display: block;
+  }
+  .demo-block {
+    background: #000 !important;
+    color: #fff !important;
+    border-radius: 8px;
+    padding: 1.2rem;
+    overflow: auto;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+    font-size: 12px;
+    line-height: 1.55;
+    border: 1px solid #222;
+  }
+  .demo-block pre {
+    background: transparent;
+    color: #fff;
+    margin: 0;
+    white-space: pre-wrap;
+    font-family: inherit;
+  }
+
+  /* Footer */
+  .site-footer {
+    text-align: center;
+    color: var(--text-dim);
+    font-size: 11px;
+    padding: 40px 16px 20px;
+    border-top: 1px solid var(--panel-border);
+    margin-top: 60px;
+  }
+</style>
+</head>
+<body>
+
+  <!-- Top Navigation Header -->
+  <header class="site-header">
+    <div class="logo" onclick="showHome()">
+      <span>⬡</span> KUBERNETES <span>APARTMENT COMPLEX</span>
+    </div>
+    <div class="header-actions">
+      <button class="btn" onclick="showHome()">🗺 Architecture Map</button>
+      <a href="demos-complete.md" class="btn" target="_blank">📄 View Markdown</a>
+    </div>
+  </header>
+
+  <main class="main-wrap">
+
+    <!-- VIEW 1: HOME PAGE (Interactive Architecture Diagram + Topics Index) -->
+    <div id="homeView">
+      <div class="hero-heading">
+        <h1>Kubernetes Architecture Overview</h1>
+        <p>Dan Koe style minimalist system design · Click any component box to explore the topic</p>
+      </div>
+
+      <!-- Master Architecture SVG Diagram -->
+      <div class="arch-diagram-card">
+        <div class="stage-label-bar" id="masterStageLabel">Click any component below to jump to its topic, or press Play to trace cluster request flow</div>
+        
+        <div class="controls-bar">
+          <button class="btn btn-primary" id="masterPlayBtn" onclick="playMasterFlow()">▶ Play End-to-End Flow</button>
+          <button class="btn" onclick="resetMasterFlow()">↺ Reset</button>
+        </div>
+
+        <svg viewBox="0 0 1000 680" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Kubernetes full architecture diagram">
+          <!-- Control Plane Region -->
+          <rect class="region-box region-cp" x="30" y="80" width="450" height="420" rx="14"/>
+          <text class="region-label" x="50" y="102">Control Plane (Brain / Leasing Office)</text>
+
+          <!-- Worker Node Region -->
+          <rect class="region-box region-wn" x="520" y="80" width="450" height="420" rx="14"/>
+          <text class="region-label" x="540" y="102">Worker Nodes (Execution / Buildings)</text>
+
+          <!-- Networking Layer Region -->
+          <rect class="region-box region-neutral" x="30" y="520" width="940" height="130" rx="14"/>
+          <text class="region-label" x="50" y="542">Networking, Ingress &amp; Discovery Layer</text>
+
+          <!-- Client (Topic 1) -->
+          <g class="interactive-node" id="mClient" onclick="goToTopic(1)">
+            <rect class="node-box client" x="390" y="14" width="220" height="50" rx="10"/>
+            <text class="node-title" x="500" y="36" text-anchor="middle">kubectl / Client</text>
+            <text class="node-sub" x="500" y="52" text-anchor="middle">Topic 01: The Cluster</text>
+          </g>
+
+          <!-- Control Plane Components -->
+          <g class="interactive-node" id="mApi" onclick="goToTopic(3)">
+            <rect class="node-box cp" x="50" y="120" width="410" height="54" rx="10"/>
+            <text class="node-title" x="255" y="142" text-anchor="middle">kube-apiserver</text>
+            <text class="node-sub" x="255" y="160" text-anchor="middle">Topic 03 · AuthN / AuthZ / Admission Pipeline</text>
+          </g>
+
+          <g class="interactive-node" id="mEtcd" onclick="goToTopic(4)">
+            <rect class="node-box cp" x="50" y="196" width="195" height="56" rx="10"/>
+            <text class="node-title" x="147" y="220" text-anchor="middle">etcd</text>
+            <text class="node-sub" x="147" y="238" text-anchor="middle">Topic 04 · State Store</text>
+          </g>
+
+          <g class="interactive-node" id="mSched" onclick="goToTopic(5)">
+            <rect class="node-box cp" x="265" y="196" width="195" height="56" rx="10"/>
+            <text class="node-title" x="362" y="220" text-anchor="middle">kube-scheduler</text>
+            <text class="node-sub" x="362" y="238" text-anchor="middle">Topic 05 · Filtering &amp; Scoring</text>
+          </g>
+
+          <g class="interactive-node" id="mCtrl" onclick="goToTopic(6)">
+            <rect class="node-box cp" x="50" y="274" width="195" height="56" rx="10"/>
+            <text class="node-title" x="147" y="298" text-anchor="middle">kube-controller-mgr</text>
+            <text class="node-sub" x="147" y="316" text-anchor="middle">Topic 06 · Reconciliation</text>
+          </g>
+
+          <g class="interactive-node" id="mCcm" onclick="goToTopic(7)">
+            <rect class="node-box cp" x="265" y="274" width="195" height="56" rx="10"/>
+            <text class="node-title" x="362" y="298" text-anchor="middle">cloud-controller-mgr</text>
+            <text class="node-sub" x="362" y="316" text-anchor="middle">Topic 07 · Cloud APIs</text>
+          </g>
+
+          <g class="interactive-node" id="mWorkload" onclick="goToTopic(33)">
+            <rect class="node-box cp" x="50" y="352" width="410" height="54" rx="10"/>
+            <text class="node-title" x="255" y="374" text-anchor="middle">Workload Controllers</text>
+            <text class="node-sub" x="255" y="392" text-anchor="middle">Topics 32-38 · Deployments, StatefulSets, DaemonSets, Jobs</text>
+          </g>
+
+          <g class="interactive-node" id="mRbac" onclick="goToTopic(23)">
+            <rect class="node-box cp" x="50" y="426" width="410" height="54" rx="10"/>
+            <text class="node-title" x="255" y="448" text-anchor="middle">RBAC &amp; Governance</text>
+            <text class="node-sub" x="255" y="466" text-anchor="middle">Topics 23-31 · Roles, Quotas, GC, ServiceAccounts</text>
+          </g>
+
+          <!-- Worker Node Components -->
+          <g class="interactive-node" id="mKubelet" onclick="goToTopic(9)">
+            <rect class="node-box wn" x="540" y="120" width="195" height="54" rx="10"/>
+            <text class="node-title" x="637" y="142" text-anchor="middle">kubelet</text>
+            <text class="node-sub" x="637" y="160" text-anchor="middle">Topic 09 · Node Agent</text>
+          </g>
+
+          <g class="interactive-node" id="mCri" onclick="goToTopic(11)">
+            <rect class="node-box wn" x="755" y="120" width="195" height="54" rx="10"/>
+            <text class="node-title" x="852" y="142" text-anchor="middle">containerd (CRI)</text>
+            <text class="node-sub" x="852" y="160" text-anchor="middle">Topic 11 · Container Runtime</text>
+          </g>
+
+          <g class="interactive-node" id="mProxy" onclick="goToTopic(10)">
+            <rect class="node-box wn" x="540" y="196" width="195" height="56" rx="10"/>
+            <text class="node-title" x="637" y="220" text-anchor="middle">kube-proxy</text>
+            <text class="node-sub" x="637" y="238" text-anchor="middle">Topic 10 · Datapath</text>
+          </g>
+
+          <g class="interactive-node" id="mCni" onclick="goToTopic(14)">
+            <rect class="node-box wn" x="755" y="196" width="195" height="56" rx="10"/>
+            <text class="node-title" x="852" y="220" text-anchor="middle">CNI Plugin</text>
+            <text class="node-sub" x="852" y="238" text-anchor="middle">Topic 14 · Pod Network</text>
+          </g>
+
+          <g class="interactive-node" id="mPods" onclick="goToTopic(12)">
+            <rect class="node-box wn" x="540" y="274" width="410" height="56" rx="10"/>
+            <text class="node-title" x="745" y="298" text-anchor="middle">Pods, Sidecars &amp; Init Containers</text>
+            <text class="node-sub" x="745" y="316" text-anchor="middle">Topics 08, 12, 13 · Application Runtime Sandboxes</text>
+          </g>
+
+          <g class="interactive-node" id="mStorage" onclick="goToTopic(20)">
+            <rect class="node-box wn" x="540" y="352" width="410" height="54" rx="10"/>
+            <text class="node-title" x="745" y="374" text-anchor="middle">Storage Subsystem (PV / PVC / CSI)</text>
+            <text class="node-sub" x="745" y="392" text-anchor="middle">Topics 20-22 · PersistentVolumes &amp; Dynamic StorageClasses</text>
+          </g>
+
+          <g class="interactive-node" id="mAutoscale" onclick="goToTopic(39)">
+            <rect class="node-box wn" x="540" y="426" width="410" height="54" rx="10"/>
+            <text class="node-title" x="745" y="448" text-anchor="middle">Autoscaling &amp; Disruptions (HPA / VPA / PDB)</text>
+            <text class="node-sub" x="745" y="466" text-anchor="middle">Topics 39-41 · Metric-driven Scaling &amp; Maintenance Gates</text>
+          </g>
+
+          <!-- Bottom Layer: Ingress, Services, CoreDNS -->
+          <g class="interactive-node" id="mIngress" onclick="goToTopic(18)">
+            <rect class="node-box neutral" x="50" y="560" width="280" height="64" rx="10"/>
+            <text class="node-title" x="190" y="586" text-anchor="middle">Ingress Controller</text>
+            <text class="node-sub" x="190" y="606" text-anchor="middle">Topic 18 · Layer 7 HTTP &amp; TLS</text>
+          </g>
+
+          <g class="interactive-node" id="mServices" onclick="goToTopic(16)">
+            <rect class="node-box neutral" x="360" y="560" width="280" height="64" rx="10"/>
+            <text class="node-title" x="500" y="586" text-anchor="middle">Services &amp; Endpoints</text>
+            <text class="node-sub" x="500" y="606" text-anchor="middle">Topics 16, 17 · ClusterIP &amp; EndpointSlices</text>
+          </g>
+
+          <g class="interactive-node" id="mCoreDns" onclick="goToTopic(15)">
+            <rect class="node-box neutral" x="670" y="560" width="280" height="64" rx="10"/>
+            <text class="node-title" x="810" y="586" text-anchor="middle">CoreDNS &amp; Policy</text>
+            <text class="node-sub" x="810" y="606" text-anchor="middle">Topics 15, 19 · Discovery &amp; NetworkPolicy</text>
+          </g>
+
+          <!-- Connectors -->
+          <path class="connector" id="mc0" d="M500 64 L500 90 L255 90 L255 120" fill="none"/>
+          <path class="connector connector-dash" id="mc0d" d="M500 64 L500 90 L255 90 L255 120" fill="none"/>
+
+          <line class="connector" id="mc1" x1="147" y1="174" x2="147" y2="196"/>
+          <line class="connector connector-dash" id="mc1d" x1="147" y1="174" x2="147" y2="196"/>
+
+          <line class="connector" id="mc2" x1="362" y1="174" x2="362" y2="196"/>
+          <line class="connector connector-dash" id="mc2d" x1="362" y1="174" x2="362" y2="196"/>
+
+          <path class="connector" id="mc3" d="M460 147 L540 147" fill="none"/>
+          <path class="connector connector-dash" id="mc3d" d="M460 147 L540 147" fill="none"/>
+
+          <line class="connector" id="mc4" x1="735" y1="147" x2="755" y2="147"/>
+          <line class="connector connector-dash" id="mc4d" x1="735" y1="147" x2="755" y2="147"/>
+
+          <path class="connector" id="mc5" d="M852 174 L852 274" fill="none"/>
+          <path class="connector connector-dash" id="mc5d" d="M852 174 L852 274" fill="none"/>
+
+          <path class="connector" id="mc6" d="M745 330 L745 530 L500 530 L500 560" fill="none"/>
+          <path class="connector connector-dash" id="mc6d" d="M745 330 L745 530 L500 530 L500 560" fill="none"/>
+
+          <circle class="packet" id="masterPacket" cx="500" cy="39" r="7"/>
+        </svg>
+      </div>
+
+      <!-- Topics Directory & Search Filter -->
+      <div class="section-title">
+        <span>Topic Reference Catalog (41 Topics)</span>
+        <span style="font-size: 11px; color: var(--text-dim); font-weight: normal;">Search or filter by category</span>
+      </div>
+
+      <div class="filter-controls">
+        <input type="text" id="topicSearch" class="search-input" placeholder="Search topic by name, component, or keyword..." oninput="filterTopics()">
+        <div class="cat-pill active" onclick="setCategoryFilter('All', this)">All (41)</div>
+        <div class="cat-pill" onclick="setCategoryFilter('Cluster Architecture', this)">Cluster (2)</div>
+        <div class="cat-pill" onclick="setCategoryFilter('Control Plane Core', this)">Control Plane (5)</div>
+        <div class="cat-pill" onclick="setCategoryFilter('Nodes & Runtime', this)">Nodes (6)</div>
+        <div class="cat-pill" onclick="setCategoryFilter('Networking & Ingress', this)">Networking (6)</div>
+        <div class="cat-pill" onclick="setCategoryFilter('Storage Subsystem', this)">Storage (3)</div>
+        <div class="cat-pill" onclick="setCategoryFilter('Security & RBAC', this)">RBAC (5)</div>
+        <div class="cat-pill" onclick="setCategoryFilter('Workload Controllers', this)">Workloads (7)</div>
+        <div class="cat-pill" onclick="setCategoryFilter('Autoscaling & Disruption', this)">Autoscaling (3)</div>
+      </div>
+
+      <div class="topics-grid" id="topicsGrid">
+        <!-- Dynamically populated via JS -->
+      </div>
+    </div>
+
+    <!-- VIEW 2: TOPIC VIEW (5 Parts) -->
+    <div id="topicView" class="topic-view-wrap">
+      <div class="topic-nav-bar">
+        <div class="topic-crumb">
+          <button class="btn" onclick="showHome()">← Architecture Map</button>
+          <span class="topic-badge" id="topicBadge">Topic 01</span>
+        </div>
+        <div style="display: flex; gap: 8px;">
+          <button class="btn" id="prevTopicBtn" onclick="navigateTopic(-1)">← Prev</button>
+          <button class="btn" id="nextTopicBtn" onclick="navigateTopic(1)">Next →</button>
+        </div>
+      </div>
+
+      <div class="topic-heading-block">
+        <h1 id="topicTitle">Topic Title</h1>
+        <div class="meta" id="topicMeta">Category · Minimalist Tech Deep-Dive</div>
+      </div>
+
+      <!-- PART 1: Technical Perspective & Technical Illustration -->
+      <section class="part-section">
+        <div class="part-header">Part 1 — Technical Discussion &amp; Illustration</div>
+        <div class="part-text" id="topicTechDisc">Technical discussion text...</div>
+        <div class="illustration-wrap">
+          <img id="topicTechImg" src="" alt="Technical illustration" loading="lazy">
+        </div>
+        <div class="part-persp" id="topicTechPersp">Technical perspective analysis...</div>
+      </section>
+
+      <!-- PART 2: Embedded Component Architecture Diagram -->
+      <section class="part-section">
+        <div class="part-header">Part 2 — Interactive Component Flow Diagram</div>
+        <p class="part-text" style="color: var(--text-dim); font-size: 11.5px; margin-bottom: 12px;">
+          Dan Koe style system-design animation · Play to trace request packet hops across component boundaries
+        </p>
+        <div class="diagram-iframe-wrap">
+          <iframe id="topicDiagramIframe" class="diagram-iframe" src="" title="Component Diagram"></iframe>
+        </div>
+        <div style="margin-top: 10px; text-align: right;">
+          <a id="topicDiagramLink" href="" target="_blank" style="font-size: 11px;">▶ Open diagram in standalone full window</a>
+        </div>
+      </section>
+
+      <!-- PART 3: Zine Analogy & Illustration -->
+      <section class="part-section">
+        <div class="part-header">Part 3 — Apartment Complex Zine Metaphor</div>
+        <div class="part-text" id="topicZineAnalogy" style="font-style: italic;">Zine analogy...</div>
+        <div class="illustration-wrap">
+          <img id="topicZineImg" src="" alt="Apartment Complex Zine illustration" loading="lazy">
+        </div>
+        <div class="part-persp" id="topicZineExp">Zine layout and explanation...</div>
+      </section>
+
+      <!-- PART 4: Further Resources -->
+      <section class="part-section">
+        <div class="part-header">Part 4 — Further Reading &amp; Authoritative Docs</div>
+        <div class="part-text" id="topicReading">Documentation links...</div>
+      </section>
+
+      <!-- PART 5: Runnable Demo -->
+      <section class="part-section">
+        <div class="part-header">Part 5 — Runnable Demo (Terminal Experiment)</div>
+        <div class="demo-block">
+          <pre id="topicDemo">SETUP ... STEPS ... WHAT YOU SHOULD SEE ... CLEANUP</pre>
+        </div>
+      </section>
+    </div>
+
+  </main>
+
+  <footer class="site-footer">
+    Kubernetes Apartment Complex · Minimalist Tech / System Design Architecture Guide · Local Edition
+  </footer>
+
+  <script>
+    const TOPICS = [{"num": 1, "title": "The Cluster (Why Kubernetes?)", "category": "Cluster Architecture", "tech_disc": "Kubernetes is a declarative control system for managing compute, networking, and storage across a group of machines. You submit desired state through the API, and the control plane schedules Pods, reconciles drift, and reports status while Nodes execute the work. This removes manual placement from the normal workflow, but the cluster itself still requires capacity planning, security, upgrades, and observability.", "tech_persp": "Kubernetes provides a declarative control plane, scheduling, self-healing, service discovery, and rollout automation across many machines. Compared with standalone VMs, it removes the need to place and repair each workload manually, improves utilization through bin-packing, and makes the desired state reproducible. The trade-off is additional platform complexity: the cluster itself needs lifecycle management, observability, security, and capacity planning.", "zine_analogy": "Managing standalone buildings is exhausting; tying them into one complex lets you manage them as a single entity.", "zine_exp": "The illustration translates the Kubernetes mechanism into the apartment-complex metaphor so the operational relationship is easier to remember.\n\n* **Zine Text & Layout:**\n* (Top): \"Why Kubernetes? Because managing buildings one at a time is exhausting.\"\n* (Under Left): \"Standalone buildings, standalone managers, standalone problems.\"\n* (Under Right): \"Tie them into one complex and manage it as a single entity. Stop SSHing into individual machines \u2014 talk to the cluster, and it decides where your workload goes.\"", "reading": "- [Kubernetes concepts](https://kubernetes.io/docs/concepts/)", "demo": "SETUP\n  (none: uses what is already in the cluster)\n\nSTEPS\n  1. kubectl cluster-info\n  2. kubectl get nodes -o wide\n\nWHAT YOU SHOULD SEE\n  cluster-info prints the control plane and CoreDNS URLs. get nodes lists every node with ROLES, STATUS, INTERNAL-IP.\n\nCLEANUP\n  (nothing to clean up)\n\nNOTE\n  One command shows the whole 'complex' instead of logging into each machine.", "tech_img": "generated/kubernetes-apartment-complex/01-technical.png", "zine_img": "generated/kubernetes-apartment-complex/01-zine.png", "diagram": "diagrams/topic-01.html"}, {"num": 2, "title": "Control Plane vs. Worker Nodes", "category": "Cluster Architecture", "tech_disc": "The control plane exposes the API, stores cluster state, schedules Pods, and runs controllers; worker Nodes provide the kubelet, container runtime, and networking needed to execute them. A worker failure can trigger replacement or rescheduling when replicas and capacity are available, while an isolated control-plane failure may leave existing processes running but stops reliable changes and new placement decisions. High availability therefore requires redundant control-plane components and workloads spread across failure domains.", "tech_persp": "The separation of control plane and workers creates a clear failure boundary. Workers execute Pods, while the control plane stores intent and coordinates scheduling and reconciliation. This lets workloads continue during some control-plane interruptions, while worker failure can be handled through rescheduling when replicas and capacity are available. High availability requires multiple control-plane instances and appropriately distributed workers.", "zine_analogy": "The office thinks (Leasing Office); the buildings do the actual physical work (Worker Nodes).", "zine_exp": "The illustration translates the Kubernetes mechanism into the apartment-complex metaphor so the operational relationship is easier to remember.\n\n* **Zine Text & Layout:**\n* (Top): \"Two halves of the complex: the office that thinks, and the buildings that work.\"\n* (Under Left): \"The Leasing Office thinks \u2014 planning, deciding, recording. This is the Control Plane.\"\n* (Under Right): \"If a building crashes, workloads shift elsewhere. If the office crashes, buildings keep running \u2014 but nothing can be changed until the office is back.\"", "reading": "- [Cluster architecture](https://kubernetes.io/docs/concepts/architecture/)", "demo": "SETUP\n  (none: uses what is already in the cluster)\n\nSTEPS\n  1. kubectl get nodes --show-labels | grep -E 'control-plane|NAME'\n  2. kubectl get pods -n kube-system -o wide\n\nWHAT YOU SHOULD SEE\n  The control-plane node is labelled node-role.kubernetes.io/control-plane. kube-system shows the api-server, etcd, scheduler and controller-manager Pods on that node.\n\nCLEANUP\n  (nothing to clean up)\n\nNOTE\n  This guide assumes the three-node kind cluster above, so the control plane and workers are separate Docker containers.", "tech_img": "generated/kubernetes-apartment-complex/02-technical.png", "zine_img": "generated/kubernetes-apartment-complex/02-zine.png", "diagram": "diagrams/topic-02.html"}, {"num": 3, "title": "kube-apiserver", "category": "Control Plane Core", "tech_disc": "kube-apiserver is the authenticated and validated HTTP API boundary for Kubernetes. kubectl, controllers, the scheduler, admission webhooks, and external automation all use it to read objects, submit desired state, and watch changes. It performs authentication, authorization, admission, conversion, and concurrency handling, and is the only control-plane component that directly reads or writes etcd.", "tech_persp": "The API server is the authenticated, authorized, validated concurrency boundary for cluster state. Clients submit declarative objects through the Kubernetes API; admission, versioning, validation, and watches provide a consistent interface for controllers and tools. Keeping etcd behind the API server centralizes policy and prevents components from making ungoverned direct writes.", "zine_analogy": "Every request must go through this one desk; nobody bypasses it.", "zine_exp": "The illustration translates the Kubernetes mechanism into the apartment-complex metaphor so the operational relationship is easier to remember.\n\n* **Zine Text & Layout:**\n* (Top): \"kube-apiserver \u2014 The Front Desk\"\n* (Caption): \"Every request must go through this one desk; nobody bypasses it. It's the only component that talks to the records room, and it's what your kubectl commands hit.\"", "reading": "- [API server reference](https://kubernetes.io/docs/reference/command-line-tools-reference/kube-apiserver/)\n- [Kubernetes API concepts](https://kubernetes.io/docs/concepts/overview/kubernetes-api/)", "demo": "SETUP\n  (none: uses what is already in the cluster)\n\nSTEPS\n  1. kubectl get --raw /api/v1 | head -c 300\n  2. kubectl proxy --port=8080 &\n  3. sleep 2\n  4. curl -s http://localhost:8080/api/v1/namespaces | head -c 300\n\nWHAT YOU SHOULD SEE\n  Both calls return raw JSON from the API server. kubectl is just an HTTP client.\n\nCLEANUP\n  kill %1   # stop the background kubectl proxy\n\nNOTE\n  Bypass kubectl and hit the 'front desk' directly with curl.", "tech_img": "generated/kubernetes-apartment-complex/03-technical.png", "zine_img": "generated/kubernetes-apartment-complex/03-zine.png", "diagram": "diagrams/topic-03.html"}, {"num": 4, "title": "etcd", "category": "Control Plane Core", "tech_disc": "etcd is a strongly consistent distributed key-value store that holds Kubernetes API state, including specifications, metadata, and status needed by controllers. The API server uses it as the authoritative record, so quorum, disk latency, encryption, access control, snapshots, and restore testing directly affect control-plane reliability. Existing containers may continue briefly during an etcd outage, but new decisions and durable state changes cannot safely converge.", "tech_persp": "etcd stores Kubernetes state as a strongly consistent key-value database. Because the API server reconstructs the cluster\u2019s desired and observed state from it, backups, quorum, encryption, latency, and restore testing are critical operational concerns. An etcd outage does not necessarily stop already-running containers immediately, but it prevents reliable control-plane progress and changes.", "zine_analogy": "Wall-to-wall filing cabinets holding the only copy of the complex's rules and state that actually counts.", "zine_exp": "The illustration translates the Kubernetes mechanism into the apartment-complex metaphor so the operational relationship is easier to remember.\n\n* **Zine Text & Layout:**\n* (Top): \"etcd \u2014 The Locked Records Room\"\n* (Caption): \"A highly available key-value store; if it corrupts, your cluster loses its memory.\"", "reading": "- [etcd: why etcd](https://etcd.io/docs/v3.5/learning/why/)\n- [Kubernetes etcd guidance](https://kubernetes.io/docs/tasks/administer-cluster/configure-upgrade-etcd/)", "demo": "SETUP\n  ETCD_POD=$(kubectl get pods -n kube-system -l component=etcd -o jsonpath='{.items[0].metadata.name}')\n  echo $ETCD_POD\n\nSTEPS\n  1. kubectl -n kube-system exec $ETCD_POD -- etcdctl --endpoints=https://127.0.0.1:2379 --cacert=/etc/kubernetes/pki/etcd/ca.crt --cert=/etc/kubernetes/pki/etcd/server.crt --key=/etc/kubernetes/pki/etcd/server.key get /registry/pods --prefix --keys-only | head -20\n\nWHAT YOU SHOULD SEE\n  A list of keys such as /registry/pods/kube-system/etcd-&lt;node&gt;. These are the 'filing cabinets' behind the API server.\n\nCLEANUP\n  (nothing to clean up)\n\nNOTE\n  Works on the kubeadm-style control plane used by kind. Managed clusters (EKS, GKE, AKS) hide etcd, so this will not work there. Do not use -it with a piped command.", "tech_img": "generated/kubernetes-apartment-complex/04-technical.png", "zine_img": "generated/kubernetes-apartment-complex/04-zine.png", "diagram": "diagrams/topic-04.html"}, {"num": 5, "title": "kube-scheduler", "category": "Control Plane Core", "tech_disc": "kube-scheduler assigns an unscheduled Pod to a feasible Node; it does not start the container itself. It filters Nodes using resource requests, taints, tolerations, affinity, topology, volumes, and other constraints, then scores the remaining candidates and writes a binding. The kubelet notices that assignment and performs the actual launch.", "tech_persp": "The scheduler separates placement decision-making from execution. It filters nodes that violate resource, taint, affinity, topology, or policy constraints, then scores feasible nodes and binds the Pod to the selected one. This lets operators express placement intent without hard-coding a server, while requests and limits help the scheduler make capacity-aware decisions.", "zine_analogy": "Checks building capacity and rules, then pins new tenants to the best-fitting building.", "zine_exp": "The illustration translates the Kubernetes mechanism into the apartment-complex metaphor so the operational relationship is easier to remember.\n\n* **Zine Text & Layout:**\n* (Top): \"kube-scheduler \u2014 The Unit Assigner\"\n* (Caption): \"Assigns new Pods to Nodes based on CPU/RAM requirements and affinity rules.\"", "reading": "- [Kubernetes scheduler](https://kubernetes.io/docs/concepts/scheduling-eviction/kube-scheduler/)\n- [Scheduling framework](https://kubernetes.io/docs/concepts/scheduling-eviction/scheduling-framework/)", "demo": "SETUP\n  kubectl create namespace zine-demo\n\nSTEPS\n  1. kubectl run demo-pod --image=nginx -n zine-demo\n  2. kubectl wait --for=condition=Ready pod/demo-pod -n zine-demo --timeout=60s\n  3. kubectl get pod demo-pod -n zine-demo -o wide\n  4. kubectl describe pod demo-pod -n zine-demo | grep -A6 Events\n\nWHAT YOU SHOULD SEE\n  Events shows 'Scheduled ... Successfully assigned zine-demo/demo-pod to &lt;node&gt;'. The NODE column matches.\n\nCLEANUP\n  kubectl delete namespace zine-demo\n\nNOTE\n  The Scheduled event is the exact moment the scheduler picked a node.", "tech_img": "generated/kubernetes-apartment-complex/05-technical.png", "zine_img": "generated/kubernetes-apartment-complex/05-zine.png", "diagram": "diagrams/topic-05.html"}, {"num": 6, "title": "kube-controller-manager", "category": "Control Plane Core", "tech_disc": "kube-controller-manager hosts independent reconciliation loops for objects such as Nodes, endpoints, namespaces, and replication resources. Each controller watches API events, compares desired and observed state, and makes idempotent API changes until the difference converges. This eventual-consistency model enables self-healing, but bad probes, ownership, or resource settings can cause repeated ineffective repairs.", "tech_persp": "Controllers implement Kubernetes reconciliation: they observe API objects and cluster state, compute the difference, and issue idempotent changes until the difference disappears. This is why deleting a Pod managed by a Deployment is temporary. The model favors eventual convergence and automation, but requires correct ownership, probes, resource settings, and observability to avoid repeatedly reconciling a broken design.", "zine_analogy": "Clipboard inspectors walking endless loops to ensure reality matches the promised plan, fixing discrepancies automatically.", "zine_exp": "The illustration translates the Kubernetes mechanism into the apartment-complex metaphor so the operational relationship is easier to remember.\n\n* **Zine Text & Layout:**\n* (Top): \"kube-controller-manager \u2014 The Looping Inspectors\"\n* (Caption): \"Background control loops that detect crashed Pods and spin up replacements to match your deployment YAML.\"", "reading": "- [Controllers](https://kubernetes.io/docs/concepts/architecture/controller/)", "demo": "SETUP\n  kubectl create namespace zine-demo\n  kubectl create deployment demo --image=nginx --replicas=3 -n zine-demo\n  kubectl rollout status deployment/demo -n zine-demo\n\nSTEPS\n  1. kubectl get pods -l app=demo -n zine-demo\n  2. kubectl delete pod $(kubectl get pods -l app=demo -n zine-demo -o name | head -1) -n zine-demo\n  3. kubectl get pods -l app=demo -n zine-demo -w   # Ctrl+C after a new Pod is Running\n\nWHAT YOU SHOULD SEE\n  You deleted one Pod and a replacement appears within seconds. The count returns to 3.\n\nCLEANUP\n  kubectl delete namespace zine-demo\n\nNOTE\n  The control loop noticed the gap and closed it with no command from you.", "tech_img": "generated/kubernetes-apartment-complex/06-technical.png", "zine_img": "generated/kubernetes-apartment-complex/06-zine.png", "diagram": "diagrams/topic-06.html"}, {"num": 7, "title": "cloud-controller-manager", "category": "Control Plane Core", "tech_disc": "cloud-controller-manager isolates provider-specific integrations from the Kubernetes core. Its controllers translate Services, Nodes, routes, and persistent volumes into cloud API operations, then write the resulting addresses, identities, and status back to Kubernetes. Provisioning depends on cloud credentials, quotas, API latency, regional topology, and provider-specific behavior.", "tech_persp": "The cloud controller manager keeps provider-specific integration outside the Kubernetes core. It translates Services, Nodes, routes, and cloud volumes into provider API operations and reports their status back through Kubernetes objects. This portability is valuable across clouds, but behavior depends on provider identity, permissions, quotas, latency, and the provider\u2019s implementation of the integration.", "zine_analogy": "Signs paperwork to connect external utilities like rented parking gates.", "zine_exp": "The illustration translates the Kubernetes mechanism into the apartment-complex metaphor so the operational relationship is easier to remember.\n\n* **Zine Text & Layout:**\n* (Top): \"cloud-controller-manager \u2014 Outside Vendor Liaison\"\n* (Caption): \"Translates Kubernetes requests into AWS/GCP/Azure API calls for things like cloud LoadBalancers.\"", "reading": "- [Cloud controller manager](https://kubernetes.io/docs/concepts/architecture/cloud-controller/)", "demo": "SETUP\n  kubectl create namespace zine-demo\n  kubectl create deployment demo --image=nginx --replicas=3 -n zine-demo\n  kubectl rollout status deployment/demo -n zine-demo\n\nSTEPS\n  1. kubectl expose deployment demo --type=LoadBalancer --port=80 --target-port=80 -n zine-demo\n  2. kubectl get svc demo -n zine-demo -w   # Ctrl+C when done\n\nWHAT YOU SHOULD SEE\n  On a cloud cluster EXTERNAL-IP moves from &lt;pending&gt; to a real IP. On kind it stays &lt;pending&gt; unless a cloud provider integration is installed.\n\nCLEANUP\n  kubectl delete namespace zine-demo\n\nNOTE\n  Kind has no cloud provider by default, so &lt;pending&gt; is the expected result. To provision a real LoadBalancer on kind, install and run cloud-provider-kind separately; for a simple local HTTP test, use a NodePort instead.", "tech_img": "generated/kubernetes-apartment-complex/07-technical.png", "zine_img": "generated/kubernetes-apartment-complex/07-zine.png", "diagram": "diagrams/topic-07.html"}, {"num": 8, "title": "Static Pods", "category": "Nodes & Runtime", "tech_disc": "A Static Pod is defined by a manifest on a Node\u2019s filesystem and is launched directly by that Node\u2019s kubelet. The kubelet mirrors it into the API as a read-only-style mirror Pod, but the API server is not the source of its desired state. This bootstrap path can start control-plane components before the API is available, while making distribution, updates, and drift node-local concerns.", "tech_persp": "Static Pods are bootstrapped locally by the kubelet from files on a node, so they can start before the API server is available. This is useful for kubeadm-style control-plane bootstrapping, but local manifests are node-specific and are not ordinary API-managed workloads. Operators must manage file distribution, updates, and drift carefully.", "zine_analogy": "A local blueprint used to build the front desk before a front desk even exists.", "zine_exp": "The illustration translates the Kubernetes mechanism into the apartment-complex metaphor so the operational relationship is easier to remember.\n\n* **Zine Text & Layout:**\n* (Top): \"Static Pods \u2014 The Bootstrapping Crew\"\n* (Caption): \"Pods managed directly by a local kubelet to run control plane components without relying on the API server.\"", "reading": "- [Static Pods](https://kubernetes.io/docs/tasks/configure-pod-container/static-pod/)", "demo": "SETUP\n  (none: uses what is already in the cluster)\n\nSTEPS\n  1. docker exec -it zine-control-plane bash\n  2. ls /etc/kubernetes/manifests/\n  3. exit\n  4. kubectl get pods -n kube-system -o wide | grep -E 'apiserver|etcd|scheduler'\n\nWHAT YOU SHOULD SEE\n  The manifests folder lists kube-apiserver.yaml, etcd.yaml, kube-scheduler.yaml, kube-controller-manager.yaml. The same Pods appear in kube-system with the node name appended.\n\nCLEANUP\n  (nothing to clean up)\n\nNOTE\n  The kubelet reads those files directly, with no API server round-trip. Run the ls on the control-plane node itself, not your laptop.", "tech_img": "generated/kubernetes-apartment-complex/08-technical.png", "zine_img": "generated/kubernetes-apartment-complex/08-zine.png", "diagram": "diagrams/topic-08.html"}, {"num": 9, "title": "kubelet", "category": "Nodes & Runtime", "tech_disc": "kubelet is the per-Node agent that reconciles assigned PodSpecs into running sandboxes and containers. It coordinates with the CRI runtime, mounts volumes, executes startup/readiness/liveness probes, applies restart policy, and reports conditions and container status to the API server. It can enforce local state, but it does not schedule Pods or replace the control plane\u2019s higher-level controllers.", "tech_persp": "The kubelet is the node-level agent that turns a PodSpec into running containers. It coordinates with the runtime, mounts volumes, executes probes, reports status, and applies lifecycle policies. Kubernetes can declare the desired workload centrally, while the kubelet provides the local enforcement needed to keep that workload running on its assigned node.", "zine_analogy": "Receives the work order from the office and does headcounts to ensure assigned tenants are present and healthy.", "zine_exp": "The illustration translates the Kubernetes mechanism into the apartment-complex metaphor so the operational relationship is easier to remember.\n\n* **Zine Text & Layout:**\n* (Top): \"kubelet \u2014 The Superintendent\"\n* (Caption): \"The primary node agent that ensures containers are actually running on that specific server.\"", "reading": "- [Nodes and kubelet](https://kubernetes.io/docs/concepts/architecture/nodes/)", "demo": "SETUP\n  kubectl create namespace zine-demo\n  kubectl run demo-pod --image=nginx -n zine-demo\n  kubectl wait --for=condition=Ready pod/demo-pod -n zine-demo --timeout=60s\n\nSTEPS\n  1. kubectl get pod demo-pod -n zine-demo -o jsonpath='{.status.conditions}'\n  2. docker exec zine-worker bash -lc \"ps -ef | grep '[k]ubelet'\"\n\nWHAT YOU SHOULD SEE\n  Conditions list Initialized, Ready, ContainersReady, PodScheduled, all 'True'. The process listing shows kubelet running inside the kind worker container.\n\nCLEANUP\n  kubectl delete namespace zine-demo\n\nNOTE\n  The Pod's conditions are reported by the kubelet on that node.", "tech_img": "generated/kubernetes-apartment-complex/09-technical.png", "zine_img": "generated/kubernetes-apartment-complex/09-zine.png", "diagram": "diagrams/topic-09.html"}, {"num": 10, "title": "kube-proxy", "category": "Nodes & Runtime", "tech_disc": "kube-proxy implements the node-local datapath for Service virtual IPs. It watches Services and EndpointSlices, then programs packet rules\u2014commonly iptables or IPVS\u2014so traffic is translated and load-balanced toward eligible Pod addresses. The Service abstraction remains stable even as Pods change; some CNI or eBPF implementations can provide an equivalent datapath without the traditional kube-proxy process.", "tech_persp": "kube-proxy implements the Service data path on nodes by programming packet-forwarding rules, commonly with iptables or IPVS depending on configuration. The Service gives clients a stable virtual destination while backend Pod IPs change. Modern proxy replacements and some CNI implementations can provide equivalent behavior, so kube-proxy is an implementation component rather than the Service abstraction itself.", "zine_analogy": "Updates a directory on the fly so visitors find the right unit, even as tenants swap out.", "zine_exp": "The illustration translates the Kubernetes mechanism into the apartment-complex metaphor so the operational relationship is easier to remember.\n\n* **Zine Text & Layout:**\n* (Top): \"kube-proxy \u2014 The Lobby Directory\"\n* (Caption): \"Maintains network routing rules (iptables/IPVS) on the host to route traffic to active Pod IPs.\"", "reading": "- [kube-proxy](https://kubernetes.io/docs/reference/command-line-tools-reference/kube-proxy/)\n- [Service proxying](https://kubernetes.io/docs/concepts/services-networking/service-traffic-policies/)", "demo": "SETUP\n  kubectl create namespace zine-demo\n  kubectl create deployment demo --image=nginx --replicas=3 -n zine-demo\n  kubectl rollout status deployment/demo -n zine-demo\n  kubectl expose deployment demo --port=80 -n zine-demo\n\nSTEPS\n  1. kubectl get endpoints demo -n zine-demo\n  2. docker exec zine-worker bash -lc \"iptables -t nat -L KUBE-SERVICES -n | grep zine-demo\"\n\nWHAT YOU SHOULD SEE\n  Endpoints lists 3 Pod IPs. The iptables output has a rule for the demo Service on port 80.\n\nCLEANUP\n  kubectl delete namespace zine-demo\n\nNOTE\n  If your cluster runs kube-proxy in IPVS mode, use 'sudo ipvsadm -Ln' instead. The Endpoints list and the rules line up.", "tech_img": "generated/kubernetes-apartment-complex/10-technical.png", "zine_img": "generated/kubernetes-apartment-complex/10-zine.png", "diagram": "diagrams/topic-10.html"}, {"num": 11, "title": "Container Runtime & CRI", "category": "Nodes & Runtime", "tech_disc": "The container runtime pulls images, creates Pod sandboxes, starts processes, applies isolation, and reports their status. kubelet reaches it through the Container Runtime Interface, a standard gRPC contract that hides runtime-specific APIs and allows implementations such as containerd or CRI-O. Runtime configuration still affects cgroups, filesystem behavior, logging, image security, resource accounting, and node performance.", "tech_persp": "The Container Runtime Interface lets kubelet use a standard gRPC contract instead of depending on one runtime\u2019s private API. containerd and CRI-O pull images, create sandboxes, start processes, and report container status. This modularity makes runtime choice possible, while image compatibility, cgroup configuration, logging, security isolation, and runtime performance still affect node behavior.", "zine_analogy": "The physical crew carrying boxes, operating under a standard universal contract.", "zine_exp": "The illustration translates the Kubernetes mechanism into the apartment-complex metaphor so the operational relationship is easier to remember.\n\n* **Zine Text & Layout:**\n* (Top): \"Container Runtime & CRI \u2014 The Moving Crew & Contract\"\n* (Caption): \"containerd or CRI-O pulls the image and runs the process; CRI ensures Kubernetes can swap runtimes seamlessly.\"", "reading": "- [Container runtimes](https://kubernetes.io/docs/setup/production-environment/container-runtimes/)\n- [CRI specification](https://github.com/kubernetes/cri-api)", "demo": "SETUP\n  docker ps --filter name=zine-\n\nSTEPS\n  1. kubectl get nodes -o jsonpath='{.items[*].status.nodeInfo.containerRuntimeVersion}'; echo\n  2. docker exec zine-worker crictl ps\n\nWHAT YOU SHOULD SEE\n  First command prints something like containerd://1.7.x. crictl ps lists running containers straight from the runtime.\n\nCLEANUP\n  (nothing to clean up)\n\nNOTE\n  crictl bypasses Kubernetes and talks to the runtime through CRI. Run it on the node, not your laptop.", "tech_img": "generated/kubernetes-apartment-complex/11-technical.png", "zine_img": "generated/kubernetes-apartment-complex/11-zine.png", "diagram": "diagrams/topic-11.html"}, {"num": 12, "title": "Sidecar Containers", "category": "Nodes & Runtime", "tech_disc": "A sidecar is a supporting container in the same Pod as an application container. Containers in one Pod share a network namespace and can share volumes, enabling local proxies, log shippers, certificate agents, or telemetry adapters to cooperate over localhost or files. The trade-off is coupled scheduling and failure behavior: resource requests, readiness, shutdown order, and restart semantics must cover the whole Pod.", "tech_persp": "A sidecar shares a Pod\u2019s network namespace and can share volumes with the primary container, making close cooperation possible without building every concern into the application image. Sidecars are useful for proxies, log shipping, certificate renewal, and telemetry, but they increase resource consumption and failure coupling: the Pod\u2019s lifecycle and readiness must account for the supporting container.", "zine_analogy": "Sits in the same unit handling side tasks, like shipping out logs, without bothering the main tenant.", "zine_exp": "The illustration translates the Kubernetes mechanism into the apartment-complex metaphor so the operational relationship is easier to remember.\n\n* **Zine Text & Layout:**\n* (Top): \"Sidecar Containers \u2014 The Roommate\"\n* (Caption): \"Secondary containers in a Pod that share network/storage to handle logging, proxies (like Istio), or metrics.\"", "reading": "- [Sidecar containers](https://kubernetes.io/docs/concepts/workloads/pods/sidecar-containers/)", "demo": "SETUP\n  kubectl create namespace zine-demo\n\nYAML  (sidecar-demo.yaml)\n  apiVersion: v1\n  kind: Pod\n  metadata:\n    name: sidecar-demo\n  spec:\n    containers:\n    - name: main\n      image: nginx\n    - name: log-shipper\n      image: busybox\n      command: [\"sh\", \"-c\", \"while true; do echo shipping logs; sleep 5; done\"]\n\nSTEPS\n  1. kubectl apply -f sidecar-demo.yaml -n zine-demo\n  2. kubectl wait --for=condition=Ready pod/sidecar-demo -n zine-demo --timeout=60s\n  3. kubectl get pod sidecar-demo -n zine-demo\n  4. kubectl logs sidecar-demo -c log-shipper -n zine-demo\n\nWHAT YOU SHOULD SEE\n  READY shows 2/2: two containers, one Pod. The log-shipper logs print 'shipping logs' every 5 seconds.\n\nCLEANUP\n  kubectl delete namespace zine-demo\n\nNOTE\n  Two containers share one Pod: one address, one lifecycle.", "tech_img": "generated/kubernetes-apartment-complex/12-technical.png", "zine_img": "generated/kubernetes-apartment-complex/12-zine.png", "diagram": "diagrams/topic-12.html"}, {"num": 13, "title": "Init Containers", "category": "Nodes & Runtime", "tech_disc": "An init container runs to completion before ordinary application containers are started. Init containers execute sequentially, and Kubernetes retries a failed init phase according to Pod restart behavior, making them useful for configuration generation, schema preparation, permissions, or dependency checks. Because they gate readiness, slow or non-idempotent initialization directly affects rollout and recovery time.", "tech_persp": "Init containers create an ordered initialization phase. Kubernetes will not start the application containers until each init container exits successfully, and failed init work is retried according to Pod restart behavior. They are useful for migrations, configuration generation, and dependency checks, but long or fragile initialization directly delays application availability.", "zine_analogy": "Cleans and preps the unit, then leaves completely before the main tenant moves in.", "zine_exp": "The illustration translates the Kubernetes mechanism into the apartment-complex metaphor so the operational relationship is easier to remember.\n\n* **Zine Text & Layout:**\n* (Top): \"Init Containers \u2014 The Prep Crew\"\n* (Caption): \"Setup scripts that must run to completion (e.g. running DB migrations) before the main app container starts.\"", "reading": "- [Init containers](https://kubernetes.io/docs/concepts/workloads/pods/init-containers/)", "demo": "SETUP\n  kubectl create namespace zine-demo\n\nYAML  (init-demo.yaml)\n  apiVersion: v1\n  kind: Pod\n  metadata:\n    name: init-demo\n  spec:\n    initContainers:\n    - name: prep-crew\n      image: busybox\n      command: [\"sh\", \"-c\", \"echo prepping unit...; sleep 10\"]\n    containers:\n    - name: main-tenant\n      image: nginx\n\nSTEPS\n  1. kubectl apply -f init-demo.yaml -n zine-demo\n  2. kubectl get pod init-demo -n zine-demo -w   # Ctrl+C after it shows Running\n  3. kubectl logs init-demo -c prep-crew -n zine-demo\n\nWHAT YOU SHOULD SEE\n  STATUS reads Init:0/1, then PodInitializing, then Running. The init logs print 'prepping unit...'.\n\nCLEANUP\n  kubectl delete namespace zine-demo\n\nNOTE\n  The init container sleeps 10 seconds so the Init:0/1 state is easy to catch on screen.", "tech_img": "generated/kubernetes-apartment-complex/13-technical.png", "zine_img": "generated/kubernetes-apartment-complex/13-zine.png", "diagram": "diagrams/topic-13.html"}, {"num": 14, "title": "CNI (Container Network Interface)", "category": "Networking & Ingress", "tech_disc": "The Container Network Interface is the plugin contract used to create Pod interfaces, allocate addresses, and configure routes or tunnels between Nodes. Implementations such as Calico and Cilium may also enforce NetworkPolicy, encrypt traffic, expose observability, or use eBPF datapaths. Kubernetes defines the expected Pod network model, while the CNI determines performance, failure behavior, and troubleshooting tools.", "tech_persp": "CNI is the plugin contract behind Pod networking. A plugin allocates Pod addresses, creates interfaces, installs routes, and may enforce network policy or encryption. Kubernetes defines the Pod network model, while the CNI implementation supplies the dataplane. Plugin choice therefore affects performance, security features, multi-network support, and troubleshooting methods.", "zine_analogy": "The crew that paves the roads and hands out addresses so tenants can reach each other.", "zine_exp": "The illustration translates the Kubernetes mechanism into the apartment-complex metaphor so the operational relationship is easier to remember.\n\n* **Zine Text & Layout:**\n* (Top): \"CNI \u2014 The Road Crew\"\n* (Caption): \"Plugins (Calico, Cilium) that provide the actual Pod-to-Pod IP networking.\"", "reading": "- [Network plugins and CNI](https://kubernetes.io/docs/concepts/extend-kubernetes/compute-storage-net/network-plugins/)\n- [CNI project](https://github.com/containernetworking/cni)", "demo": "SETUP\n  kubectl create namespace zine-demo\n  kubectl create deployment demo --image=nginx --replicas=3 -n zine-demo\n  kubectl rollout status deployment/demo -n zine-demo\n\nSTEPS\n  1. kubectl get pods -n kube-system -o wide | grep -iE 'calico|cilium|flannel|kindnet'\n  2. kubectl get pods -A -o custom-columns=NS:.metadata.namespace,POD:.metadata.name,IP:.status.podIP,NODE:.spec.nodeName\n\nWHAT YOU SHOULD SEE\n  A CNI Pod runs on each node (kindnet on kind, calico/cilium/flannel elsewhere). Every Pod has its own IP, even across nodes.\n\nCLEANUP\n  kubectl delete namespace zine-demo\n\nNOTE\n  Flat Pod addressing works because the CNI plugin paved the roads between nodes.", "tech_img": "generated/kubernetes-apartment-complex/14-technical.png", "zine_img": "generated/kubernetes-apartment-complex/14-zine.png", "diagram": "diagrams/topic-14.html"}, {"num": 15, "title": "CoreDNS", "category": "Networking & Ingress", "tech_disc": "CoreDNS provides cluster-local DNS for Services, Pods, and configured external names. It watches Kubernetes records and answers names using zones and search paths, allowing clients to resolve a stable Service name while backend Pod IPs change. DNS latency, cache behavior, upstream forwarding, readiness, and CoreDNS capacity are operational dependencies for many applications.", "tech_persp": "CoreDNS provides cluster-local name resolution so applications can address Services by stable DNS names instead of tracking changing Pod IPs. It watches Kubernetes records and answers names according to configured zones and search paths. DNS failures can look like application failures, so caching, readiness, upstream forwarding, and CoreDNS capacity belong in cluster operations.", "zine_analogy": "Tenants look up a friendly name instead of memorizing unit numbers.", "zine_exp": "The illustration translates the Kubernetes mechanism into the apartment-complex metaphor so the operational relationship is easier to remember.\n\n* **Zine Text & Layout:**\n* (Top): \"CoreDNS \u2014 The Building Directory\"\n* (Caption): \"Internal DNS that resolves Service names to cluster IPs.\"", "reading": "- [DNS for Services and Pods](https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/)\n- [CoreDNS project](https://coredns.io/)", "demo": "SETUP\n  kubectl create namespace zine-demo\n  kubectl create deployment demo --image=nginx --replicas=3 -n zine-demo\n  kubectl rollout status deployment/demo -n zine-demo\n  kubectl expose deployment demo --port=80 -n zine-demo\n\nSTEPS\n  1. kubectl run dns-test --image=busybox --rm -it --restart=Never -n zine-demo -- nslookup demo.zine-demo.svc.cluster.local\n\nWHAT YOU SHOULD SEE\n  nslookup returns the Service's ClusterIP. Nobody typed an IP address.\n\nCLEANUP\n  kubectl delete namespace zine-demo\n\nNOTE\n  The name resolves through CoreDNS, like asking the directory board.", "tech_img": "generated/kubernetes-apartment-complex/15-technical.png", "zine_img": "generated/kubernetes-apartment-complex/15-zine.png", "diagram": "diagrams/topic-15.html"}, {"num": 16, "title": "Services", "category": "Networking & Ingress", "tech_disc": "A Service selects Pods by labels and exposes them through a stable virtual endpoint independent of their ephemeral IPs. ClusterIP supports internal access, while NodePort and LoadBalancer extend exposure; headless Services deliberately return backend addresses for clients that need direct discovery. Correct selectors and readiness determine which backends receive traffic during rollout, termination, and failure.", "tech_persp": "A Service decouples clients from ephemeral Pods by selecting backends through labels and exposing a stable virtual endpoint. ClusterIP supports internal access, NodePort and LoadBalancer extend exposure, and headless Services return backend addresses for clients that need direct discovery. The abstraction simplifies rolling updates and rescheduling because consumers do not need to learn each new Pod IP.", "zine_analogy": "A bolted mailbox that points to whichever tenants currently have the matching door nameplates.", "zine_exp": "The illustration translates the Kubernetes mechanism into the apartment-complex metaphor so the operational relationship is easier to remember.\n\n* **Zine Text & Layout:**\n* (Top): \"Services \u2014 The Permanent Mailbox\"\n* (Caption): \"Provides a stable internal IP and load balancing for a shifting set of ephemeral Pods.\"", "reading": "- [Service networking](https://kubernetes.io/docs/concepts/services-networking/service/)", "demo": "SETUP\n  kubectl create namespace zine-demo\n  kubectl create deployment demo --image=nginx --replicas=3 -n zine-demo\n  kubectl rollout status deployment/demo -n zine-demo\n  kubectl expose deployment demo --port=80 --name=demo-svc -n zine-demo\n\nSTEPS\n  1. kubectl get svc demo-svc -n zine-demo\n  2. kubectl delete pod -l app=demo -n zine-demo\n  3. kubectl rollout status deployment/demo -n zine-demo\n  4. kubectl get svc demo-svc -n zine-demo   # same CLUSTER-IP, unchanged\n\nWHAT YOU SHOULD SEE\n  All Pods were destroyed and replaced, but CLUSTER-IP is identical before and after.\n\nCLEANUP\n  kubectl delete namespace zine-demo\n\nNOTE\n  The mailbox stayed bolted to the wall while the tenants changed.", "tech_img": "generated/kubernetes-apartment-complex/16-technical.png", "zine_img": "generated/kubernetes-apartment-complex/16-zine.png", "diagram": "diagrams/topic-16.html"}, {"num": 17, "title": "Endpoints", "category": "Networking & Ingress", "tech_disc": "EndpointSlices are the scalable, controller-maintained representation of Service backends. They record addresses and conditions such as ready, serving, terminating, and sometimes topology hints, allowing proxies to avoid sending new traffic to unsuitable Pods. The older Endpoints object is useful for inspection but is less efficient for large Services and is being superseded by EndpointSlices.", "tech_persp": "EndpointSlices are the scalable representation of Service backends. They track the addresses, readiness, serving state, and topology information of selected Pods in smaller objects than the legacy Endpoints API. Controllers and proxies use them to update routing as Pods become ready, terminate, or move, reducing update size for Services with many endpoints.", "zine_analogy": "The actual mail-forwarding list taped inside the mailbox, updated every time a tenant moves in or out.", "zine_exp": "The illustration translates the Kubernetes mechanism into the apartment-complex metaphor so the operational relationship is easier to remember.\n\n* **Zine Text & Layout:**\n* (Top): \"Endpoints \u2014 The Forwarding List\"\n* (Caption): \"Maps a Service to the current set of Pod IPs actually backing it.\"", "reading": "- [EndpointSlices](https://kubernetes.io/docs/concepts/services-networking/endpoint-slices/)", "demo": "SETUP\n  kubectl create namespace zine-demo\n  kubectl create deployment demo --image=nginx --replicas=3 -n zine-demo\n  kubectl rollout status deployment/demo -n zine-demo\n  kubectl expose deployment demo --port=80 --name=demo-svc -n zine-demo\n\nSTEPS\n  1. kubectl get endpoints demo-svc -n zine-demo\n  2. kubectl scale deployment demo --replicas=5 -n zine-demo\n  3. kubectl rollout status deployment/demo -n zine-demo\n  4. kubectl get endpoints demo-svc -n zine-demo   # now lists 5 IPs\n\nWHAT YOU SHOULD SEE\n  Endpoints grows from 3 IPs to 5 while the Service address never changes.\n\nCLEANUP\n  kubectl delete namespace zine-demo\n\nNOTE\n  That is the forwarding list being rewritten live. On Kubernetes 1.33+ you may see a deprecation warning for Endpoints; 'kubectl get endpointslices -n zine-demo' shows the same data.", "tech_img": "generated/kubernetes-apartment-complex/17-technical.png", "zine_img": "generated/kubernetes-apartment-complex/17-zine.png", "diagram": "diagrams/topic-17.html"}, {"num": 18, "title": "Ingress", "category": "Networking & Ingress", "tech_disc": "An Ingress resource declares layer-7 HTTP or HTTPS matches, such as hostnames and URL paths, and maps them to Services. An Ingress controller supplies the reverse proxy, listener, TLS termination, reload behavior, and integration with an external load balancer; the resource alone does not expose traffic. Gateway API is a newer option when teams need richer routing and clearer separation of responsibilities.", "tech_persp": "Ingress expresses layer-7 HTTP routing such as host and path matches, while an Ingress controller supplies the reverse proxy, TLS termination, and implementation-specific behavior. The resource alone does not expose traffic; the controller and its load-balancer integration do. For new designs, the Gateway API can provide a more expressive, role-oriented successor.", "zine_analogy": "The single outer gate reads visitor destinations and sends them down the right internal road.", "zine_exp": "The illustration translates the Kubernetes mechanism into the apartment-complex metaphor so the operational relationship is easier to remember.\n\n* **Zine Text & Layout:**\n* (Top): \"Ingress \u2014 The Main Gate\"\n* (Caption): \"HTTP/S reverse proxy routing external domain traffic into your internal Services.\"", "reading": "- [Ingress](https://kubernetes.io/docs/concepts/services-networking/ingress/)", "demo": "SETUP\n  kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/kind/deploy.yaml\n  kubectl wait --namespace ingress-nginx --for=condition=Ready pod -l app.kubernetes.io/component=controller --timeout=120s\n  kubectl create namespace zine-demo\n  kubectl create deployment demo --image=nginx --replicas=3 -n zine-demo\n  kubectl rollout status deployment/demo -n zine-demo\n  kubectl expose deployment demo --port=80 --name=demo-svc -n zine-demo\n\nYAML  (demo-ingress.yaml)\n  apiVersion: networking.k8s.io/v1\n  kind: Ingress\n  metadata:\n    name: demo-ingress\n  spec:\n    ingressClassName: nginx\n    rules:\n    - host: demo.local\n      http:\n        paths:\n        - path: /\n          pathType: Prefix\n          backend:\n            service:\n              name: demo-svc\n              port:\n                number: 80\n\nSTEPS\n  1. kubectl apply -f demo-ingress.yaml -n zine-demo\n  2. kubectl get ingress demo-ingress -n zine-demo   # wait until ADDRESS is filled\n  3. curl -i -H \"Host: demo.local\" http://localhost:8080/\n\nWHAT YOU SHOULD SEE\n  curl returns the nginx welcome page. Changing the Host header to something else returns a 404 from the gatekeeper.\n\nCLEANUP\n  kubectl delete namespace zine-demo\n\nNOTE\n  One external address, and the hostname in the request decides which Service you reach. This demo needs the kind ingress-nginx manifest and the 8080 -> 80 mapping in kind-multinode.yaml.", "tech_img": "generated/kubernetes-apartment-complex/18-technical.png", "zine_img": "generated/kubernetes-apartment-complex/18-zine.png", "diagram": "diagrams/topic-18.html"}, {"num": 19, "title": "NetworkPolicy", "category": "Networking & Ingress", "tech_disc": "NetworkPolicy is a declarative allow-list boundary for Pod ingress and egress. Policies select Pods and permit traffic by namespace, Pod labels, ports, and protocol, but enforcement is supplied by a policy-capable CNI rather than the API object itself. A rollout must account for DNS, health checks, control-plane access, default-allow behavior, and the fact that network policy is not application authentication.", "tech_persp": "NetworkPolicy is an allow-list-style authorization layer for network traffic. Policies select Pods and define permitted ingress or egress by namespace, Pod labels, ports, and direction, but only a policy-capable CNI can enforce them. A safe rollout starts with understanding default allow behavior, DNS dependencies, health checks, and the difference between isolation and application authentication.", "zine_analogy": "A guest list posted on a unit's door \u2014 only visitors on the list get buzzed in, everyone else is turned away at that door.", "zine_exp": "The illustration translates the Kubernetes mechanism into the apartment-complex metaphor so the operational relationship is easier to remember.\n\n* **Zine Text & Layout:**\n* (Top): \"NetworkPolicy \u2014 The Guest List\"\n* (Caption): \"Restricts which Pods can talk to which other Pods \u2014 without one, every door is unlocked to everyone.\"", "reading": "- [Network Policies](https://kubernetes.io/docs/concepts/services-networking/network-policies/)", "demo": "SETUP\n  kubectl create namespace zine-demo\n  kubectl create deployment demo --image=nginx --replicas=3 -n zine-demo\n  kubectl rollout status deployment/demo -n zine-demo\n  kubectl expose deployment demo --port=80 --name=demo-svc -n zine-demo\n  kubectl create namespace other-ns\n\nYAML  (deny-demo.yaml)\n  apiVersion: networking.k8s.io/v1\n  kind: NetworkPolicy\n  metadata:\n    name: deny-from-other-namespaces\n  spec:\n    podSelector: {}\n    policyTypes: [\"Ingress\"]\n    ingress:\n    - from:\n      - podSelector: {}\n\nSTEPS\n  1. kubectl run before --image=busybox --rm -it --restart=Never -n other-ns -- wget -qO- --timeout=3 demo-svc.zine-demo.svc.cluster.local   # works\n  2. kubectl apply -f deny-demo.yaml -n zine-demo\n  3. kubectl run intruder --image=busybox --rm -it --restart=Never -n other-ns -- wget -qO- --timeout=3 demo-svc.zine-demo.svc.cluster.local   # now times out\n\nWHAT YOU SHOULD SEE\n  Before the policy the request returns the nginx page. After it the request times out.\n\nCLEANUP\n  kubectl delete namespace zine-demo other-ns\n\nNOTE\n  The default kind CNI (kindnet) does not enforce NetworkPolicy, so the second request will still succeed. Run this demo on a separate kind cluster configured with Calico or Cilium; do not try to replace kindnet in an already-running cluster.", "tech_img": "generated/kubernetes-apartment-complex/19-technical.png", "zine_img": "generated/kubernetes-apartment-complex/19-zine.png", "diagram": "diagrams/topic-19.html"}, {"num": 20, "title": "PersistentVolume (PV)", "category": "Storage Subsystem", "tech_disc": "A PersistentVolume is a cluster storage resource whose lifecycle is decoupled from an individual Pod. Its provisioner, access mode, volume mode, reclaim policy, topology, and attachment semantics determine how it can be used and what happens after a claim is released. A PV preserves data across ordinary Pod replacement, but does not by itself provide backups, replication, consistency, or protection from deletion.", "tech_persp": "A PersistentVolume represents storage independently of a Pod lifecycle. Its reclaim policy, access mode, volume mode, topology, and storage backend determine what survives Pod replacement and how it can be attached. Persistence prevents data loss from ordinary rescheduling, but it does not automatically provide backups, replication, consistency guarantees, or protection from operator error.", "zine_analogy": "A separate storage facility building down the road, built to outlast any single tenant.", "zine_exp": "The illustration translates the Kubernetes mechanism into the apartment-complex metaphor so the operational relationship is easier to remember.\n\n* **Zine Text & Layout:**\n* (Top): \"PersistentVolume \u2014 The Storage Facility\"\n* (Caption): \"Represents actual cluster storage, provisioned ahead of time or dynamically, independent of any Pod's lifecycle.\"", "reading": "- [Persistent Volumes](https://kubernetes.io/docs/concepts/storage/persistent-volumes/)", "demo": "SETUP\n  kubectl create namespace zine-demo\n  kubectl apply -f pv-setup.yaml -n zine-demo\n  kubectl wait --for=condition=Ready pod/pvc-user -n zine-demo --timeout=90s\n\nYAML  (pv-setup.yaml)\n  apiVersion: v1\n  kind: PersistentVolumeClaim\n  metadata:\n    name: demo-pvc\n  spec:\n    accessModes: [\"ReadWriteOnce\"]\n    resources:\n      requests:\n        storage: 1Gi\n  ---\n  apiVersion: v1\n  kind: Pod\n  metadata:\n    name: pvc-user\n  spec:\n    containers:\n    - name: app\n      image: busybox\n      command: [\"sh\", \"-c\", \"sleep 3600\"]\n      volumeMounts:\n      - name: data\n        mountPath: /data\n    volumes:\n    - name: data\n      persistentVolumeClaim:\n        claimName: demo-pvc\n\nSTEPS\n  1. kubectl get pv\n  2. PV=$(kubectl get pv -o jsonpath='{.items[0].metadata.name}')\n  3. kubectl describe pv $PV | grep -E 'Status|Claim|StorageClass|Reclaim'\n  4. kubectl delete pod pvc-user -n zine-demo\n  5. kubectl get pv $PV   # still there after the Pod is gone\n\nWHAT YOU SHOULD SEE\n  The PV shows STATUS Bound and a Claim. After the Pod is deleted the PV is still listed: it lives at cluster level, independent of any Pod.\n\nCLEANUP\n  kubectl delete namespace zine-demo\n\nNOTE\n  This setup creates a claim and Pod so a PV exists to look at. The PV outlives the Pod.", "tech_img": "generated/kubernetes-apartment-complex/20-technical.png", "zine_img": "generated/kubernetes-apartment-complex/20-zine.png", "diagram": "diagrams/topic-20.html"}, {"num": 21, "title": "PersistentVolumeClaim (PVC)", "category": "Storage Subsystem", "tech_disc": "A PersistentVolumeClaim is a workload-facing request for capacity and storage characteristics rather than a provider-specific disk definition. Kubernetes binds it to a compatible PV\u2014or triggers dynamic provisioning\u2014using capacity, access mode, volume mode, StorageClass, and topology constraints. A Pending claim is therefore a useful diagnostic signal for missing capacity, an unavailable provisioner, or incompatible scheduling requirements.", "tech_persp": "A PersistentVolumeClaim is a workload-facing storage request. Kubernetes binds it to a compatible PV using capacity, access mode, volume mode, and StorageClass constraints, allowing application manifests to avoid provider-specific disk details. A claim can remain Pending when no matching or provisionable storage exists, so capacity, topology, and provisioner health must be checked.", "zine_analogy": "A universal rental agreement a tenant signs to claim a unit in the storage facility.", "zine_exp": "The illustration translates the Kubernetes mechanism into the apartment-complex metaphor so the operational relationship is easier to remember.\n\n* **Zine Text & Layout:**\n* (Top): \"PersistentVolumeClaim \u2014 The Rental Agreement\"\n* (Caption): \"A request for storage that Kubernetes matches to a suitable PersistentVolume.\"", "reading": "- [PersistentVolumeClaims](https://kubernetes.io/docs/concepts/storage/persistent-volumes/#persistentvolumeclaims)", "demo": "SETUP\n  kubectl create namespace zine-demo\n\nYAML  (demo-pvc.yaml)\n  apiVersion: v1\n  kind: PersistentVolumeClaim\n  metadata:\n    name: demo-pvc\n  spec:\n    accessModes: [\"ReadWriteOnce\"]\n    resources:\n      requests:\n        storage: 1Gi\n  ---\n  apiVersion: v1\n  kind: Pod\n  metadata:\n    name: pvc-user\n  spec:\n    containers:\n    - name: app\n      image: busybox\n      command: [\"sh\", \"-c\", \"echo hello > /data/hello.txt; sleep 3600\"]\n      volumeMounts:\n      - name: data\n        mountPath: /data\n    volumes:\n    - name: data\n      persistentVolumeClaim:\n        claimName: demo-pvc\n\nSTEPS\n  1. kubectl apply -f demo-pvc.yaml -n zine-demo\n  2. kubectl get pvc demo-pvc -n zine-demo   # Pending until a Pod uses it, if WaitForFirstConsumer\n  3. kubectl wait --for=condition=Ready pod/pvc-user -n zine-demo --timeout=90s\n  4. kubectl get pvc demo-pvc -n zine-demo   # now Bound\n  5. kubectl get pv\n\nWHAT YOU SHOULD SEE\n  The PVC goes Pending, then Bound once the Pod starts. A new PV appears with the claim's name, provisioned automatically.\n\nCLEANUP\n  kubectl delete namespace zine-demo   # the PV is removed too under the default Delete reclaim policy\n\nNOTE\n  The claim is matched to a real volume without anyone creating the PV by hand.", "tech_img": "generated/kubernetes-apartment-complex/21-technical.png", "zine_img": "generated/kubernetes-apartment-complex/21-zine.png", "diagram": "diagrams/topic-21.html"}, {"num": 22, "title": "StorageClass", "category": "Storage Subsystem", "tech_disc": "A StorageClass defines the policy for dynamically provisioning volumes. It selects a provisioner and parameters such as disk type, filesystem, replication, encryption, reclaim policy, and volume-binding mode. Dynamic provisioning reduces manual work, but its defaults directly affect cost, performance, data retention, and whether a volume can be placed in the same topology as its consumer.", "tech_persp": "A StorageClass is a policy and provisioning recipe for dynamic volumes. It selects a provisioner and parameters such as disk type, replication, filesystem, and binding mode. Dynamic provisioning reduces manual storage administration, while the chosen defaults and reclaim behavior have direct cost, performance, availability, and data-retention consequences.", "zine_analogy": "The complex's pre-approved construction blueprint for building a brand-new storage unit on demand, instead of waiting for one to already exist.", "zine_exp": "The illustration translates the Kubernetes mechanism into the apartment-complex metaphor so the operational relationship is easier to remember.\n\n* **Zine Text & Layout:**\n* (Top): \"StorageClass \u2014 The Construction Blueprint\"\n* (Caption): \"Defines how new storage gets dynamically provisioned on demand, so nobody has to pre-build units ahead of time.\"", "reading": "- [StorageClasses](https://kubernetes.io/docs/concepts/storage/storage-classes/)", "demo": "SETUP\n  (none: uses what is already in the cluster)\n\nSTEPS\n  1. kubectl get storageclass\n  2. SC=$(kubectl get storageclass -o jsonpath='{.items[0].metadata.name}')\n  3. kubectl describe storageclass $SC\n\nWHAT YOU SHOULD SEE\n  One StorageClass is marked (default). describe shows its Provisioner, ReclaimPolicy and VolumeBindingMode.\n\nCLEANUP\n  (nothing to clean up)\n\nNOTE\n  This is the blueprint used automatically when a PVC names no class, which is why the PV in entry 21 appeared with no manual step. The default class in this kind cluster is commonly named 'standard'. Verify with 'kubectl get storageclass' because the name depends on the provisioner installed.", "tech_img": "generated/kubernetes-apartment-complex/22-technical.png", "zine_img": "generated/kubernetes-apartment-complex/22-zine.png", "diagram": "diagrams/topic-22.html"}, {"num": 23, "title": "Role", "category": "Security & RBAC", "tech_disc": "A Role defines namespaced RBAC permissions as API groups, resources, resource names, and verbs such as get, list, create, or update. It is a permission rule\u2014not an identity or a grant\u2014and has no effect until a RoleBinding attaches it to a subject. Least privilege requires avoiding unnecessary wildcards and treating access to Secrets or workload creation as potentially sensitive.", "tech_persp": "A Role defines namespaced permissions as API groups, resources, resource names, and verbs. It is deliberately separate from identity: writing a permission rule does nothing until a binding attaches it to a subject. This separation supports least privilege and reviewable policy, but wildcard permissions and access to Secrets can create broad escalation paths.", "zine_analogy": "A printed set of house rules for one specific building \u2014 what's allowed inside, but nobody's name is on it yet.", "zine_exp": "The illustration translates the Kubernetes mechanism into the apartment-complex metaphor so the operational relationship is easier to remember.\n\n* **Zine Text & Layout:**\n* (Top): \"Role \u2014 The House Rules\"\n* (Caption): \"Defines what's permitted within one building (Namespace) \u2014 but grants it to nobody until a name is added.\"", "reading": "- [RBAC roles and permissions](https://kubernetes.io/docs/reference/access-authn-authz/rbac/#role-and-clusterrole)", "demo": "SETUP\n  kubectl create namespace zine-demo\n\nSTEPS\n  1. kubectl create role pod-reader --verb=get,list,watch --resource=pods -n zine-demo\n  2. kubectl get role pod-reader -n zine-demo -o yaml\n  3. kubectl auth can-i get pods --as=jane -n zine-demo   # no\n\nWHAT YOU SHOULD SEE\n  The Role lists the get, list, watch verbs on pods. can-i answers 'no'.\n\nCLEANUP\n  kubectl delete namespace zine-demo\n\nNOTE\n  The house rules are posted, but no name is attached to them yet.", "tech_img": "generated/kubernetes-apartment-complex/23-technical.png", "zine_img": "generated/kubernetes-apartment-complex/23-zine.png", "diagram": "diagrams/topic-23.html"}, {"num": 24, "title": "RoleBinding", "category": "Security & RBAC", "tech_disc": "A RoleBinding grants a Role or ClusterRole to a user, group, or ServiceAccount within one Namespace. The binding is the effective assignment: reviewing a Role without reviewing its bindings can miss broad groups or automation identities that receive the permission. Namespace scope limits where the grant applies, even when the referenced role is cluster-scoped.", "tech_persp": "A RoleBinding attaches a Role or ClusterRole\u2019s permissions to a user, group, or ServiceAccount within a namespace. The binding is the grant that makes the rule effective, and namespace scope limits where it applies. Reviewing bindings\u2014not just roles\u2014is essential because an apparently narrow role can become powerful when bound to a broad group.", "zine_analogy": "The clipboard sign-up sheet where a specific tenant's name gets added under the house rules, officially granting them those permissions.", "zine_exp": "The illustration translates the Kubernetes mechanism into the apartment-complex metaphor so the operational relationship is easier to remember.\n\n* **Zine Text & Layout:**\n* (Top): \"RoleBinding \u2014 The Sign-Up Sheet\"\n* (Caption): \"Grants a Role's permissions to a specific user, group, or ServiceAccount, within that same building (Namespace).\"", "reading": "- [RoleBindings](https://kubernetes.io/docs/reference/access-authn-authz/rbac/#rolebinding-and-clusterrolebinding)", "demo": "SETUP\n  kubectl create namespace zine-demo\n  kubectl create role pod-reader --verb=get,list,watch --resource=pods -n zine-demo\n\nSTEPS\n  1. kubectl auth can-i get pods --as=jane -n zine-demo   # no\n  2. kubectl create rolebinding read-pods-binding --role=pod-reader --user=jane -n zine-demo\n  3. kubectl auth can-i get pods --as=jane -n zine-demo   # yes\n\nWHAT YOU SHOULD SEE\n  can-i flips from 'no' to 'yes' the moment the binding exists.\n\nCLEANUP\n  kubectl delete namespace zine-demo\n\nNOTE\n  The name got added to the sign-up sheet.", "tech_img": "generated/kubernetes-apartment-complex/24-technical.png", "zine_img": "generated/kubernetes-apartment-complex/24-zine.png", "diagram": "diagrams/topic-24.html"}, {"num": 25, "title": "ClusterRole", "category": "Security & RBAC", "tech_disc": "A ClusterRole describes reusable RBAC permissions that can apply across namespaces or to cluster-scoped resources such as Nodes and PersistentVolumes. A namespaced RoleBinding can use a ClusterRole while restricting the grant to that namespace, whereas a ClusterRoleBinding grants it cluster-wide. This reuse improves consistency, but broad rules can expose or mutate resources far beyond one application.", "tech_persp": "A ClusterRole describes permissions that can apply across namespaces or to cluster-scoped resources such as Nodes. It can also be referenced by a namespaced RoleBinding for reusable namespaced rules. Cluster-wide permission definitions improve consistency, but a careless binding can grant visibility or mutation across the entire cluster.", "zine_analogy": "A master house-rules sheet that applies across every building in the entire complex, not just one.", "zine_exp": "The illustration translates the Kubernetes mechanism into the apartment-complex metaphor so the operational relationship is easier to remember.\n\n* **Zine Text & Layout:**\n* (Top): \"ClusterRole \u2014 The Master House Rules\"\n* (Caption): \"Like a Role, but scoped to the entire cluster instead of a single Namespace.\"", "reading": "- [RBAC roles and permissions](https://kubernetes.io/docs/reference/access-authn-authz/rbac/#role-and-clusterrole)", "demo": "SETUP\n  (none: uses what is already in the cluster)\n\nSTEPS\n  1. kubectl create clusterrole node-reader --verb=get,list,watch --resource=nodes\n  2. kubectl get clusterrole node-reader -o yaml\n  3. kubectl api-resources --namespaced=false | grep -w nodes\n\nWHAT YOU SHOULD SEE\n  The ClusterRole is created with rules for nodes. api-resources shows nodes with NAMESPACED false.\n\nCLEANUP\n  kubectl delete clusterrole node-reader\n\nNOTE\n  Nodes are cluster-scoped, so this had to be a ClusterRole and could not be a plain Role.", "tech_img": "generated/kubernetes-apartment-complex/25-technical.png", "zine_img": "generated/kubernetes-apartment-complex/25-zine.png", "diagram": "diagrams/topic-25.html"}, {"num": 26, "title": "ClusterRoleBinding", "category": "Security & RBAC", "tech_disc": "A ClusterRoleBinding attaches a ClusterRole to a subject at cluster scope, making its permissions effective across namespaces and for covered cluster-scoped resources. It is appropriate for tightly controlled platform controllers, but it is one of the highest-impact RBAC grants. Prefer a namespaced RoleBinding where possible and audit effective permissions rather than relying only on role names.", "tech_persp": "A ClusterRoleBinding grants a ClusterRole to subjects at cluster scope. It is appropriate for tightly controlled platform automation that must inspect or manage many namespaces, but it is one of the highest-impact RBAC objects. Use narrowly scoped roles and bindings where possible, audit effective permissions, and avoid giving application identities cluster-admin access.", "zine_analogy": "A master key issued to one person that works on every building in the complex, not just one unit.", "zine_exp": "The illustration translates the Kubernetes mechanism into the apartment-complex metaphor so the operational relationship is easier to remember.\n\n* **Zine Text & Layout:**\n* (Top): \"ClusterRoleBinding \u2014 The Master Key\"\n* (Caption): \"Grants a ClusterRole's permissions to a subject across the entire cluster, not just one Namespace.\"", "reading": "- [RoleBindings](https://kubernetes.io/docs/reference/access-authn-authz/rbac/#rolebinding-and-clusterrolebinding)", "demo": "SETUP\n  kubectl create clusterrole node-reader --verb=get,list,watch --resource=nodes\n\nSTEPS\n  1. kubectl auth can-i get nodes --as=jane   # no\n  2. kubectl create clusterrolebinding read-nodes-binding --clusterrole=node-reader --user=jane\n  3. kubectl auth can-i get nodes --as=jane   # yes\n  4. kubectl auth can-i get nodes --as=jane -n kube-system   # yes, same answer in any namespace\n\nWHAT YOU SHOULD SEE\n  can-i flips from 'no' to 'yes', and the answer is the same in every namespace.\n\nCLEANUP\n  kubectl delete clusterrolebinding read-nodes-binding\n  kubectl delete clusterrole node-reader\n\nNOTE\n  The master key is not scoped to any one building.", "tech_img": "generated/kubernetes-apartment-complex/26-technical.png", "zine_img": "generated/kubernetes-apartment-complex/26-zine.png", "diagram": "diagrams/topic-26.html"}, {"num": 27, "title": "ServiceAccount", "category": "Security & RBAC", "tech_disc": "A ServiceAccount is a Kubernetes identity intended for workloads rather than human operators. A Pod can receive a projected, usually short-lived token for that identity, and the API server uses RBAC to decide what the application may do. Dedicated accounts, automount controls, rotation, and minimal permissions reduce the impact of a compromised workload.", "tech_persp": "A ServiceAccount gives software in a Pod a Kubernetes identity distinct from a human kubeconfig user. Tokens and projected credentials let applications authenticate to the API server, while RBAC determines what that identity may do. Treat ServiceAccounts as security principals: use dedicated accounts, short-lived projected tokens, and only the permissions the workload needs.", "zine_analogy": "A staff ID badge issued to a robot maintenance worker so the front desk knows it's an authorized employee, not a random visitor.", "zine_exp": "The illustration translates the Kubernetes mechanism into the apartment-complex metaphor so the operational relationship is easier to remember.\n\n* **Zine Text & Layout:**\n* (Top): \"ServiceAccount \u2014 The Staff ID Badge\"\n* (Caption): \"Provides an identity for processes inside Pods to authenticate to the API server \u2014 distinct from a human user.\"", "reading": "- [ServiceAccounts](https://kubernetes.io/docs/concepts/security/service-accounts/)\n- [RBAC authorization](https://kubernetes.io/docs/reference/access-authn-authz/rbac/)", "demo": "SETUP\n  kubectl create namespace zine-demo\n  kubectl create serviceaccount demo-bot -n zine-demo\n\nSTEPS\n  1. kubectl run badge-test --image=busybox -n zine-demo --overrides='{\"spec\":{\"serviceAccountName\":\"demo-bot\"}}' --rm -it --restart=Never -- sh -c 'ls /var/run/secrets/kubernetes.io/serviceaccount/; head -c 50 /var/run/secrets/kubernetes.io/serviceaccount/token; echo'\n\nWHAT YOU SHOULD SEE\n  The folder contains ca.crt, namespace and token. The first 50 characters of the token print (it starts with eyJ).\n\nCLEANUP\n  kubectl delete namespace zine-demo\n\nNOTE\n  Every Pod gets a token mounted automatically: its staff ID badge. The token is short-lived and rotated by the kubelet.", "tech_img": "generated/kubernetes-apartment-complex/27-technical.png", "zine_img": "generated/kubernetes-apartment-complex/27-zine.png", "diagram": "diagrams/topic-27.html"}, {"num": 28, "title": "Node (controller)", "category": "Lifecycle & Governance", "tech_disc": "The Node controller combines kubelet heartbeats and lease updates into a cluster-level health decision. When communication stops, it marks the Node unhealthy and, after configured toleration periods, enables eviction or replacement of eligible workloads. Detection is deliberately delayed to avoid reacting to transient partitions, so replicas, topology spread, and graceful shutdown remain necessary for resilience.", "tech_persp": "The Node controller turns kubelet heartbeats and lease updates into a cluster-level health view. When a node stops reporting, Kubernetes marks it unhealthy and eventually evicts or recreates eligible workloads, subject to timing and disruption rules. Detection is intentionally delayed to avoid reacting to transient network loss, so applications still need redundancy and graceful failure handling.", "zine_analogy": "The office worker who checks in on every building daily, and starts moving tenants out if a building goes quiet for too long.", "zine_exp": "The illustration translates the Kubernetes mechanism into the apartment-complex metaphor so the operational relationship is easier to remember.\n\n* **Zine Text & Layout:**\n* (Top): \"Node Controller \u2014 The Daily Check-In\"\n* (Caption): \"Watches Node health via heartbeats, marking a Node NotReady and evicting its Pods if it goes silent too long.\"", "reading": "- [Node lifecycle](https://kubernetes.io/docs/concepts/architecture/nodes/#node-lifecycle)\n- [Node controller](https://kubernetes.io/docs/concepts/architecture/nodes/)", "demo": "SETUP\n  (none: uses what is already in the cluster)\n\nSTEPS\n  1. kubectl get nodes\n  2. NODE=$(kubectl get nodes -o jsonpath='{.items[-1].metadata.name}')\n  3. kubectl describe node $NODE | grep -A8 Conditions\n  4. # simulate a dead node: on a WORKER node stop the kubelet\n  5. docker exec zine-worker systemctl stop kubelet\n  6. kubectl get nodes -w   # Ctrl+C once it shows NotReady\n\nWHAT YOU SHOULD SEE\n  The node moves from Ready to NotReady after about 40 seconds. After the eviction timeout (about 5 minutes) its Pods are rescheduled onto healthy nodes.\n\nCLEANUP\n  docker exec zine-worker systemctl start kubelet\n\nNOTE\n  Needs a multi-node cluster. Do NOT stop the kubelet on your only node or the control plane goes dark.", "tech_img": "generated/kubernetes-apartment-complex/28-technical.png", "zine_img": "generated/kubernetes-apartment-complex/28-zine.png", "diagram": "diagrams/topic-28.html"}, {"num": 29, "title": "Namespace (controller)", "category": "Lifecycle & Governance", "tech_disc": "Namespaces scope namespaced objects and provide a boundary for RBAC, quotas, and many policy resources. The Namespace controller coordinates deletion by discovering and removing contained objects before finalizing the Namespace. Finalizers or unavailable controllers can leave deletion in Terminating, so forced removal should be treated as a repair action with possible orphaned resources.", "tech_persp": "Namespaces partition namespaced objects and provide a scope for access control, quotas, and policy. They are useful administrative boundaries, not hard security walls or virtual clusters. Deleting a Namespace initiates cleanup of its contents, so finalizers or an unresponsive controller can leave termination stuck until the dependency is resolved.", "zine_analogy": "When a fenced section of the property is being shut down, every tenant and piece of furniture inside is cleared out first before the fence itself comes down.", "zine_exp": "The illustration translates the Kubernetes mechanism into the apartment-complex metaphor so the operational relationship is easier to remember.\n\n* **Zine Text & Layout:**\n* (Top): \"Namespace Controller \u2014 The Section Closure\"\n* (Caption): \"Ensures every resource inside a Namespace is cleaned up before the Namespace itself is removed.\"", "reading": "- [Namespaces](https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/)", "demo": "SETUP\n  (none: uses what is already in the cluster)\n\nSTEPS\n  1. kubectl create namespace demo-ns\n  2. kubectl run temp-pod --image=nginx -n demo-ns\n  3. kubectl wait --for=condition=Ready pod/temp-pod -n demo-ns --timeout=60s\n  4. kubectl delete namespace demo-ns --wait=false\n  5. kubectl get namespace demo-ns -w   # shows Terminating, then disappears\n\nWHAT YOU SHOULD SEE\n  The namespace sits in Terminating while temp-pod is cleaned up, then disappears. --wait=false keeps your terminal free so you can watch.\n\nCLEANUP\n  (nothing to clean up)\n\nNOTE\n  The fence does not come down until the section is empty.", "tech_img": "generated/kubernetes-apartment-complex/29-technical.png", "zine_img": "generated/kubernetes-apartment-complex/29-zine.png", "diagram": "diagrams/topic-29.html"}, {"num": 30, "title": "ResourceQuota", "category": "Lifecycle & Governance", "tech_disc": "ResourceQuota limits aggregate resource consumption or object counts within a namespace. Admission can reject new or updated objects when their requests, limits, storage, or count would exceed the quota, protecting shared clusters from one tenant exhausting capacity. Quotas work best with LimitRanges, accurate requests, monitoring, and enough headroom for controllers and system objects.", "tech_persp": "ResourceQuota limits aggregate consumption or object counts within a namespace. It protects shared clusters from one team exhausting CPU, memory, storage, or API objects, and can require requests or limits before admission. Quota must be paired with LimitRanges, monitoring, and realistic capacity planning; otherwise valid workloads may be rejected unexpectedly.", "zine_analogy": "A posted occupancy limit sign on a fenced section \u2014 once it's full, the front desk simply refuses to let anyone else move in.", "zine_exp": "The illustration translates the Kubernetes mechanism into the apartment-complex metaphor so the operational relationship is easier to remember.\n\n* **Zine Text & Layout:**\n* (Top): \"ResourceQuota \u2014 The Occupancy Limit Sign\"\n* (Caption): \"Caps the total resources or object counts a single Namespace (fenced section) is allowed to consume.\"", "reading": "- [Resource quotas](https://kubernetes.io/docs/concepts/policy/resource-quotas/)", "demo": "SETUP\n  kubectl create namespace demo-ns\n\nYAML  (quota-demo.yaml)\n  apiVersion: v1\n  kind: ResourceQuota\n  metadata:\n    name: pod-limit\n  spec:\n    hard:\n      pods: \"2\"\n\nSTEPS\n  1. kubectl apply -f quota-demo.yaml -n demo-ns\n  2. kubectl run p1 --image=nginx -n demo-ns\n  3. kubectl run p2 --image=nginx -n demo-ns\n  4. kubectl run p3 --image=nginx -n demo-ns   # rejected\n  5. kubectl describe quota pod-limit -n demo-ns\n\nWHAT YOU SHOULD SEE\n  The third Pod is refused with: exceeded quota: pod-limit, requested: pods=1, used: pods=2, limited: pods=2.\n\nCLEANUP\n  kubectl delete namespace demo-ns\n\nNOTE\n  The namespace hit its posted occupancy limit. The namespace is set with -n, so the YAML has no namespace field.", "tech_img": "generated/kubernetes-apartment-complex/30-technical.png", "zine_img": "generated/kubernetes-apartment-complex/30-zine.png", "diagram": "diagrams/topic-30.html"}, {"num": 31, "title": "Garbage Collector", "category": "Lifecycle & Governance", "tech_disc": "The garbage collector follows ownerReferences to identify dependent objects and remove them when an owner is deleted. Foreground, background, and orphan propagation policies control whether dependents block deletion, disappear asynchronously, or are intentionally retained. Controllers must set ownership deliberately because incorrect references can cause unexpected cleanup or leave unmanaged objects behind.", "tech_persp": "The garbage collector follows ownerReferences to remove dependents when their owner is deleted. This keeps ReplicaSet Pods, Job Pods, and related objects from becoming unmanaged orphans, while propagation policies control foreground, background, or orphan deletion. Incorrect ownership metadata can cause unexpected cleanup, so controllers must establish ownership deliberately.", "zine_analogy": "The cleanup crew that removes any leftover furniture in a unit once the tenant who ordered it moves out \u2014 nothing is left behind unclaimed.", "zine_exp": "The illustration translates the Kubernetes mechanism into the apartment-complex metaphor so the operational relationship is easier to remember.\n\n* **Zine Text & Layout:**\n* (Top): \"Garbage Collector \u2014 The Cleanup Crew\"\n* (Caption): \"Automatically deletes objects whose owner is gone, using owner references to trace and clean up orphans.\"", "reading": "- [Owners and dependents](https://kubernetes.io/docs/concepts/architecture/garbage-collection/)", "demo": "SETUP\n  kubectl create namespace zine-demo\n\nSTEPS\n  1. kubectl create deployment gc-demo --image=nginx --replicas=2 -n zine-demo\n  2. kubectl rollout status deployment/gc-demo -n zine-demo\n  3. kubectl get pods -l app=gc-demo -n zine-demo -o jsonpath='{.items[0].metadata.ownerReferences}'; echo\n  4. kubectl get replicaset -l app=gc-demo -n zine-demo\n  5. kubectl delete deployment gc-demo -n zine-demo\n  6. kubectl get replicaset,pods -l app=gc-demo -n zine-demo   # empty, cascaded\n\nWHAT YOU SHOULD SEE\n  The Pod's ownerReferences point to a ReplicaSet. After deleting the Deployment, the ReplicaSet and Pods are gone too.\n\nCLEANUP\n  kubectl delete namespace zine-demo\n\nNOTE\n  Nobody deleted the Pods or ReplicaSet directly; deletion cascaded through owner references.", "tech_img": "generated/kubernetes-apartment-complex/31-technical.png", "zine_img": "generated/kubernetes-apartment-complex/31-zine.png", "diagram": "diagrams/topic-31.html"}, {"num": 32, "title": "ReplicaSet", "category": "Workload Controllers", "tech_disc": "A ReplicaSet reconciles a target count of interchangeable Pods selected by labels. It replaces missing or excess replicas, but it does not provide application-version strategy, rollout pacing, or rollback history. Deployments normally own ReplicaSets so that this low-level count reconciliation is combined with controlled releases.", "tech_persp": "A ReplicaSet maintains a target number of interchangeable Pods selected by labels. It repairs count drift but does not provide rollout strategy, revision history, or application version management. Deployments normally own ReplicaSets because they add controlled replacement and rollback while retaining ReplicaSet reconciliation underneath.", "zine_analogy": "Protects one number: 'always keep exactly 3 identical units occupied,' replacing any that go vacant instantly.", "zine_exp": "The illustration translates the Kubernetes mechanism into the apartment-complex metaphor so the operational relationship is easier to remember.\n\n* **Zine Text & Layout:**\n* (Top): \"ReplicaSet \u2014 The Occupancy Enforcer\"\n* (Caption): \"Protects one number: 'always keep exactly 3 identical units occupied,' replacing any that go vacant instantly.\"", "reading": "- [ReplicaSets](https://kubernetes.io/docs/concepts/workloads/controllers/replicaset/)", "demo": "SETUP\n  kubectl create namespace zine-demo\n  kubectl create deployment rs-demo --image=nginx --replicas=3 -n zine-demo\n  kubectl rollout status deployment/rs-demo -n zine-demo\n\nSTEPS\n  1. kubectl get replicaset -l app=rs-demo -n zine-demo\n  2. kubectl delete pod $(kubectl get pods -l app=rs-demo -n zine-demo -o name | head -1) -n zine-demo\n  3. kubectl get pods -l app=rs-demo -n zine-demo\n\nWHAT YOU SHOULD SEE\n  The ReplicaSet shows DESIRED 3, CURRENT 3, READY 3. After you delete one Pod, a new one appears and the count returns to 3.\n\nCLEANUP\n  kubectl delete namespace zine-demo\n\nNOTE\n  The ReplicaSet only cares about the number, not which Pods make it up.", "tech_img": "generated/kubernetes-apartment-complex/32-technical.png", "zine_img": "generated/kubernetes-apartment-complex/32-zine.png", "diagram": "diagrams/topic-32.html"}, {"num": 33, "title": "Deployment", "category": "Workload Controllers", "tech_disc": "A Deployment manages ReplicaSets and turns a Pod-template change into a controlled rollout. Rolling-update limits, readiness, progress deadlines, revision history, and rollback determine how quickly a new version replaces the old one and whether traffic remains available. Deployments suit stateless or externally coordinated workloads; database migrations, API compatibility, and probe quality still require application-level planning.", "tech_persp": "A Deployment turns an application version change into a controlled ReplicaSet transition. Rolling-update limits balance availability against rollout speed, readiness gates prevent unready Pods from receiving traffic, and revision history enables rollback. Deployments make stateless releases repeatable, but state migration, backward compatibility, and probe quality still determine whether an update is safe.", "zine_analogy": "Manages swapping an entire set of units from a v1 layout to a v2 layout gradually, with a lever to rollback if inspections fail.", "zine_exp": "The illustration translates the Kubernetes mechanism into the apartment-complex metaphor so the operational relationship is easier to remember.\n\n* **Zine Text & Layout:**\n* (Top): \"Deployment \u2014 The Renovation Planner\"\n* (Caption): \"This is what you actually deploy. It creates the ReplicaSets and handles zero-downtime rolling updates.\"", "reading": "- [Deployments](https://kubernetes.io/docs/concepts/workloads/controllers/deployment/)", "demo": "SETUP\n  kubectl create namespace zine-demo\n  kubectl create deployment deploy-demo --image=nginx:1.24 --replicas=3 -n zine-demo\n  kubectl rollout status deployment/deploy-demo -n zine-demo\n\nSTEPS\n  1. kubectl set image deployment/deploy-demo nginx=nginx:1.25 -n zine-demo\n  2. kubectl rollout status deployment/deploy-demo -n zine-demo\n  3. kubectl get replicaset -l app=deploy-demo -n zine-demo\n  4. kubectl rollout history deployment/deploy-demo -n zine-demo\n  5. kubectl rollout undo deployment/deploy-demo -n zine-demo\n  6. kubectl get deployment deploy-demo -n zine-demo -o jsonpath='{.spec.template.spec.containers[0].image}'; echo\n\nWHAT YOU SHOULD SEE\n  Two ReplicaSets appear (old scaling down, new scaling up). After undo the image reads nginx:1.24 again.\n\nCLEANUP\n  kubectl delete namespace zine-demo\n\nNOTE\n  The container is named 'nginx' because create deployment names it after the image. Rolling update, then rollback with zero downtime.", "tech_img": "generated/kubernetes-apartment-complex/33-technical.png", "zine_img": "generated/kubernetes-apartment-complex/33-zine.png", "diagram": "diagrams/topic-33.html"}, {"num": 34, "title": "StatefulSet", "category": "Workload Controllers", "tech_disc": "A StatefulSet gives replicas stable ordinal names, network identities, and commonly one persistent volume per replica. Ordered creation, updates, and termination can support quorum systems and clustered databases, but the controller does not create replication, consensus, or backups for the application. Operators must understand failover, storage attachment, recovery order, and disruption limits before using it for stateful systems.", "tech_persp": "A StatefulSet gives replicas stable ordinal identities, predictable network names, and individually associated storage. Ordered creation and termination can support clustered databases and quorum systems, but StatefulSet does not automatically make an application distributed or consistent. The application must understand identity, failover, storage semantics, and backup/recovery.", "zine_analogy": "Named, numbered units where the same tenant always returns to the exact same unit with their exact same furniture \u2014 never shuffled to a different room.", "zine_exp": "The illustration translates the Kubernetes mechanism into the apartment-complex metaphor so the operational relationship is easier to remember.\n\n* **Zine Text & Layout:**\n* (Top): \"StatefulSet \u2014 The Named Units\"\n* (Caption): \"Manages Pods needing stable identities and persistent storage tied to that identity \u2014 each Pod keeps its name and storage across restarts.\"", "reading": "- [StatefulSets](https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/)", "demo": "SETUP\n  kubectl create namespace zine-demo\n\nYAML  (statefulset-demo.yaml)\n  apiVersion: v1\n  kind: Service\n  metadata:\n    name: web\n  spec:\n    clusterIP: None\n    selector:\n      app: web\n    ports:\n    - port: 80\n  ---\n  apiVersion: apps/v1\n  kind: StatefulSet\n  metadata:\n    name: web\n  spec:\n    serviceName: \"web\"\n    replicas: 3\n    selector:\n      matchLabels:\n        app: web\n    template:\n      metadata:\n        labels:\n          app: web\n      spec:\n        containers:\n        - name: nginx\n          image: nginx\n\nSTEPS\n  1. kubectl apply -f statefulset-demo.yaml -n zine-demo\n  2. kubectl rollout status statefulset/web -n zine-demo\n  3. kubectl get pods -l app=web -n zine-demo   # web-0, web-1, web-2\n  4. kubectl delete pod web-1 -n zine-demo\n  5. kubectl get pods -l app=web -n zine-demo -w   # Ctrl+C when web-1 is Running again\n\nWHAT YOU SHOULD SEE\n  Pods are named web-0, web-1, web-2 and start in order. The replacement comes back as web-1, not a random name.\n\nCLEANUP\n  kubectl delete namespace zine-demo\n\nNOTE\n  A StatefulSet needs a headless Service (clusterIP: None), so the YAML includes one. The tenant returns to the same numbered unit.", "tech_img": "generated/kubernetes-apartment-complex/34-technical.png", "zine_img": "generated/kubernetes-apartment-complex/34-zine.png", "diagram": "diagrams/topic-34.html"}, {"num": 35, "title": "DaemonSet", "category": "Workload Controllers", "tech_disc": "A DaemonSet expresses node coverage rather than a fixed replica count: one Pod is scheduled on every matching Node, including eligible Nodes added later. It is suited to log collectors, monitoring agents, storage helpers, and networking components that need local access. Selectors, taints, tolerations, host access, and resource requests determine coverage and the amount of workload capacity consumed.", "tech_persp": "A DaemonSet expresses node coverage rather than a replica count: one Pod is scheduled on each matching node, including nodes added later. This suits agents that need local access, such as log collectors, monitors, and networking components. Taints, tolerations, selectors, and resource requests determine where the agent can run and whether it competes with workloads.", "zine_analogy": "A dedicated fire extinguisher mounted in every single building \u2014 one per building, automatically, no exceptions.", "zine_exp": "The illustration translates the Kubernetes mechanism into the apartment-complex metaphor so the operational relationship is easier to remember.\n\n* **Zine Text & Layout:**\n* (Top): \"DaemonSet \u2014 The Fire Extinguisher on Every Floor\"\n* (Caption): \"Ensures exactly one copy of a Pod runs on every Node \u2014 often used for node-level agents like log collectors.\"", "reading": "- [DaemonSets](https://kubernetes.io/docs/concepts/workloads/controllers/daemonset/)", "demo": "SETUP\n  kubectl create namespace zine-demo\n\nYAML  (daemonset-demo.yaml)\n  apiVersion: apps/v1\n  kind: DaemonSet\n  metadata:\n    name: node-agent\n  spec:\n    selector:\n      matchLabels:\n        app: node-agent\n    template:\n      metadata:\n        labels:\n          app: node-agent\n      spec:\n        containers:\n        - name: agent\n          image: busybox\n          command: [\"sh\", \"-c\", \"while true; do sleep 3600; done\"]\n\nSTEPS\n  1. kubectl apply -f daemonset-demo.yaml -n zine-demo\n  2. kubectl rollout status daemonset/node-agent -n zine-demo\n  3. kubectl get pods -l app=node-agent -n zine-demo -o wide\n  4. kubectl get nodes --no-headers | wc -l   # total nodes; compare with the Pod count\n\nWHAT YOU SHOULD SEE\n  One Pod runs on each worker node. On a cluster whose control-plane node is tainted (the default), the count is the number of worker nodes, one less than the total node count.\n\nCLEANUP\n  kubectl delete namespace zine-demo\n\nNOTE\n  Add a toleration for node-role.kubernetes.io/control-plane:NoSchedule to the Pod template if you want the control-plane node included; the Pod count then equals the node count.", "tech_img": "generated/kubernetes-apartment-complex/35-technical.png", "zine_img": "generated/kubernetes-apartment-complex/35-zine.png", "diagram": "diagrams/topic-35.html"}, {"num": 36, "title": "Job", "category": "Workload Controllers", "tech_disc": "A Job represents finite work and tracks successful and failed Pod completions. It can retry failures, run completions in parallel, and retain or clean up finished Pods according to policy, making it appropriate for migrations, batch processing, and maintenance. The task should be idempotent or otherwise safe to retry because a failure can occur after work has partially completed.", "tech_persp": "A Job represents finite work and tracks successful and failed Pod completions. It can retry failures, run parallel workers, and retain or clean up finished Pods according to policy. Jobs are a better fit than Deployments for migrations, batch processing, and one-time maintenance because completion\u2014not continuous availability\u2014is the desired state.", "zine_analogy": "A one-time moving crew hired to move a single tenant's boxes \u2014 once the job is done, the crew packs up and leaves for good, not staying on payroll.", "zine_exp": "The illustration translates the Kubernetes mechanism into the apartment-complex metaphor so the operational relationship is easier to remember.\n\n* **Zine Text & Layout:**\n* (Top): \"Job \u2014 The One-Time Moving Crew\"\n* (Caption): \"Runs Pods to completion for a finite task, then stops \u2014 unlike a Deployment, it doesn't keep Pods running forever.\"", "reading": "- [Jobs](https://kubernetes.io/docs/concepts/workloads/controllers/job/)", "demo": "SETUP\n  kubectl create namespace zine-demo\n\nYAML  (job-demo.yaml)\n  apiVersion: batch/v1\n  kind: Job\n  metadata:\n    name: one-time-task\n  spec:\n    template:\n      spec:\n        containers:\n        - name: task\n          image: busybox\n          command: [\"sh\", \"-c\", \"echo doing the move; sleep 5; echo done\"]\n        restartPolicy: Never\n\nSTEPS\n  1. kubectl apply -f job-demo.yaml -n zine-demo\n  2. kubectl get jobs -n zine-demo -w   # Ctrl+C when COMPLETIONS is 1/1\n  3. kubectl logs job/one-time-task -n zine-demo\n\nWHAT YOU SHOULD SEE\n  COMPLETIONS goes from 0/1 to 1/1. The logs print 'doing the move' then 'done'. The Pod ends as Completed.\n\nCLEANUP\n  kubectl delete namespace zine-demo\n\nNOTE\n  Once it hits 1/1 the Job stops; the crew finished the move.", "tech_img": "generated/kubernetes-apartment-complex/36-technical.png", "zine_img": "generated/kubernetes-apartment-complex/36-zine.png", "diagram": "diagrams/topic-36.html"}, {"num": 37, "title": "CronJob", "category": "Workload Controllers", "tech_disc": "A CronJob creates Jobs according to a cron schedule and transfers the actual work and retry behavior to each Job. Concurrency policy, missed-run handling, starting deadlines, history limits, time zones, and idempotency determine whether recurring execution is safe. Scheduling is not an exactly-once guarantee, so jobs must tolerate retries, controller restarts, and\u2014depending on policy\u2014overlap.", "tech_persp": "A CronJob creates Jobs from a schedule, adding automation for backups, reports, cleanup, and other recurring work. Concurrency policy, missed schedules, starting deadlines, history limits, and idempotency determine whether repeated runs are safe. A CronJob schedules work; it does not guarantee exactly-once execution, so the task must tolerate retries and overlap appropriately.", "zine_analogy": "The scheduled overnight cleaning crew that shows up automatically every night at 2 AM, does the job, and leaves \u2014 nobody has to call them each time.", "zine_exp": "The illustration translates the Kubernetes mechanism into the apartment-complex metaphor so the operational relationship is easier to remember.\n\n* **Zine Text & Layout:**\n* (Top): \"CronJob \u2014 The Scheduled Night Crew\"\n* (Caption): \"Creates Jobs on a repeating schedule \u2014 like a nightly backup task that runs automatically without anyone triggering it.\"", "reading": "- [CronJobs](https://kubernetes.io/docs/concepts/workloads/controllers/cron-jobs/)", "demo": "SETUP\n  kubectl create namespace zine-demo\n\nYAML  (cronjob-demo.yaml)\n  apiVersion: batch/v1\n  kind: CronJob\n  metadata:\n    name: nightly-task\n  spec:\n    schedule: \"*/2 * * * *\"\n    jobTemplate:\n      spec:\n        template:\n          spec:\n            containers:\n            - name: task\n              image: busybox\n              command: [\"sh\", \"-c\", \"echo nightly cleanup ran\"]\n            restartPolicy: Never\n\nSTEPS\n  1. kubectl apply -f cronjob-demo.yaml -n zine-demo\n  2. kubectl get cronjob nightly-task -n zine-demo\n  3. kubectl get jobs -n zine-demo -w   # wait up to 2 minutes; Ctrl+C after a Job appears\n  4. kubectl logs job/$(kubectl get jobs -n zine-demo -o name | head -1 | cut -d/ -f2) -n zine-demo\n\nWHAT YOU SHOULD SEE\n  A new Job appears every 2 minutes with no command from you. Its logs print 'nightly cleanup ran'.\n\nCLEANUP\n  kubectl delete namespace zine-demo\n\nNOTE\n  The schedule is every 2 minutes for the demo; a real nightly job would use 0 2 * * *.", "tech_img": "generated/kubernetes-apartment-complex/37-technical.png", "zine_img": "generated/kubernetes-apartment-complex/37-zine.png", "diagram": "diagrams/topic-37.html"}, {"num": 38, "title": "ReplicationController (legacy)", "category": "Workload Controllers", "tech_disc": "ReplicationController is the predecessor to ReplicaSet and maintains a fixed count of Pods selected by its older selector model. It can repair replica-count drift but lacks the expressive selectors and modern rollout relationship provided by ReplicaSet and Deployment. It remains relevant when operating legacy manifests, but new workloads should normally use Deployments.", "tech_persp": "ReplicationController is the predecessor to ReplicaSet. It maintains a fixed count of matching Pods, but its selector model is less expressive and it is not the normal choice for new applications. Understanding it matters when operating older clusters or manifests, while migrations generally move to Deployments and ReplicaSets.", "zine_analogy": "The original, retired occupancy-enforcer clipboard system the complex used before the newer, more flexible enforcer took over \u2014 still technically works, but nobody sets it up new anymore.", "zine_exp": "The illustration translates the Kubernetes mechanism into the apartment-complex metaphor so the operational relationship is easier to remember.\n\n* **Zine Text & Layout:**\n* (Top): \"ReplicationController \u2014 The Retired Enforcer\"\n* (Caption): \"The legacy predecessor to ReplicaSet \u2014 functionally similar, but superseded by more flexible label selectors.\"", "reading": "- [ReplicationController](https://kubernetes.io/docs/concepts/workloads/controllers/replicationcontroller/)", "demo": "SETUP\n  kubectl create namespace zine-demo\n\nYAML  (rc-demo.yaml)\n  apiVersion: v1\n  kind: ReplicationController\n  metadata:\n    name: rc-demo\n  spec:\n    replicas: 2\n    selector:\n      app: rc-demo\n    template:\n      metadata:\n        labels:\n          app: rc-demo\n      spec:\n        containers:\n        - name: nginx\n          image: nginx\n\nSTEPS\n  1. kubectl apply -f rc-demo.yaml -n zine-demo\n  2. kubectl get rc rc-demo -n zine-demo\n  3. kubectl delete pod $(kubectl get pods -l app=rc-demo -n zine-demo -o name | head -1) -n zine-demo\n  4. kubectl get pods -l app=rc-demo -n zine-demo\n  5. kubectl explain replicationcontroller | head -8\n\nWHAT YOU SHOULD SEE\n  It self-heals exactly like a ReplicaSet: delete a Pod and a new one appears.\n\nCLEANUP\n  kubectl delete namespace zine-demo\n\nNOTE\n  Still works, but nobody builds new systems on it. Use a Deployment instead.", "tech_img": "generated/kubernetes-apartment-complex/38-technical.png", "zine_img": "generated/kubernetes-apartment-complex/38-zine.png", "diagram": "diagrams/topic-38.html"}, {"num": 39, "title": "HorizontalPodAutoscaler (HPA)", "category": "Autoscaling & Disruption", "tech_disc": "HPA adjusts a scalable target\u2019s replica count from observed resource, custom, or external metrics. It compares current values with a target, applies stabilization and scaling policies, and changes the workload\u2019s desired replicas; it does not resize an individual Pod. Effective horizontal scaling requires usable metrics, meaningful resource requests, startup tolerance, sufficient cluster capacity, and an application that can distribute traffic across replicas.", "tech_persp": "HPA changes the number of replicas based on observed metrics and a target such as average CPU utilization or an external/custom metric. Horizontal scaling improves concurrency and availability when the application is stateless or replicated, but it needs accurate requests, metrics availability, startup tolerance, and a workload that can actually share traffic across replicas.", "zine_analogy": "The staffing manager who calls in more substitute teachers automatically when the lunch rush hits a certain crowd size, and sends them home once things quiet down.", "zine_exp": "The illustration translates the Kubernetes mechanism into the apartment-complex metaphor so the operational relationship is easier to remember.\n\n* **Zine Text & Layout:**\n* (Top): \"HorizontalPodAutoscaler \u2014 The Staffing Manager\"\n* (Caption): \"Automatically adjusts the number of Pod replicas based on CPU/memory usage \u2014 scaling out under load, back in when it drops.\"", "reading": "- [Horizontal Pod Autoscaling](https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/)\n- [Autoscaling concepts](https://kubernetes.io/docs/concepts/workloads/autoscaling/)", "demo": "SETUP\n  kubectl get deployment metrics-server -n kube-system || (kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml && kubectl patch deployment metrics-server -n kube-system --type='json' -p='[{\"op\":\"add\",\"path\":\"/spec/template/spec/containers/0/args/-\",\"value\":\"--kubelet-insecure-tls\"}]')\n  kubectl create namespace zine-demo\n  kubectl create deployment hpa-demo --image=registry.k8s.io/hpa-example -n zine-demo\n  kubectl set resources deployment hpa-demo --requests=cpu=200m -n zine-demo\n  kubectl rollout status deployment/hpa-demo -n zine-demo\n  kubectl expose deployment hpa-demo --port=80 -n zine-demo\n\nSTEPS\n  1. kubectl autoscale deployment hpa-demo --cpu-percent=50 --min=1 --max=5 -n zine-demo\n  2. kubectl run load-generator --image=busybox -n zine-demo --restart=Never -- sh -c 'while true; do wget -q -O- http://hpa-demo; done'\n  3. kubectl get hpa hpa-demo -n zine-demo -w   # Ctrl+C after REPLICAS climbs above 1\n  4. kubectl delete pod load-generator -n zine-demo\n  5. kubectl get hpa hpa-demo -n zine-demo -w   # replicas fall back after about 5 minutes\n\nWHAT YOU SHOULD SEE\n  TARGETS climbs above 50% and REPLICAS rises toward 5. After the load stops it falls back to 1.\n\nCLEANUP\n  kubectl delete namespace zine-demo\n\nNOTE\n  Needs metrics-server. Until it reports, TARGETS shows &lt;unknown&gt;. Scale-down is deliberately slow (about 5 minutes).", "tech_img": "generated/kubernetes-apartment-complex/39-technical.png", "zine_img": "generated/kubernetes-apartment-complex/39-zine.png", "diagram": "diagrams/topic-39.html"}, {"num": 40, "title": "VerticalPodAutoscaler (VPA)", "category": "Autoscaling & Disruption", "tech_disc": "VPA analyzes historical usage and produces CPU and memory recommendations, or applies them according to its update mode. Applying a new recommendation may evict and recreate Pods so that scheduling can use the new requests, which makes disruption and capacity planning important. VPA is complementary to some workloads but can conflict with HPA when both react to the same resource signal, and it requires the VPA add-on.", "tech_persp": "VPA adjusts or recommends Pod resource requests and limits using historical usage. It is useful when sizing is difficult or workload demand changes vertically, but applying recommendations can restart Pods and may conflict with HPA or tightly constrained scheduling. VPA therefore requires an explicit update mode, disruption planning, and attention to workload eviction behavior.", "zine_analogy": "Instead of calling in more staff, this manager just gives one tenant a bigger unit when they clearly need more space, and downsizes them if they don't need it anymore.", "zine_exp": "The illustration translates the Kubernetes mechanism into the apartment-complex metaphor so the operational relationship is easier to remember.\n\n* **Zine Text & Layout:**\n* (Top): \"VerticalPodAutoscaler \u2014 The Unit Resizer\"\n* (Caption): \"Automatically adjusts a Pod's CPU/memory requests based on usage history \u2014 resizing the Pod itself instead of adding more Pods.\"", "reading": "- [Vertical Pod Autoscaling](https://github.com/kubernetes/autoscaler/tree/master/vertical-pod-autoscaler)\n- [Autoscaling concepts](https://kubernetes.io/docs/concepts/workloads/autoscaling/)", "demo": "SETUP\n  # Install the VPA add-on first: git clone https://github.com/kubernetes/autoscaler.git && cd autoscaler/vertical-pod-autoscaler && ./hack/vpa-up.sh\n  kubectl get pods -n kube-system | grep vpa   # recommender, updater, admission-controller must be Running\n  kubectl create namespace zine-demo\n  kubectl create deployment hpa-demo --image=registry.k8s.io/hpa-example -n zine-demo\n  kubectl set resources deployment hpa-demo --requests=cpu=100m -n zine-demo\n  kubectl rollout status deployment/hpa-demo -n zine-demo\n\nYAML  (vpa-demo.yaml)\n  apiVersion: autoscaling.k8s.io/v1\n  kind: VerticalPodAutoscaler\n  metadata:\n    name: vpa-demo\n  spec:\n    targetRef:\n      apiVersion: \"apps/v1\"\n      kind: Deployment\n      name: hpa-demo\n    updatePolicy:\n      updateMode: \"Auto\"\n\nSTEPS\n  1. kubectl apply -f vpa-demo.yaml -n zine-demo\n  2. sleep 120   # give the recommender time to observe usage\n  3. kubectl describe vpa vpa-demo -n zine-demo   # see Recommendation\n\nWHAT YOU SHOULD SEE\n  Under Recommendation you see Lower Bound, Target and Upper Bound for CPU and memory, based on observed usage.\n\nCLEANUP\n  kubectl delete namespace zine-demo\n\nNOTE\n  In Auto mode VPA evicts and recreates the Pod with the new sizes; use updateMode: \"Off\" if you only want recommendations. The Deployment is created fresh here, so this demo does not depend on entry 39.", "tech_img": "generated/kubernetes-apartment-complex/40-technical.png", "zine_img": "generated/kubernetes-apartment-complex/40-zine.png", "diagram": "diagrams/topic-40.html"}, {"num": 41, "title": "Pod Disruption Budget (PDB)", "category": "Autoscaling & Disruption", "tech_disc": "A PodDisruptionBudget limits voluntary evictions of selected Pods during operations such as node drain or voluntary cluster maintenance. `minAvailable` and `maxUnavailable` express an availability requirement, but the budget does not prevent crashes, hardware loss, or every involuntary disruption. A strict budget can also block maintenance when there are too few replicas or no spare schedulable Nodes, so it must match real capacity and recovery behavior.", "tech_persp": "A PodDisruptionBudget limits voluntary evictions during planned operations such as node drains; it does not protect against crashes, hardware failure, or all forms of involuntary disruption. A realistic budget balances availability with maintenance progress and only works when the application has enough replicas and schedulable capacity elsewhere.", "zine_analogy": "A rule posted during planned building maintenance: at least 2 units in this wing must stay occupied and undisturbed at any given time, no matter how many maintenance requests come in at once.", "zine_exp": "The illustration translates the Kubernetes mechanism into the apartment-complex metaphor so the operational relationship is easier to remember.\n\n* **Zine Text & Layout:**\n* (Top): \"Pod Disruption Budget \u2014 The Maintenance Limit Rule\"\n* (Caption): \"Limits how many Pods can be voluntarily disrupted at once during planned maintenance, protecting availability.\"", "reading": "- [Pod disruption budgets](https://kubernetes.io/docs/concepts/workloads/pods/disruptions/)\n- [Eviction API](https://kubernetes.io/docs/concepts/scheduling-eviction/api-eviction/)", "demo": "SETUP\n  kubectl create namespace zine-demo\n  kubectl create deployment demo --image=nginx --replicas=3 -n zine-demo\n  kubectl rollout status deployment/demo -n zine-demo\n\nYAML  (pdb-demo.yaml)\n  apiVersion: policy/v1\n  kind: PodDisruptionBudget\n  metadata:\n    name: demo-pdb\n  spec:\n    minAvailable: 2\n    selector:\n      matchLabels:\n        app: demo\n\nSTEPS\n  1. kubectl apply -f pdb-demo.yaml -n zine-demo\n  2. kubectl get pdb demo-pdb -n zine-demo   # ALLOWED DISRUPTIONS should be 1\n  3. kubectl get pods -l app=demo -n zine-demo -o wide\n  4. NODE=$(kubectl get pods -l app=demo -n zine-demo -o jsonpath='{.items[0].spec.nodeName}')\n  5. kubectl drain $NODE --ignore-daemonsets --delete-emptydir-data --timeout=60s\n\nWHAT YOU SHOULD SEE\n  The drain evicts Pods one at a time and stalls with 'Cannot evict pod ... would violate the pod's disruption budget' once only 2 remain. The --timeout=60s ends the drain by itself; you can also press Ctrl+C.\n\nCLEANUP\n  kubectl uncordon $NODE\n  kubectl delete namespace zine-demo\n\nNOTE\n  Needs 2 or more worker nodes so evicted Pods have somewhere to go. Do not drain your only node.", "tech_img": "generated/kubernetes-apartment-complex/41-technical.png", "zine_img": "generated/kubernetes-apartment-complex/41-zine.png", "diagram": "diagrams/topic-41.html"}];
+    let currentCategory = 'All';
+    let currentTopicNum = 1;
+
+    // Master Diagram Flow Stages
+    const masterStages = [
+      { id: 'mClient', dot: {x: 500, y: 39}, label: 'Client submits application declaration to the cluster', conns: [] },
+      { id: 'mApi',    dot: {x: 255, y: 147}, label: 'API server authenticates, validates, and admits request', conns: ['mc0'] },
+      { id: 'mEtcd',   dot: {x: 147, y: 224}, label: 'etcd commits desired cluster state to Raft log', conns: ['mc1'] },
+      { id: 'mSched',  dot: {x: 362, y: 224}, label: 'Scheduler filters and scores candidate worker nodes', conns: ['mc2'] },
+      { id: 'mKubelet',dot: {x: 637, y: 147}, label: 'Kubelet on selected worker node picks up assigned pod', conns: ['mc3'] },
+      { id: 'mCri',    dot: {x: 852, y: 147}, label: 'Container runtime (CRI) pulls image and starts container', conns: ['mc4'] },
+      { id: 'mPods',   dot: {x: 745, y: 302}, label: 'Pod running healthy with IP and storage mounts', conns: ['mc5'] },
+      { id: 'mServices',dot: {x: 500, y: 592}, label: 'Service & Ingress register ready endpoint for live traffic', conns: ['mc6'] }
+    ];
+
+    const masterNodeIds = ['mClient','mApi','mEtcd','mSched','mCtrl','mCcm','mWorkload','mRbac','mKubelet','mCri','mProxy','mCni','mPods','mStorage','mAutoscale','mIngress','mServices','mCoreDns'];
+    const masterConnIds = ['mc0','mc1','mc2','mc3','mc4','mc5','mc6'];
+    let masterPlaying = false;
+    let masterTimer = null;
+
+    function resetMasterFlow() {
+      masterPlaying = false;
+      clearTimeout(masterTimer);
+      masterNodeIds.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+          const box = el.querySelector('.node-box');
+          const title = el.querySelector('.node-title');
+          if (box) box.classList.remove('active');
+          if (title) title.classList.remove('active');
+        }
+      });
+      masterConnIds.forEach(cid => {
+        const c = document.getElementById(cid);
+        const d = document.getElementById(cid + 'd');
+        if (c) c.classList.remove('active');
+        if (d) d.classList.remove('on');
+      });
+      document.getElementById('masterPacket').classList.remove('on');
+      document.getElementById('masterStageLabel').textContent = 'Click any component below to jump to its topic, or press Play to trace cluster request flow';
+      document.getElementById('masterPlayBtn').textContent = '▶ Play End-to-End Flow';
+    }
+
+    function playMasterFlow() {
+      if (masterPlaying) return;
+      resetMasterFlow();
+      masterPlaying = true;
+      document.getElementById('masterPacket').classList.add('on');
+      document.getElementById('masterPlayBtn').textContent = '⏸ Running...';
+
+      let i = 0;
+      function step() {
+        masterNodeIds.forEach(id => {
+          const el = document.getElementById(id);
+          if (el) {
+            const box = el.querySelector('.node-box');
+            const title = el.querySelector('.node-title');
+            if (box) box.classList.remove('active');
+            if (title) title.classList.remove('active');
+          }
+        });
+        masterConnIds.forEach(cid => {
+          const c = document.getElementById(cid);
+          const d = document.getElementById(cid + 'd');
+          if (c) c.classList.remove('active');
+          if (d) d.classList.remove('on');
+        });
+
+        if (i >= masterStages.length) {
+          masterPlaying = false;
+          document.getElementById('masterStageLabel').textContent = 'End-to-End Cluster Request Flow Complete ✓ (Click any box to inspect deep-dive)';
+          document.getElementById('masterPlayBtn').textContent = '▶ Play End-to-End Flow';
+          return;
+        }
+
+        const s = masterStages[i];
+        if (s.conns) {
+          s.conns.forEach(cid => {
+            const c = document.getElementById(cid);
+            const d = document.getElementById(cid + 'd');
+            if (c) c.classList.add('active');
+            if (d) d.classList.add('on');
+          });
+        }
+        const el = document.getElementById(s.id);
+        if (el) {
+          const box = el.querySelector('.node-box');
+          const title = el.querySelector('.node-title');
+          if (box) box.classList.add('active');
+          if (title) title.classList.add('active');
+        }
+
+        const pkt = document.getElementById('masterPacket');
+        pkt.setAttribute('cx', s.dot.x);
+        pkt.setAttribute('cy', s.dot.y);
+
+        document.getElementById('masterStageLabel').textContent = s.label;
+        i++;
+        masterTimer = setTimeout(step, 1400);
+      }
+      step();
+    }
+
+    // Navigation and Routing
+    function showHome() {
+      window.location.hash = '';
+      document.getElementById('homeView').style.display = 'block';
+      document.getElementById('topicView').style.display = 'none';
+      window.scrollTo(0, 0);
+    }
+
+    function goToTopic(num) {
+      window.location.hash = '#/topic/' + num;
+    }
+
+    function renderTopicView(num) {
+      const topic = TOPICS.find(t => t.num === num);
+      if (!topic) return;
+      currentTopicNum = num;
+
+      document.getElementById('homeView').style.display = 'none';
+      document.getElementById('topicView').style.display = 'block';
+
+      document.getElementById('topicBadge').textContent = 'Topic ' + String(topic.num).padStart(2, '0') + ' / 41';
+      document.getElementById('topicTitle').textContent = topic.title;
+      document.getElementById('topicMeta').textContent = topic.category + ' · Technical Reference & Apartment Zine';
+
+      document.getElementById('topicTechDisc').textContent = topic.tech_disc;
+      document.getElementById('topicTechPersp').textContent = topic.tech_persp;
+      document.getElementById('topicTechImg').src = topic.tech_img;
+
+      document.getElementById('topicDiagramIframe').src = topic.diagram;
+      document.getElementById('topicDiagramLink').href = topic.diagram;
+
+      document.getElementById('topicZineAnalogy').textContent = topic.zine_analogy;
+      document.getElementById('topicZineImg').src = topic.zine_img;
+      document.getElementById('topicZineExp').textContent = topic.zine_exp;
+
+      document.getElementById('topicReading').innerHTML = formatMarkdownLinks(topic.reading);
+      document.getElementById('topicDemo').textContent = topic.demo;
+
+      document.getElementById('prevTopicBtn').disabled = (num <= 1);
+      document.getElementById('nextTopicBtn').disabled = (num >= 41);
+
+      window.scrollTo(0, 0);
+    }
+
+    function navigateTopic(delta) {
+      const target = currentTopicNum + delta;
+      if (target >= 1 && target <= 41) {
+        goToTopic(target);
+      }
+    }
+
+    function formatMarkdownLinks(text) {
+      if (!text) return '<span style="color: var(--text-dim)">Refer to official Kubernetes documentation.</span>';
+      return text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1 ↗</a>');
+    }
+
+    // Directory Filtering
+    function renderTopicsGrid(list) {
+      const grid = document.getElementById('topicsGrid');
+      grid.innerHTML = '';
+      list.forEach(t => {
+        const card = document.createElement('div');
+        card.className = 'topic-card';
+        card.onclick = () => goToTopic(t.num);
+        card.innerHTML = `
+          <div>
+            <div class="topic-card-header">
+              <span class="topic-badge">Topic ${String(t.num).padStart(2, '0')}</span>
+              <span class="topic-cat">${t.category}</span>
+            </div>
+            <div class="topic-title">${t.title}</div>
+            <div class="topic-desc">${t.tech_disc || t.tech_persp}</div>
+          </div>
+          <div class="topic-footer">
+            Explore topic &amp; diagram →
+          </div>
+        `;
+        grid.appendChild(card);
+      });
+    }
+
+    function setCategoryFilter(cat, element) {
+      currentCategory = cat;
+      document.querySelectorAll('.cat-pill').forEach(el => el.classList.remove('active'));
+      element.classList.add('active');
+      filterTopics();
+    }
+
+    function filterTopics() {
+      const q = document.getElementById('topicSearch').value.toLowerCase().trim();
+      const filtered = TOPICS.filter(t => {
+        const matchCat = (currentCategory === 'All' || t.category === currentCategory);
+        const matchQuery = !q || t.title.toLowerCase().includes(q) || t.tech_disc.toLowerCase().includes(q) || String(t.num) === q;
+        return matchCat && matchQuery;
+      });
+      renderTopicsGrid(filtered);
+    }
+
+    // Hash change handler for routing
+    window.addEventListener('hashchange', () => {
+      const hash = window.location.hash;
+      const match = hash.match(/^#\/topic\/(\d+)$/);
+      if (match) {
+        renderTopicView(parseInt(match[1], 10));
+      } else {
+        showHome();
+      }
+    });
+
+    // Initial load
+    window.addEventListener('DOMContentLoaded', () => {
+      renderTopicsGrid(TOPICS);
+      const hash = window.location.hash;
+      const match = hash.match(/^#\/topic\/(\d+)$/);
+      if (match) {
+        renderTopicView(parseInt(match[1], 10));
+      } else {
+        showHome();
+      }
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Kubernetes Architecture — Pod Creation Flow</title>
+<style>
+  :root {
+    --bg: #0b1120;
+    --panel: #111a2e;
+    --panel-border: #1e2b47;
+    --cp-tint: #0f1f38;
+    --wn-tint: #14231c;
+    --accent: #38bdf8;
+    --accent-glow: rgba(56, 189, 248, 0.55);
+    --packet: #f59e0b;
+    --packet-glow: rgba(245, 158, 11, 0.6);
+    --text-main: #e5edf7;
+    --text-dim: #7f93b3;
+    --line: #24324f;
+    --region-cp-border: #2b3f66;
+    --region-wn-border: #234030;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    background: var(--bg);
+    color: var(--text-main);
+    font-family: 'JetBrains Mono', 'Fira Code', ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+  }
+  body {
+    padding: 28px 14px 40px;
+    padding-top: max(28px, env(safe-area-inset-top));
+    padding-bottom: max(40px, env(safe-area-inset-bottom));
+  }
+  .wrap { max-width: 900px; margin: 0 auto; }
+  h1 {
+    font-size: 15px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--accent); text-align: center; margin: 0 0 4px;
+  }
+  .subtitle { text-align: center; color: var(--text-dim); font-size: 12px; margin: 0 0 20px; }
+  .stage-label {
+    text-align: center; min-height: 20px; font-size: 13px; color: var(--text-main);
+    margin-bottom: 10px; letter-spacing: 0.02em;
+  }
+  .controls { display: flex; justify-content: center; gap: 10px; margin-bottom: 22px; }
+  button {
+    font-family: inherit; font-size: 12px; letter-spacing: 0.03em;
+    background: var(--panel); color: var(--accent); border: 1px solid var(--panel-border);
+    border-radius: 6px; padding: 8px 16px; cursor: pointer;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  button:hover { border-color: var(--accent); box-shadow: 0 0 12px rgba(56, 189, 248, 0.25); }
+  button:active { transform: translateY(1px); }
+
+  svg { display: block; width: 100%; height: auto; overflow: visible; }
+
+  .region-box { fill: none; stroke-width: 1.2; stroke-dasharray: 3 4; }
+  .region-cp { stroke: var(--region-cp-border); }
+  .region-wn { stroke: var(--region-wn-border); }
+  .region-label { fill: var(--text-dim); font-size: 10.5px; letter-spacing: 0.06em; text-transform: uppercase; }
+
+  .node-box {
+    stroke-width: 1.2; transition: stroke 0.3s ease, filter 0.3s ease;
+  }
+  .node-box.cp { fill: var(--cp-tint); stroke: var(--panel-border); }
+  .node-box.wn { fill: var(--wn-tint); stroke: var(--panel-border); }
+  .node-box.client { fill: var(--panel); stroke: var(--panel-border); }
+  .node-box.active { stroke: var(--accent); filter: drop-shadow(0 0 8px var(--accent-glow)); }
+
+  .node-title { fill: var(--text-main); font-size: 12px; font-weight: 600; transition: fill 0.3s ease; }
+  .node-title.active { fill: var(--accent); }
+  .node-sub { fill: var(--text-dim); font-size: 9.5px; }
+
+  .connector { stroke: var(--line); stroke-width: 1.4; fill: none; transition: stroke 0.3s ease; }
+  .connector.active { stroke: var(--accent); }
+  .connector-dash {
+    stroke-dasharray: 4 5; animation: dash-flow 0.9s linear infinite;
+    opacity: 0; transition: opacity 0.25s ease;
+  }
+  .connector-dash.on { opacity: 1; }
+  @keyframes dash-flow { to { stroke-dashoffset: -18; } }
+
+  .packet {
+    fill: var(--packet); filter: drop-shadow(0 0 6px var(--packet-glow));
+    opacity: 0; transition: opacity 0.2s ease, cx 0.6s cubic-bezier(.4,0,.2,1), cy 0.6s cubic-bezier(.4,0,.2,1);
+  }
+  .packet.on { opacity: 1; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .connector-dash { animation: none; }
+    .packet { transition: opacity 0.2s ease; }
+  }
+
+  footer { text-align: center; color: var(--text-dim); font-size: 10.5px; margin-top: 24px; letter-spacing: 0.02em; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Kubernetes Architecture</h1>
+  <p class="subtitle">Live request path — pod creation across control plane &amp; worker node</p>
+  <p class="stage-label" id="stageLabel">Press play to trace the request</p>
+
+  <div class="controls">
+    <button id="playBtn" onclick="play()">▶ Play</button>
+    <button onclick="reset()">↺ Reset</button>
+  </div>
+
+  <svg viewBox="0 0 900 640" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Kubernetes architecture diagram showing the control plane with API server, etcd, scheduler and controller manager, and a worker node with kubelet, container runtime and kube-proxy, with an animated packet tracing a pod creation request across both">
+
+    <!-- Region boxes -->
+    <rect class="region-box region-cp" x="40" y="90" width="380" height="420" rx="14"/>
+    <text class="region-label" x="60" y="112">Control plane</text>
+
+    <rect class="region-box region-wn" x="470" y="90" width="390" height="420" rx="14"/>
+    <text class="region-label" x="490" y="112">Worker node</text>
+
+    <!-- Client -->
+    <g id="nClient">
+      <rect class="node-box client" x="330" y="16" width="240" height="52" rx="10"/>
+      <text class="node-title" x="450" y="38" text-anchor="middle">kubectl</text>
+      <text class="node-sub" x="450" y="54" text-anchor="middle">apply -f pod.yaml</text>
+    </g>
+
+    <!-- Control plane nodes -->
+    <g id="nApi">
+      <rect class="node-box cp" x="70" y="140" width="320" height="60" rx="10"/>
+      <text class="node-title" x="230" y="164" text-anchor="middle">API server</text>
+      <text class="node-sub" x="230" y="182" text-anchor="middle">authN / authZ / admission control</text>
+    </g>
+
+    <g id="nEtcd">
+      <rect class="node-box cp" x="70" y="240" width="150" height="64" rx="10"/>
+      <text class="node-title" x="145" y="266" text-anchor="middle">etcd</text>
+      <text class="node-sub" x="145" y="284" text-anchor="middle">cluster state store</text>
+    </g>
+
+    <g id="nCtrlMgr">
+      <rect class="node-box cp" x="240" y="240" width="150" height="64" rx="10"/>
+      <text class="node-title" x="315" y="264" text-anchor="middle">Controller</text>
+      <text class="node-title" x="315" y="278" text-anchor="middle">manager</text>
+      <text class="node-sub" x="315" y="294" text-anchor="middle" style="font-size:8.5px">reconciles desired state</text>
+    </g>
+
+    <g id="nSched">
+      <rect class="node-box cp" x="70" y="340" width="320" height="60" rx="10"/>
+      <text class="node-title" x="230" y="364" text-anchor="middle">Scheduler</text>
+      <text class="node-sub" x="230" y="382" text-anchor="middle">filters + scores nodes, binds pod</text>
+    </g>
+
+    <!-- CoreDNS as small satellite in control plane region -->
+    <g id="nDns">
+      <rect class="node-box cp" x="70" y="440" width="320" height="46" rx="10"/>
+      <text class="node-title" x="230" y="460" text-anchor="middle" style="font-size:11px">CoreDNS</text>
+      <text class="node-sub" x="230" y="476" text-anchor="middle" style="font-size:8.5px">cluster-internal service discovery</text>
+    </g>
+
+    <!-- Worker node nodes -->
+    <g id="nKubelet">
+      <rect class="node-box wn" x="500" y="140" width="330" height="60" rx="10"/>
+      <text class="node-title" x="665" y="164" text-anchor="middle">Kubelet</text>
+      <text class="node-sub" x="665" y="182" text-anchor="middle">watches API server for assigned pods</text>
+    </g>
+
+    <g id="nCri">
+      <rect class="node-box wn" x="500" y="240" width="150" height="64" rx="10"/>
+      <text class="node-title" x="575" y="264" text-anchor="middle">Container</text>
+      <text class="node-title" x="575" y="278" text-anchor="middle">runtime (CRI)</text>
+      <text class="node-sub" x="575" y="294" text-anchor="middle" style="font-size:8.5px">pulls image, runs container</text>
+    </g>
+
+    <g id="nCni">
+      <rect class="node-box wn" x="680" y="240" width="150" height="64" rx="10"/>
+      <text class="node-title" x="755" y="266" text-anchor="middle">CNI plugin</text>
+      <text class="node-sub" x="755" y="284" text-anchor="middle" style="font-size:8.5px">pod networking</text>
+    </g>
+
+    <g id="nProxy">
+      <rect class="node-box wn" x="500" y="340" width="330" height="60" rx="10"/>
+      <text class="node-title" x="665" y="364" text-anchor="middle">kube-proxy</text>
+      <text class="node-sub" x="665" y="382" text-anchor="middle">maintains service routing rules on the node</text>
+    </g>
+
+    <g id="nPod">
+      <rect class="node-box wn" x="500" y="440" width="330" height="46" rx="10"/>
+      <text class="node-title" x="665" y="460" text-anchor="middle" style="font-size:11px">Running pod</text>
+      <text class="node-sub" x="665" y="476" text-anchor="middle" style="font-size:8.5px">container process, live on the node</text>
+    </g>
+
+    <!-- Connectors: client -> api -->
+    <line class="connector" id="c0" x1="450" y1="68" x2="450" y2="118"/>
+    <path class="connector" id="c0p" d="M450 68 L450 100 L230 100 L230 140" fill="none"/>
+    <line class="connector connector-dash" id="c0d" x1="450" y1="68" x2="450" y2="100"/>
+    <path class="connector connector-dash" id="c0pd" d="M450 100 L230 100 L230 140" fill="none"/>
+
+    <!-- api -> etcd -->
+    <path class="connector" id="c1" d="M180 200 L180 220 L145 220 L145 240" fill="none"/>
+    <path class="connector connector-dash" id="c1d" d="M180 200 L180 220 L145 220 L145 240" fill="none"/>
+
+    <!-- scheduler watches api (drawn as api -> scheduler) -->
+    <line class="connector" id="c2" x1="230" y1="200" x2="230" y2="340"/>
+    <line class="connector connector-dash" id="c2d" x1="230" y1="200" x2="230" y2="340"/>
+
+    <!-- api (control plane) -> kubelet (worker node) -->
+    <path class="connector" id="c3" d="M390 170 L500 170" fill="none"/>
+    <path class="connector connector-dash" id="c3d" d="M390 170 L500 170" fill="none"/>
+
+    <!-- kubelet -> CRI -->
+    <path class="connector" id="c4" d="M620 200 L575 200 L575 240" fill="none"/>
+    <path class="connector connector-dash" id="c4d" d="M620 200 L575 200 L575 240" fill="none"/>
+
+    <!-- kubelet -> CNI -->
+    <path class="connector" id="c5" d="M720 200 L755 200 L755 240" fill="none"/>
+    <path class="connector connector-dash" id="c5d" d="M720 200 L755 200 L755 240" fill="none"/>
+
+    <!-- CRI -> running pod -->
+    <path class="connector" id="c6" d="M575 304 L575 460 L500 460" fill="none"/>
+    <path class="connector connector-dash" id="c6d" d="M575 304 L575 460 L500 460" fill="none"/>
+
+    <circle class="packet" id="packet" cx="450" cy="42" r="6"/>
+  </svg>
+
+  <footer>animated · dependency-free HTML/CSS/JS · real component layout, not a linear flowchart</footer>
+</div>
+
+<script>
+const stages = [
+  { id: 'nClient', dot: {x:450, y:42},  label: 'kubectl sends the pod spec to the cluster', conns: [] },
+  { id: 'nApi',    dot: {x:230, y:170}, label: 'API server authenticates, authorizes, runs admission control', conns: ['c0','c0p'] },
+  { id: 'nEtcd',   dot: {x:145, y:272}, label: 'etcd persists the desired state (pod unscheduled)', conns: ['c1'] },
+  { id: 'nSched',  dot: {x:230, y:370}, label: 'Scheduler (watching the API server) filters and scores nodes, binds the pod', conns: ['c2'] },
+  { id: 'nKubelet',dot: {x:665, y:170}, label: 'Kubelet on the assigned node picks up the bound pod', conns: ['c3'] },
+  { id: 'nCri',    dot: {x:575, y:272}, label: 'Container runtime pulls the image and starts the container', conns: ['c4'] },
+  { id: 'nCni',    dot: {x:755, y:272}, label: 'CNI plugin wires up pod networking', conns: ['c5'] },
+  { id: 'nPod',    dot: {x:665, y:463}, label: 'Pod is running on the worker node', conns: ['c6'] },
+];
+
+const allNodeIds = ['nClient','nApi','nEtcd','nCtrlMgr','nSched','nDns','nKubelet','nCri','nCni','nProxy','nPod'];
+const allConnIds = ['c0','c0p','c1','c2','c3','c4','c5','c6'];
+let playing = false;
+let timer = null;
+
+function clearAll() {
+  allNodeIds.forEach(id => {
+    const box = document.querySelector('#' + id + ' .node-box');
+    const title = document.querySelector('#' + id + ' .node-title');
+    if (box) box.classList.remove('active');
+    if (title) title.classList.remove('active');
+  });
+  allConnIds.forEach(id => {
+    const c = document.getElementById(id);
+    const d = document.getElementById(id + 'd');
+    if (c) c.classList.remove('active');
+    if (d) d.classList.remove('on');
+  });
+}
+
+function reset() {
+  playing = false;
+  clearTimeout(timer);
+  clearAll();
+  document.getElementById('packet').classList.remove('on');
+  document.getElementById('stageLabel').textContent = 'Press play to trace the request';
+  document.getElementById('playBtn').textContent = '▶ Play';
+}
+
+function play() {
+  if (playing) return;
+  reset();
+  playing = true;
+  document.getElementById('packet').classList.add('on');
+  document.getElementById('playBtn').textContent = '⏸ Running...';
+
+  let i = 0;
+  function step() {
+    clearAll();
+    if (i >= stages.length) {
+      playing = false;
+      document.getElementById('stageLabel').textContent = 'Pod is running ✓';
+      document.getElementById('playBtn').textContent = '▶ Play';
+      return;
+    }
+    const s = stages[i];
+    s.conns.forEach(cid => {
+      const c = document.getElementById(cid);
+      const d = document.getElementById(cid + 'd');
+      if (c) c.classList.add('active');
+      if (d) d.classList.add('on');
+    });
+    const box = document.querySelector('#' + s.id + ' .node-box');
+    const title = document.querySelector('#' + s.id + ' .node-title');
+    if (box) box.classList.add('active');
+    if (title) title.classList.add('active');
+
+    const packet = document.getElementById('packet');
+    packet.setAttribute('cx', s.dot.x);
+    packet.setAttribute('cy', s.dot.y);
+
+    document.getElementById('stageLabel').textContent = s.label;
+    i++;
+    timer = setTimeout(step, 1400);
+  }
+  step();
+}
+</script>
+</body>
+</html>

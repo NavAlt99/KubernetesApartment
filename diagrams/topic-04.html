@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Kubernetes Architecture — etcd</title>
+<style>
+  :root {
+    --bg: #0b1120;
+    --panel: #111a2e;
+    --panel-border: #1e2b47;
+    --cp-tint: #0f1f38;
+    --wn-tint: #14231c;
+    --accent: #38bdf8;
+    --accent-glow: rgba(56, 189, 248, 0.55);
+    --packet: #f59e0b;
+    --packet-glow: rgba(245, 158, 11, 0.6);
+    --text-main: #e5edf7;
+    --text-dim: #7f93b3;
+    --line: #24324f;
+    --region-cp-border: #2b3f66;
+    --region-wn-border: #234030;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    background: var(--bg);
+    color: var(--text-main);
+    font-family: 'JetBrains Mono', 'Fira Code', ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+  }
+  body {
+    padding: 24px 14px 32px;
+    padding-top: max(24px, env(safe-area-inset-top));
+    padding-bottom: max(32px, env(safe-area-inset-bottom));
+  }
+  .wrap { max-width: 920px; margin: 0 auto; }
+  h1 {
+    font-size: 14px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--accent); text-align: center; margin: 0 0 4px;
+  }
+  .subtitle { text-align: center; color: var(--text-dim); font-size: 11.5px; margin: 0 0 16px; }
+  .stage-label {
+    text-align: center; min-height: 24px; font-size: 12.5px; color: var(--text-main);
+    margin-bottom: 12px; letter-spacing: 0.02em; line-height: 1.4;
+  }
+  .controls { display: flex; justify-content: center; gap: 10px; margin-bottom: 20px; }
+  button {
+    font-family: inherit; font-size: 11.5px; letter-spacing: 0.03em;
+    background: var(--panel); color: var(--accent); border: 1px solid var(--panel-border);
+    border-radius: 6px; padding: 7px 15px; cursor: pointer;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  button:hover { border-color: var(--accent); box-shadow: 0 0 12px rgba(56, 189, 248, 0.25); }
+  button:active { transform: translateY(1px); }
+
+  svg { display: block; width: 100%; height: auto; overflow: visible; }
+
+  .region-box { fill: none; stroke-width: 1.2; stroke-dasharray: 3 4; }
+  .region-cp { stroke: var(--region-cp-border); }
+  .region-wn { stroke: var(--region-wn-border); }
+  .region-neutral { stroke: var(--panel-border); }
+  .region-label { fill: var(--text-dim); font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; }
+
+  .node-box {
+    stroke-width: 1.2; transition: stroke 0.3s ease, filter 0.3s ease;
+  }
+  .node-box.cp { fill: var(--cp-tint); stroke: var(--panel-border); }
+  .node-box.wn { fill: var(--wn-tint); stroke: var(--panel-border); }
+  .node-box.client { fill: var(--panel); stroke: var(--panel-border); }
+  .node-box.neutral { fill: var(--panel); stroke: var(--panel-border); }
+  .node-box.active { stroke: var(--accent); filter: drop-shadow(0 0 8px var(--accent-glow)); }
+
+  .node-title { fill: var(--text-main); font-size: 12px; font-weight: 600; transition: fill 0.3s ease; }
+  .node-title.active { fill: var(--accent); }
+  .node-sub { fill: var(--text-dim); font-size: 9.5px; }
+
+  .connector { stroke: var(--line); stroke-width: 1.4; fill: none; transition: stroke 0.3s ease; }
+  .connector.active { stroke: var(--accent); }
+  .connector-dash {
+    stroke-dasharray: 4 5; animation: dash-flow 0.9s linear infinite;
+    opacity: 0; transition: opacity 0.25s ease;
+  }
+  .connector-dash.on { opacity: 1; }
+  @keyframes dash-flow { to { stroke-dashoffset: -18; } }
+
+  .packet {
+    fill: var(--packet); filter: drop-shadow(0 0 6px var(--packet-glow));
+    opacity: 0; transition: opacity 0.2s ease, cx 0.55s cubic-bezier(.4,0,.2,1), cy 0.55s cubic-bezier(.4,0,.2,1);
+  }
+  .packet.on { opacity: 1; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .connector-dash { animation: none; }
+    .packet { transition: opacity 0.2s ease; }
+  }
+
+  footer { text-align: center; color: var(--text-dim); font-size: 10px; margin-top: 22px; letter-spacing: 0.02em; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>etcd — Raft Consensus & State Persistence</h1>
+  <p class="subtitle">Strongly consistent distributed key-value store with leader quorum</p>
+  <p class="stage-label" id="stageLabel">Press play to trace the flow</p>
+
+  <div class="controls">
+    <button id="playBtn" onclick="play()">▶ Play</button>
+    <button onclick="reset()">↺ Reset</button>
+  </div>
+
+  <svg viewBox="0 0 880 520" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Architecture flow diagram for etcd">
+    <!-- Region: etcd Cluster (Raft Quorum) -->
+    <rect class="region-box region-cp" x="300" y="80" width="540" height="400" rx="14"/>
+    <text class="region-label" x="316" y="102">etcd Cluster (Raft Quorum)</text>
+    <line class="connector" id="c0" x1="260" y1="255" x2="340" y2="180"/>
+    <line class="connector connector-dash" id="c0d" x1="260" y1="255" x2="340" y2="180"/>
+    <line class="connector" id="c1" x1="560" y1="168" x2="610" y2="168"/>
+    <line class="connector connector-dash" id="c1d" x1="560" y1="168" x2="610" y2="168"/>
+    <path class="connector" id="c2" d="M450 206 L450 340 L480 340" fill="none"/>
+    <path class="connector connector-dash" id="c2d" d="M450 206 L450 340 L480 340" fill="none"/>
+    <!-- Node: kube-apiserver -->
+    <g id="nApi">
+      <rect class="node-box client" x="60" y="220" width="200" height="70" rx="10"/>
+      <text class="node-title" x="160" y="244" text-anchor="middle">kube-apiserver</text>
+      <text class="node-sub" x="160" y="262" text-anchor="middle">sole direct etcd client</text>
+    </g>
+    <!-- Node: etcd Leader -->
+    <g id="nLeader">
+      <rect class="node-box cp" x="340" y="130" width="220" height="76" rx="10"/>
+      <text class="node-title" x="450" y="154" text-anchor="middle">etcd Leader</text>
+      <text class="node-sub" x="450" y="172" text-anchor="middle">handles write proposals</text>
+      <text class="node-sub" x="450" y="186" text-anchor="middle">replicates Raft log entries</text>
+    </g>
+    <!-- Node: etcd Follower 1 -->
+    <g id="nFol1">
+      <rect class="node-box cp" x="610" y="130" width="200" height="76" rx="10"/>
+      <text class="node-title" x="710" y="154" text-anchor="middle">etcd Follower 1</text>
+      <text class="node-sub" x="710" y="172" text-anchor="middle">persists log to disk</text>
+      <text class="node-sub" x="710" y="186" text-anchor="middle">acknowledges receipt</text>
+    </g>
+    <!-- Node: etcd Follower 2 -->
+    <g id="nFol2">
+      <rect class="node-box cp" x="480" y="340" width="200" height="76" rx="10"/>
+      <text class="node-title" x="580" y="364" text-anchor="middle">etcd Follower 2</text>
+      <text class="node-sub" x="580" y="382" text-anchor="middle">persists log to disk</text>
+      <text class="node-sub" x="580" y="396" text-anchor="middle">quorum witness</text>
+    </g>
+    <circle class="packet" id="packet" cx="160" cy="255" r="6"/>
+  </svg>
+
+  <footer>animated · dependency-free HTML/CSS/JS · Dan Koe style minimalist system design</footer>
+</div>
+
+<script>
+const stages = [
+  {
+    "id": "nApi",
+    "dot": {
+      "x": 160,
+      "y": 255
+    },
+    "label": "API server submits linearizable write request to the etcd leader",
+    "conns": []
+  },
+  {
+    "id": "nLeader",
+    "dot": {
+      "x": 450,
+      "y": 168
+    },
+    "label": "Raft Leader logs the entry and dispatches AppendEntries RPC",
+    "conns": [
+      "c0"
+    ]
+  },
+  {
+    "id": "nFol1",
+    "dot": {
+      "x": 710,
+      "y": 168
+    },
+    "label": "Follower 1 appends entry to WAL and returns acknowledgement",
+    "conns": [
+      "c1"
+    ]
+  },
+  {
+    "id": "nFol2",
+    "dot": {
+      "x": 580,
+      "y": 378
+    },
+    "label": "Follower 2 appends entry, satisfying 2-of-3 Raft quorum",
+    "conns": [
+      "c2"
+    ]
+  },
+  {
+    "id": "nLeader",
+    "dot": {
+      "x": 450,
+      "y": 168
+    },
+    "label": "Leader commits entry, applies to KV store, and returns OK to API server",
+    "conns": []
+  }
+];
+const allNodeIds = ["nApi", "nLeader", "nFol1", "nFol2"];
+const allConnIds = ["c0", "c1", "c2"];
+let playing = false;
+let timer = null;
+
+function clearAll() {
+  allNodeIds.forEach(id => {
+    const box = document.querySelector('#' + id + ' .node-box');
+    const title = document.querySelector('#' + id + ' .node-title');
+    if (box) box.classList.remove('active');
+    if (title) title.classList.remove('active');
+  });
+  allConnIds.forEach(id => {
+    const c = document.getElementById(id);
+    const d = document.getElementById(id + 'd');
+    if (c) c.classList.remove('active');
+    if (d) d.classList.remove('on');
+  });
+}
+
+function reset() {
+  playing = false;
+  clearTimeout(timer);
+  clearAll();
+  document.getElementById('packet').classList.remove('on');
+  document.getElementById('stageLabel').textContent = 'Press play to trace the flow';
+  document.getElementById('playBtn').textContent = '▶ Play';
+}
+
+function play() {
+  if (playing) return;
+  reset();
+  playing = true;
+  document.getElementById('packet').classList.add('on');
+  document.getElementById('playBtn').textContent = '⏸ Running...';
+
+  let i = 0;
+  function step() {
+    clearAll();
+    if (i >= stages.length) {
+      playing = false;
+      document.getElementById('stageLabel').textContent = 'Cluster state committed across Raft quorum ✓';
+      document.getElementById('playBtn').textContent = '▶ Play';
+      return;
+    }
+    const s = stages[i];
+    if (s.conns) {
+      s.conns.forEach(cid => {
+        const c = document.getElementById(cid);
+        const d = document.getElementById(cid + 'd');
+        if (c) c.classList.add('active');
+        if (d) d.classList.add('on');
+      });
+    }
+    const box = document.querySelector('#' + s.id + ' .node-box');
+    const title = document.querySelector('#' + s.id + ' .node-title');
+    if (box) box.classList.add('active');
+    if (title) title.classList.add('active');
+
+    const packet = document.getElementById('packet');
+    packet.setAttribute('cx', s.dot.x);
+    packet.setAttribute('cy', s.dot.y);
+
+    document.getElementById('stageLabel').textContent = s.label;
+    i++;
+    timer = setTimeout(step, 1350);
+  }
+  step();
+}
+</script>
+</body>
+</html>

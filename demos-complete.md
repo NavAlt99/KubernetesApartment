@@ -18,6 +18,13 @@ For a normal workload, the flow is:
 
 This separation is important: the control plane stores intent and makes decisions, while Nodes execute Pods. A Service is a stable network abstraction rather than a process, a PVC is a request for storage rather than a disk itself, and a PDB limits voluntary disruption rather than protecting against every failure. The “Technical perspective” paragraph in each entry expands these boundaries, failure modes, and production considerations; the demo then verifies the behavior in the cluster.
 
+### Pod creation request flow
+
+<iframe src="k8s-pod-flow-bytemonk.html" width="100%" height="760" style="border:none;"></iframe>
+
+> [!TIP]
+> If your Markdown viewer restricts embedded iframes or inline scripts, open [k8s-pod-flow-bytemonk.html](k8s-pod-flow-bytemonk.html) directly in any browser.
+
 ### Technical coverage map
 
 The topics build from cluster internals to application operations. Use this map to see the engineering concern emphasized by each entry:
@@ -122,6 +129,14 @@ Quick reference - demos that need something extra:
 
 **Technical perspective:** Kubernetes provides a declarative control plane, scheduling, self-healing, service discovery, and rollout automation across many machines. Compared with standalone VMs, it removes the need to place and repair each workload manually, improves utilization through bin-packing, and makes the desired state reproducible. The trade-off is additional platform complexity: the cluster itself needs lifecycle management, observability, security, and capacity planning.
 
+
+### Component architecture flow
+
+<iframe src="diagrams/topic-01.html" width="100%" height="560" style="border:none;"></iframe>
+
+> [!TIP]
+> View the interactive animated diagram in [diagrams/topic-01.html](diagrams/topic-01.html).
+
 **Part 2 — Analogy / Zine:** Managing standalone buildings is exhausting; tying them into one complex lets you manage them as a single entity.
 
 ![The Cluster (Why Kubernetes?) zine illustration](generated/kubernetes-apartment-complex/01-zine.png)
@@ -165,6 +180,14 @@ NOTE
 
 **Technical perspective:** The separation of control plane and workers creates a clear failure boundary. Workers execute Pods, while the control plane stores intent and coordinates scheduling and reconciliation. This lets workloads continue during some control-plane interruptions, while worker failure can be handled through rescheduling when replicas and capacity are available. High availability requires multiple control-plane instances and appropriately distributed workers.
 
+
+### Component architecture flow
+
+<iframe src="diagrams/topic-02.html" width="100%" height="560" style="border:none;"></iframe>
+
+> [!TIP]
+> View the interactive animated diagram in [diagrams/topic-02.html](diagrams/topic-02.html).
+
 **Part 2 — Analogy / Zine:** The office thinks (Leasing Office); the buildings do the actual physical work (Worker Nodes).
 
 ![Control Plane vs. Worker Nodes zine illustration](generated/kubernetes-apartment-complex/02-zine.png)
@@ -207,6 +230,14 @@ NOTE
 ![kube-apiserver technical illustration](generated/kubernetes-apartment-complex/03-technical.png)
 
 **Technical perspective:** The API server is the authenticated, authorized, validated concurrency boundary for cluster state. Clients submit declarative objects through the Kubernetes API; admission, versioning, validation, and watches provide a consistent interface for controllers and tools. Keeping etcd behind the API server centralizes policy and prevents components from making ungoverned direct writes.
+
+
+### Component architecture flow
+
+<iframe src="diagrams/topic-03.html" width="100%" height="560" style="border:none;"></iframe>
+
+> [!TIP]
+> View the interactive animated diagram in [diagrams/topic-03.html](diagrams/topic-03.html).
 
 **Part 2 — Analogy / Zine:** Every request must go through this one desk; nobody bypasses it.
 
@@ -253,6 +284,14 @@ NOTE
 
 **Technical perspective:** etcd stores Kubernetes state as a strongly consistent key-value database. Because the API server reconstructs the cluster’s desired and observed state from it, backups, quorum, encryption, latency, and restore testing are critical operational concerns. An etcd outage does not necessarily stop already-running containers immediately, but it prevents reliable control-plane progress and changes.
 
+
+### Component architecture flow
+
+<iframe src="diagrams/topic-04.html" width="100%" height="560" style="border:none;"></iframe>
+
+> [!TIP]
+> View the interactive animated diagram in [diagrams/topic-04.html](diagrams/topic-04.html).
+
 **Part 2 — Analogy / Zine:** Wall-to-wall filing cabinets holding the only copy of the complex's rules and state that actually counts.
 
 ![etcd zine illustration](generated/kubernetes-apartment-complex/04-zine.png)
@@ -295,6 +334,14 @@ NOTE
 ![kube-scheduler technical illustration](generated/kubernetes-apartment-complex/05-technical.png)
 
 **Technical perspective:** The scheduler separates placement decision-making from execution. It filters nodes that violate resource, taint, affinity, topology, or policy constraints, then scores feasible nodes and binds the Pod to the selected one. This lets operators express placement intent without hard-coding a server, while requests and limits help the scheduler make capacity-aware decisions.
+
+
+### Component architecture flow
+
+<iframe src="diagrams/topic-05.html" width="100%" height="560" style="border:none;"></iframe>
+
+> [!TIP]
+> View the interactive animated diagram in [diagrams/topic-05.html](diagrams/topic-05.html).
 
 **Part 2 — Analogy / Zine:** Checks building capacity and rules, then pins new tenants to the best-fitting building.
 
@@ -341,6 +388,14 @@ NOTE
 
 **Technical perspective:** Controllers implement Kubernetes reconciliation: they observe API objects and cluster state, compute the difference, and issue idempotent changes until the difference disappears. This is why deleting a Pod managed by a Deployment is temporary. The model favors eventual convergence and automation, but requires correct ownership, probes, resource settings, and observability to avoid repeatedly reconciling a broken design.
 
+
+### Component architecture flow
+
+<iframe src="diagrams/topic-06.html" width="100%" height="560" style="border:none;"></iframe>
+
+> [!TIP]
+> View the interactive animated diagram in [diagrams/topic-06.html](diagrams/topic-06.html).
+
 **Part 2 — Analogy / Zine:** Clipboard inspectors walking endless loops to ensure reality matches the promised plan, fixing discrepancies automatically.
 
 ![kube-controller-manager zine illustration](generated/kubernetes-apartment-complex/06-zine.png)
@@ -386,6 +441,14 @@ NOTE
 
 **Technical perspective:** The cloud controller manager keeps provider-specific integration outside the Kubernetes core. It translates Services, Nodes, routes, and cloud volumes into provider API operations and reports their status back through Kubernetes objects. This portability is valuable across clouds, but behavior depends on provider identity, permissions, quotas, latency, and the provider’s implementation of the integration.
 
+
+### Component architecture flow
+
+<iframe src="diagrams/topic-07.html" width="100%" height="560" style="border:none;"></iframe>
+
+> [!TIP]
+> View the interactive animated diagram in [diagrams/topic-07.html](diagrams/topic-07.html).
+
 **Part 2 — Analogy / Zine:** Signs paperwork to connect external utilities like rented parking gates.
 
 ![cloud-controller-manager zine illustration](generated/kubernetes-apartment-complex/07-zine.png)
@@ -429,6 +492,14 @@ NOTE
 ![Static Pods technical illustration](generated/kubernetes-apartment-complex/08-technical.png)
 
 **Technical perspective:** Static Pods are bootstrapped locally by the kubelet from files on a node, so they can start before the API server is available. This is useful for kubeadm-style control-plane bootstrapping, but local manifests are node-specific and are not ordinary API-managed workloads. Operators must manage file distribution, updates, and drift carefully.
+
+
+### Component architecture flow
+
+<iframe src="diagrams/topic-08.html" width="100%" height="560" style="border:none;"></iframe>
+
+> [!TIP]
+> View the interactive animated diagram in [diagrams/topic-08.html](diagrams/topic-08.html).
 
 **Part 2 — Analogy / Zine:** A local blueprint used to build the front desk before a front desk even exists.
 
@@ -474,6 +545,14 @@ NOTE
 
 **Technical perspective:** The kubelet is the node-level agent that turns a PodSpec into running containers. It coordinates with the runtime, mounts volumes, executes probes, reports status, and applies lifecycle policies. Kubernetes can declare the desired workload centrally, while the kubelet provides the local enforcement needed to keep that workload running on its assigned node.
 
+
+### Component architecture flow
+
+<iframe src="diagrams/topic-09.html" width="100%" height="560" style="border:none;"></iframe>
+
+> [!TIP]
+> View the interactive animated diagram in [diagrams/topic-09.html](diagrams/topic-09.html).
+
 **Part 2 — Analogy / Zine:** Receives the work order from the office and does headcounts to ensure assigned tenants are present and healthy.
 
 ![kubelet zine illustration](generated/kubernetes-apartment-complex/09-zine.png)
@@ -517,6 +596,14 @@ NOTE
 ![kube-proxy technical illustration](generated/kubernetes-apartment-complex/10-technical.png)
 
 **Technical perspective:** kube-proxy implements the Service data path on nodes by programming packet-forwarding rules, commonly with iptables or IPVS depending on configuration. The Service gives clients a stable virtual destination while backend Pod IPs change. Modern proxy replacements and some CNI implementations can provide equivalent behavior, so kube-proxy is an implementation component rather than the Service abstraction itself.
+
+
+### Component architecture flow
+
+<iframe src="diagrams/topic-10.html" width="100%" height="560" style="border:none;"></iframe>
+
+> [!TIP]
+> View the interactive animated diagram in [diagrams/topic-10.html](diagrams/topic-10.html).
 
 **Part 2 — Analogy / Zine:** Updates a directory on the fly so visitors find the right unit, even as tenants swap out.
 
@@ -564,6 +651,14 @@ NOTE
 
 **Technical perspective:** The Container Runtime Interface lets kubelet use a standard gRPC contract instead of depending on one runtime’s private API. containerd and CRI-O pull images, create sandboxes, start processes, and report container status. This modularity makes runtime choice possible, while image compatibility, cgroup configuration, logging, security isolation, and runtime performance still affect node behavior.
 
+
+### Component architecture flow
+
+<iframe src="diagrams/topic-11.html" width="100%" height="560" style="border:none;"></iframe>
+
+> [!TIP]
+> View the interactive animated diagram in [diagrams/topic-11.html](diagrams/topic-11.html).
+
 **Part 2 — Analogy / Zine:** The physical crew carrying boxes, operating under a standard universal contract.
 
 ![Container Runtime & CRI zine illustration](generated/kubernetes-apartment-complex/11-zine.png)
@@ -606,6 +701,14 @@ NOTE
 ![Sidecar Containers technical illustration](generated/kubernetes-apartment-complex/12-technical.png)
 
 **Technical perspective:** A sidecar shares a Pod’s network namespace and can share volumes with the primary container, making close cooperation possible without building every concern into the application image. Sidecars are useful for proxies, log shipping, certificate renewal, and telemetry, but they increase resource consumption and failure coupling: the Pod’s lifecycle and readiness must account for the supporting container.
+
+
+### Component architecture flow
+
+<iframe src="diagrams/topic-12.html" width="100%" height="560" style="border:none;"></iframe>
+
+> [!TIP]
+> View the interactive animated diagram in [diagrams/topic-12.html](diagrams/topic-12.html).
 
 **Part 2 — Analogy / Zine:** Sits in the same unit handling side tasks, like shipping out logs, without bothering the main tenant.
 
@@ -664,6 +767,14 @@ NOTE
 
 **Technical perspective:** Init containers create an ordered initialization phase. Kubernetes will not start the application containers until each init container exits successfully, and failed init work is retried according to Pod restart behavior. They are useful for migrations, configuration generation, and dependency checks, but long or fragile initialization directly delays application availability.
 
+
+### Component architecture flow
+
+<iframe src="diagrams/topic-13.html" width="100%" height="560" style="border:none;"></iframe>
+
+> [!TIP]
+> View the interactive animated diagram in [diagrams/topic-13.html](diagrams/topic-13.html).
+
 **Part 2 — Analogy / Zine:** Cleans and preps the unit, then leaves completely before the main tenant moves in.
 
 ![Init Containers zine illustration](generated/kubernetes-apartment-complex/13-zine.png)
@@ -721,6 +832,14 @@ NOTE
 
 **Technical perspective:** CNI is the plugin contract behind Pod networking. A plugin allocates Pod addresses, creates interfaces, installs routes, and may enforce network policy or encryption. Kubernetes defines the Pod network model, while the CNI implementation supplies the dataplane. Plugin choice therefore affects performance, security features, multi-network support, and troubleshooting methods.
 
+
+### Component architecture flow
+
+<iframe src="diagrams/topic-14.html" width="100%" height="560" style="border:none;"></iframe>
+
+> [!TIP]
+> View the interactive animated diagram in [diagrams/topic-14.html](diagrams/topic-14.html).
+
 **Part 2 — Analogy / Zine:** The crew that paves the roads and hands out addresses so tenants can reach each other.
 
 ![CNI (Container Network Interface) zine illustration](generated/kubernetes-apartment-complex/14-zine.png)
@@ -766,6 +885,14 @@ NOTE
 
 **Technical perspective:** CoreDNS provides cluster-local name resolution so applications can address Services by stable DNS names instead of tracking changing Pod IPs. It watches Kubernetes records and answers names according to configured zones and search paths. DNS failures can look like application failures, so caching, readiness, upstream forwarding, and CoreDNS capacity belong in cluster operations.
 
+
+### Component architecture flow
+
+<iframe src="diagrams/topic-15.html" width="100%" height="560" style="border:none;"></iframe>
+
+> [!TIP]
+> View the interactive animated diagram in [diagrams/topic-15.html](diagrams/topic-15.html).
+
 **Part 2 — Analogy / Zine:** Tenants look up a friendly name instead of memorizing unit numbers.
 
 ![CoreDNS zine illustration](generated/kubernetes-apartment-complex/15-zine.png)
@@ -810,6 +937,14 @@ NOTE
 ![Services technical illustration](generated/kubernetes-apartment-complex/16-technical.png)
 
 **Technical perspective:** A Service decouples clients from ephemeral Pods by selecting backends through labels and exposing a stable virtual endpoint. ClusterIP supports internal access, NodePort and LoadBalancer extend exposure, and headless Services return backend addresses for clients that need direct discovery. The abstraction simplifies rolling updates and rescheduling because consumers do not need to learn each new Pod IP.
+
+
+### Component architecture flow
+
+<iframe src="diagrams/topic-16.html" width="100%" height="560" style="border:none;"></iframe>
+
+> [!TIP]
+> View the interactive animated diagram in [diagrams/topic-16.html](diagrams/topic-16.html).
 
 **Part 2 — Analogy / Zine:** A bolted mailbox that points to whichever tenants currently have the matching door nameplates.
 
@@ -858,6 +993,14 @@ NOTE
 
 **Technical perspective:** EndpointSlices are the scalable representation of Service backends. They track the addresses, readiness, serving state, and topology information of selected Pods in smaller objects than the legacy Endpoints API. Controllers and proxies use them to update routing as Pods become ready, terminate, or move, reducing update size for Services with many endpoints.
 
+
+### Component architecture flow
+
+<iframe src="diagrams/topic-17.html" width="100%" height="560" style="border:none;"></iframe>
+
+> [!TIP]
+> View the interactive animated diagram in [diagrams/topic-17.html](diagrams/topic-17.html).
+
 **Part 2 — Analogy / Zine:** The actual mail-forwarding list taped inside the mailbox, updated every time a tenant moves in or out.
 
 ![Endpoints zine illustration](generated/kubernetes-apartment-complex/17-zine.png)
@@ -904,6 +1047,14 @@ NOTE
 ![Ingress technical illustration](generated/kubernetes-apartment-complex/18-technical.png)
 
 **Technical perspective:** Ingress expresses layer-7 HTTP routing such as host and path matches, while an Ingress controller supplies the reverse proxy, TLS termination, and implementation-specific behavior. The resource alone does not expose traffic; the controller and its load-balancer integration do. For new designs, the Gateway API can provide a more expressive, role-oriented successor.
+
+
+### Component architecture flow
+
+<iframe src="diagrams/topic-18.html" width="100%" height="560" style="border:none;"></iframe>
+
+> [!TIP]
+> View the interactive animated diagram in [diagrams/topic-18.html](diagrams/topic-18.html).
 
 **Part 2 — Analogy / Zine:** The single outer gate reads visitor destinations and sends them down the right internal road.
 
@@ -972,6 +1123,14 @@ NOTE
 
 **Technical perspective:** NetworkPolicy is an allow-list-style authorization layer for network traffic. Policies select Pods and define permitted ingress or egress by namespace, Pod labels, ports, and direction, but only a policy-capable CNI can enforce them. A safe rollout starts with understanding default allow behavior, DNS dependencies, health checks, and the difference between isolation and application authentication.
 
+
+### Component architecture flow
+
+<iframe src="diagrams/topic-19.html" width="100%" height="560" style="border:none;"></iframe>
+
+> [!TIP]
+> View the interactive animated diagram in [diagrams/topic-19.html](diagrams/topic-19.html).
+
 **Part 2 — Analogy / Zine:** A guest list posted on a unit's door — only visitors on the list get buzzed in, everyone else is turned away at that door.
 
 ![NetworkPolicy zine illustration](generated/kubernetes-apartment-complex/19-zine.png)
@@ -1030,6 +1189,14 @@ NOTE
 ![PersistentVolume (PV) technical illustration](generated/kubernetes-apartment-complex/20-technical.png)
 
 **Technical perspective:** A PersistentVolume represents storage independently of a Pod lifecycle. Its reclaim policy, access mode, volume mode, topology, and storage backend determine what survives Pod replacement and how it can be attached. Persistence prevents data loss from ordinary rescheduling, but it does not automatically provide backups, replication, consistency guarantees, or protection from operator error.
+
+
+### Component architecture flow
+
+<iframe src="diagrams/topic-20.html" width="100%" height="560" style="border:none;"></iframe>
+
+> [!TIP]
+> View the interactive animated diagram in [diagrams/topic-20.html](diagrams/topic-20.html).
 
 **Part 2 — Analogy / Zine:** A separate storage facility building down the road, built to outlast any single tenant.
 
@@ -1106,6 +1273,14 @@ NOTE
 
 **Technical perspective:** A PersistentVolumeClaim is a workload-facing storage request. Kubernetes binds it to a compatible PV using capacity, access mode, volume mode, and StorageClass constraints, allowing application manifests to avoid provider-specific disk details. A claim can remain Pending when no matching or provisionable storage exists, so capacity, topology, and provisioner health must be checked.
 
+
+### Component architecture flow
+
+<iframe src="diagrams/topic-21.html" width="100%" height="560" style="border:none;"></iframe>
+
+> [!TIP]
+> View the interactive animated diagram in [diagrams/topic-21.html](diagrams/topic-21.html).
+
 **Part 2 — Analogy / Zine:** A universal rental agreement a tenant signs to claim a unit in the storage facility.
 
 ![PersistentVolumeClaim (PVC) zine illustration](generated/kubernetes-apartment-complex/21-zine.png)
@@ -1179,6 +1354,14 @@ NOTE
 
 **Technical perspective:** A StorageClass is a policy and provisioning recipe for dynamic volumes. It selects a provisioner and parameters such as disk type, replication, filesystem, and binding mode. Dynamic provisioning reduces manual storage administration, while the chosen defaults and reclaim behavior have direct cost, performance, availability, and data-retention consequences.
 
+
+### Component architecture flow
+
+<iframe src="diagrams/topic-22.html" width="100%" height="560" style="border:none;"></iframe>
+
+> [!TIP]
+> View the interactive animated diagram in [diagrams/topic-22.html](diagrams/topic-22.html).
+
 **Part 2 — Analogy / Zine:** The complex's pre-approved construction blueprint for building a brand-new storage unit on demand, instead of waiting for one to already exist.
 
 ![StorageClass zine illustration](generated/kubernetes-apartment-complex/22-zine.png)
@@ -1222,6 +1405,14 @@ NOTE
 
 **Technical perspective:** A Role defines namespaced permissions as API groups, resources, resource names, and verbs. It is deliberately separate from identity: writing a permission rule does nothing until a binding attaches it to a subject. This separation supports least privilege and reviewable policy, but wildcard permissions and access to Secrets can create broad escalation paths.
 
+
+### Component architecture flow
+
+<iframe src="diagrams/topic-23.html" width="100%" height="560" style="border:none;"></iframe>
+
+> [!TIP]
+> View the interactive animated diagram in [diagrams/topic-23.html](diagrams/topic-23.html).
+
 **Part 2 — Analogy / Zine:** A printed set of house rules for one specific building — what's allowed inside, but nobody's name is on it yet.
 
 ![Role zine illustration](generated/kubernetes-apartment-complex/23-zine.png)
@@ -1264,6 +1455,14 @@ NOTE
 ![RoleBinding technical illustration](generated/kubernetes-apartment-complex/24-technical.png)
 
 **Technical perspective:** A RoleBinding attaches a Role or ClusterRole’s permissions to a user, group, or ServiceAccount within a namespace. The binding is the grant that makes the rule effective, and namespace scope limits where it applies. Reviewing bindings—not just roles—is essential because an apparently narrow role can become powerful when bound to a broad group.
+
+
+### Component architecture flow
+
+<iframe src="diagrams/topic-24.html" width="100%" height="560" style="border:none;"></iframe>
+
+> [!TIP]
+> View the interactive animated diagram in [diagrams/topic-24.html](diagrams/topic-24.html).
 
 **Part 2 — Analogy / Zine:** The clipboard sign-up sheet where a specific tenant's name gets added under the house rules, officially granting them those permissions.
 
@@ -1309,6 +1508,14 @@ NOTE
 
 **Technical perspective:** A ClusterRole describes permissions that can apply across namespaces or to cluster-scoped resources such as Nodes. It can also be referenced by a namespaced RoleBinding for reusable namespaced rules. Cluster-wide permission definitions improve consistency, but a careless binding can grant visibility or mutation across the entire cluster.
 
+
+### Component architecture flow
+
+<iframe src="diagrams/topic-25.html" width="100%" height="560" style="border:none;"></iframe>
+
+> [!TIP]
+> View the interactive animated diagram in [diagrams/topic-25.html](diagrams/topic-25.html).
+
 **Part 2 — Analogy / Zine:** A master house-rules sheet that applies across every building in the entire complex, not just one.
 
 ![ClusterRole zine illustration](generated/kubernetes-apartment-complex/25-zine.png)
@@ -1351,6 +1558,14 @@ NOTE
 ![ClusterRoleBinding technical illustration](generated/kubernetes-apartment-complex/26-technical.png)
 
 **Technical perspective:** A ClusterRoleBinding grants a ClusterRole to subjects at cluster scope. It is appropriate for tightly controlled platform automation that must inspect or manage many namespaces, but it is one of the highest-impact RBAC objects. Use narrowly scoped roles and bindings where possible, audit effective permissions, and avoid giving application identities cluster-admin access.
+
+
+### Component architecture flow
+
+<iframe src="diagrams/topic-26.html" width="100%" height="560" style="border:none;"></iframe>
+
+> [!TIP]
+> View the interactive animated diagram in [diagrams/topic-26.html](diagrams/topic-26.html).
 
 **Part 2 — Analogy / Zine:** A master key issued to one person that works on every building in the complex, not just one unit.
 
@@ -1397,6 +1612,14 @@ NOTE
 
 **Technical perspective:** A ServiceAccount gives software in a Pod a Kubernetes identity distinct from a human kubeconfig user. Tokens and projected credentials let applications authenticate to the API server, while RBAC determines what that identity may do. Treat ServiceAccounts as security principals: use dedicated accounts, short-lived projected tokens, and only the permissions the workload needs.
 
+
+### Component architecture flow
+
+<iframe src="diagrams/topic-27.html" width="100%" height="560" style="border:none;"></iframe>
+
+> [!TIP]
+> View the interactive animated diagram in [diagrams/topic-27.html](diagrams/topic-27.html).
+
 **Part 2 — Analogy / Zine:** A staff ID badge issued to a robot maintenance worker so the front desk knows it's an authorized employee, not a random visitor.
 
 ![ServiceAccount zine illustration](generated/kubernetes-apartment-complex/27-zine.png)
@@ -1439,6 +1662,14 @@ NOTE
 ![Node (controller) technical illustration](generated/kubernetes-apartment-complex/28-technical.png)
 
 **Technical perspective:** The Node controller turns kubelet heartbeats and lease updates into a cluster-level health view. When a node stops reporting, Kubernetes marks it unhealthy and eventually evicts or recreates eligible workloads, subject to timing and disruption rules. Detection is intentionally delayed to avoid reacting to transient network loss, so applications still need redundancy and graceful failure handling.
+
+
+### Component architecture flow
+
+<iframe src="diagrams/topic-28.html" width="100%" height="560" style="border:none;"></iframe>
+
+> [!TIP]
+> View the interactive animated diagram in [diagrams/topic-28.html](diagrams/topic-28.html).
 
 **Part 2 — Analogy / Zine:** The office worker who checks in on every building daily, and starts moving tenants out if a building goes quiet for too long.
 
@@ -1487,6 +1718,14 @@ NOTE
 
 **Technical perspective:** Namespaces partition namespaced objects and provide a scope for access control, quotas, and policy. They are useful administrative boundaries, not hard security walls or virtual clusters. Deleting a Namespace initiates cleanup of its contents, so finalizers or an unresponsive controller can leave termination stuck until the dependency is resolved.
 
+
+### Component architecture flow
+
+<iframe src="diagrams/topic-29.html" width="100%" height="560" style="border:none;"></iframe>
+
+> [!TIP]
+> View the interactive animated diagram in [diagrams/topic-29.html](diagrams/topic-29.html).
+
 **Part 2 — Analogy / Zine:** When a fenced section of the property is being shut down, every tenant and piece of furniture inside is cleared out first before the fence itself comes down.
 
 ![Namespace (controller) zine illustration](generated/kubernetes-apartment-complex/29-zine.png)
@@ -1531,6 +1770,14 @@ NOTE
 ![ResourceQuota technical illustration](generated/kubernetes-apartment-complex/30-technical.png)
 
 **Technical perspective:** ResourceQuota limits aggregate consumption or object counts within a namespace. It protects shared clusters from one team exhausting CPU, memory, storage, or API objects, and can require requests or limits before admission. Quota must be paired with LimitRanges, monitoring, and realistic capacity planning; otherwise valid workloads may be rejected unexpectedly.
+
+
+### Component architecture flow
+
+<iframe src="diagrams/topic-30.html" width="100%" height="560" style="border:none;"></iframe>
+
+> [!TIP]
+> View the interactive animated diagram in [diagrams/topic-30.html](diagrams/topic-30.html).
 
 **Part 2 — Analogy / Zine:** A posted occupancy limit sign on a fenced section — once it's full, the front desk simply refuses to let anyone else move in.
 
@@ -1586,6 +1833,14 @@ NOTE
 
 **Technical perspective:** The garbage collector follows ownerReferences to remove dependents when their owner is deleted. This keeps ReplicaSet Pods, Job Pods, and related objects from becoming unmanaged orphans, while propagation policies control foreground, background, or orphan deletion. Incorrect ownership metadata can cause unexpected cleanup, so controllers must establish ownership deliberately.
 
+
+### Component architecture flow
+
+<iframe src="diagrams/topic-31.html" width="100%" height="560" style="border:none;"></iframe>
+
+> [!TIP]
+> View the interactive animated diagram in [diagrams/topic-31.html](diagrams/topic-31.html).
+
 **Part 2 — Analogy / Zine:** The cleanup crew that removes any leftover furniture in a unit once the tenant who ordered it moves out — nothing is left behind unclaimed.
 
 ![Garbage Collector zine illustration](generated/kubernetes-apartment-complex/31-zine.png)
@@ -1632,6 +1887,14 @@ NOTE
 
 **Technical perspective:** A ReplicaSet maintains a target number of interchangeable Pods selected by labels. It repairs count drift but does not provide rollout strategy, revision history, or application version management. Deployments normally own ReplicaSets because they add controlled replacement and rollback while retaining ReplicaSet reconciliation underneath.
 
+
+### Component architecture flow
+
+<iframe src="diagrams/topic-32.html" width="100%" height="560" style="border:none;"></iframe>
+
+> [!TIP]
+> View the interactive animated diagram in [diagrams/topic-32.html](diagrams/topic-32.html).
+
 **Part 2 — Analogy / Zine:** Protects one number: 'always keep exactly 3 identical units occupied,' replacing any that go vacant instantly.
 
 ![ReplicaSet zine illustration](generated/kubernetes-apartment-complex/32-zine.png)
@@ -1676,6 +1939,14 @@ NOTE
 ![Deployment technical illustration](generated/kubernetes-apartment-complex/33-technical.png)
 
 **Technical perspective:** A Deployment turns an application version change into a controlled ReplicaSet transition. Rolling-update limits balance availability against rollout speed, readiness gates prevent unready Pods from receiving traffic, and revision history enables rollback. Deployments make stateless releases repeatable, but state migration, backward compatibility, and probe quality still determine whether an update is safe.
+
+
+### Component architecture flow
+
+<iframe src="diagrams/topic-33.html" width="100%" height="560" style="border:none;"></iframe>
+
+> [!TIP]
+> View the interactive animated diagram in [diagrams/topic-33.html](diagrams/topic-33.html).
 
 **Part 2 — Analogy / Zine:** Manages swapping an entire set of units from a v1 layout to a v2 layout gradually, with a lever to rollback if inspections fail.
 
@@ -1724,6 +1995,14 @@ NOTE
 ![StatefulSet technical illustration](generated/kubernetes-apartment-complex/34-technical.png)
 
 **Technical perspective:** A StatefulSet gives replicas stable ordinal identities, predictable network names, and individually associated storage. Ordered creation and termination can support clustered databases and quorum systems, but StatefulSet does not automatically make an application distributed or consistent. The application must understand identity, failover, storage semantics, and backup/recovery.
+
+
+### Component architecture flow
+
+<iframe src="diagrams/topic-34.html" width="100%" height="560" style="border:none;"></iframe>
+
+> [!TIP]
+> View the interactive animated diagram in [diagrams/topic-34.html](diagrams/topic-34.html).
 
 **Part 2 — Analogy / Zine:** Named, numbered units where the same tenant always returns to the exact same unit with their exact same furniture — never shuffled to a different room.
 
@@ -1801,6 +2080,14 @@ NOTE
 
 **Technical perspective:** A DaemonSet expresses node coverage rather than a replica count: one Pod is scheduled on each matching node, including nodes added later. This suits agents that need local access, such as log collectors, monitors, and networking components. Taints, tolerations, selectors, and resource requests determine where the agent can run and whether it competes with workloads.
 
+
+### Component architecture flow
+
+<iframe src="diagrams/topic-35.html" width="100%" height="560" style="border:none;"></iframe>
+
+> [!TIP]
+> View the interactive animated diagram in [diagrams/topic-35.html](diagrams/topic-35.html).
+
 **Part 2 — Analogy / Zine:** A dedicated fire extinguisher mounted in every single building — one per building, automatically, no exceptions.
 
 ![DaemonSet zine illustration](generated/kubernetes-apartment-complex/35-zine.png)
@@ -1864,6 +2151,14 @@ NOTE
 
 **Technical perspective:** A Job represents finite work and tracks successful and failed Pod completions. It can retry failures, run parallel workers, and retain or clean up finished Pods according to policy. Jobs are a better fit than Deployments for migrations, batch processing, and one-time maintenance because completion—not continuous availability—is the desired state.
 
+
+### Component architecture flow
+
+<iframe src="diagrams/topic-36.html" width="100%" height="560" style="border:none;"></iframe>
+
+> [!TIP]
+> View the interactive animated diagram in [diagrams/topic-36.html](diagrams/topic-36.html).
+
 **Part 2 — Analogy / Zine:** A one-time moving crew hired to move a single tenant's boxes — once the job is done, the crew packs up and leaves for good, not staying on payroll.
 
 ![Job zine illustration](generated/kubernetes-apartment-complex/36-zine.png)
@@ -1920,6 +2215,14 @@ NOTE
 ![CronJob technical illustration](generated/kubernetes-apartment-complex/37-technical.png)
 
 **Technical perspective:** A CronJob creates Jobs from a schedule, adding automation for backups, reports, cleanup, and other recurring work. Concurrency policy, missed schedules, starting deadlines, history limits, and idempotency determine whether repeated runs are safe. A CronJob schedules work; it does not guarantee exactly-once execution, so the task must tolerate retries and overlap appropriately.
+
+
+### Component architecture flow
+
+<iframe src="diagrams/topic-37.html" width="100%" height="560" style="border:none;"></iframe>
+
+> [!TIP]
+> View the interactive animated diagram in [diagrams/topic-37.html](diagrams/topic-37.html).
 
 **Part 2 — Analogy / Zine:** The scheduled overnight cleaning crew that shows up automatically every night at 2 AM, does the job, and leaves — nobody has to call them each time.
 
@@ -1981,6 +2284,14 @@ NOTE
 ![ReplicationController (legacy) technical illustration](generated/kubernetes-apartment-complex/38-technical.png)
 
 **Technical perspective:** ReplicationController is the predecessor to ReplicaSet. It maintains a fixed count of matching Pods, but its selector model is less expressive and it is not the normal choice for new applications. Understanding it matters when operating older clusters or manifests, while migrations generally move to Deployments and ReplicaSets.
+
+
+### Component architecture flow
+
+<iframe src="diagrams/topic-38.html" width="100%" height="560" style="border:none;"></iframe>
+
+> [!TIP]
+> View the interactive animated diagram in [diagrams/topic-38.html](diagrams/topic-38.html).
 
 **Part 2 — Analogy / Zine:** The original, retired occupancy-enforcer clipboard system the complex used before the newer, more flexible enforcer took over — still technically works, but nobody sets it up new anymore.
 
@@ -2045,6 +2356,14 @@ NOTE
 
 **Technical perspective:** HPA changes the number of replicas based on observed metrics and a target such as average CPU utilization or an external/custom metric. Horizontal scaling improves concurrency and availability when the application is stateless or replicated, but it needs accurate requests, metrics availability, startup tolerance, and a workload that can actually share traffic across replicas.
 
+
+### Component architecture flow
+
+<iframe src="diagrams/topic-39.html" width="100%" height="560" style="border:none;"></iframe>
+
+> [!TIP]
+> View the interactive animated diagram in [diagrams/topic-39.html](diagrams/topic-39.html).
+
 **Part 2 — Analogy / Zine:** The staffing manager who calls in more substitute teachers automatically when the lunch rush hits a certain crowd size, and sends them home once things quiet down.
 
 ![HorizontalPodAutoscaler (HPA) zine illustration](generated/kubernetes-apartment-complex/39-zine.png)
@@ -2095,6 +2414,14 @@ NOTE
 ![VerticalPodAutoscaler (VPA) technical illustration](generated/kubernetes-apartment-complex/40-technical.png)
 
 **Technical perspective:** VPA adjusts or recommends Pod resource requests and limits using historical usage. It is useful when sizing is difficult or workload demand changes vertically, but applying recommendations can restart Pods and may conflict with HPA or tightly constrained scheduling. VPA therefore requires an explicit update mode, disruption planning, and attention to workload eviction behavior.
+
+
+### Component architecture flow
+
+<iframe src="diagrams/topic-40.html" width="100%" height="560" style="border:none;"></iframe>
+
+> [!TIP]
+> View the interactive animated diagram in [diagrams/topic-40.html](diagrams/topic-40.html).
 
 **Part 2 — Analogy / Zine:** Instead of calling in more staff, this manager just gives one tenant a bigger unit when they clearly need more space, and downsizes them if they don't need it anymore.
 
@@ -2157,6 +2484,14 @@ NOTE
 ![Pod Disruption Budget (PDB) technical illustration](generated/kubernetes-apartment-complex/41-technical.png)
 
 **Technical perspective:** A PodDisruptionBudget limits voluntary evictions during planned operations such as node drains; it does not protect against crashes, hardware failure, or all forms of involuntary disruption. A realistic budget balances availability with maintenance progress and only works when the application has enough replicas and schedulable capacity elsewhere.
+
+
+### Component architecture flow
+
+<iframe src="diagrams/topic-41.html" width="100%" height="560" style="border:none;"></iframe>
+
+> [!TIP]
+> View the interactive animated diagram in [diagrams/topic-41.html](diagrams/topic-41.html).
 
 **Part 2 — Analogy / Zine:** A rule posted during planned building maintenance: at least 2 units in this wing must stay occupied and undisturbed at any given time, no matter how many maintenance requests come in at once.
 

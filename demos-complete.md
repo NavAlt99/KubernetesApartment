@@ -172,6 +172,41 @@ NOTE
   One command shows the whole 'complex' instead of logging into each machine.
 </pre></div>
 
+
+### Knowledge Check — Quiz
+
+**Q1: When a worker node running a Pod loses network connectivity to the control plane, what happens to the containers running on that node immediately?**
+
+- [ ] A) The local container runtime immediately terminates all running containers.
+- [ ] B) The containers continue running locally, but the control plane cannot observe or update their status.
+- [ ] C) The API server sends an SSH command to reboot the worker machine.
+- [ ] D) etcd immediately purges the Pod object from cluster state.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) The containers continue running locally, but the control plane cannot observe or update their status.
+
+**Explanation:** The kubelet and local container runtime continue executing workloads based on local state even during control plane disconnection, though the control plane will mark the node NotReady after the lease timeout.
+
+</details>
+
+**Q2: Which core architectural principle fundamentally distinguishes Kubernetes from traditional imperative VM deployment scripts?**
+
+- [ ] A) Synchronous execution of linear shell scripts on remote hosts.
+- [ ] B) Declarative desired state reconciliation via continuous control loops.
+- [ ] C) Direct peer-to-peer communication between etcd and container runtimes.
+- [ ] D) Requiring physical operator access to machines for all changes.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) Declarative desired state reconciliation via continuous control loops.
+
+**Explanation:** Kubernetes operates on declarative intent: you define the desired state in the API server, and independent controllers continuously reconcile actual state to match it.
+
+</details>
+
 ## 2. Control Plane vs. Worker Nodes
 
 **Part 1 — Technical Discussion:** The control plane exposes the API, stores cluster state, schedules Pods, and runs controllers; worker Nodes provide the kubelet, container runtime, and networking needed to execute them. A worker failure can trigger replacement or rescheduling when replicas and capacity are available, while an isolated control-plane failure may leave existing processes running but stops reliable changes and new placement decisions. High availability therefore requires redundant control-plane components and workloads spread across failure domains.
@@ -222,6 +257,41 @@ CLEANUP
 NOTE
   This guide assumes the three-node kind cluster above, so the control plane and workers are separate Docker containers.
 </pre></div>
+
+
+### Knowledge Check — Quiz
+
+**Q1: If all control plane nodes become temporarily unreachable in a cluster, what is the immediate effect on already-running workloads on healthy worker nodes?**
+
+- [ ] A) All pods are immediately terminated by their local kubelets.
+- [ ] B) Worker nodes stop routing network traffic between running pods.
+- [ ] C) Existing pods and data plane networking continue running, but no new pods can be scheduled or state updated.
+- [ ] D) The cluster automatically falls back to single-node Docker engines.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** C) Existing pods and data plane networking continue running, but no new pods can be scheduled or state updated.
+
+**Explanation:** Data plane execution is decoupled from the control plane; existing pods and network routes remain functional, but scheduling, scaling, and API changes are blocked.
+
+</details>
+
+**Q2: What is the primary role of worker nodes relative to the control plane?**
+
+- [ ] A) Managing etcd quorum and evaluating RBAC authorization.
+- [ ] B) Executing pod sandboxes, container processes, and local network/storage enforcement via kubelet and runtime.
+- [ ] C) Authorizing TLS certificates for external client requests.
+- [ ] D) Directly editing cluster manifests inside etcd storage.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) Executing pod sandboxes, container processes, and local network/storage enforcement via kubelet and runtime.
+
+**Explanation:** Worker nodes represent the execution layer ('muscle') managed by kubelet, containerd, and kube-proxy, while the control plane ('brain') makes decisions and stores intent.
+
+</details>
 
 ## 3. kube-apiserver
 
@@ -276,6 +346,41 @@ NOTE
   Bypass kubectl and hit the 'front desk' directly with curl.
 </pre></div>
 
+
+### Knowledge Check — Quiz
+
+**Q1: Which of the following is true regarding how cluster components communicate with etcd in standard Kubernetes?**
+
+- [ ] A) Both the scheduler and kubelet write directly to etcd over gRPC.
+- [ ] B) Only the kube-apiserver communicates directly with etcd; all other components interact via the API server.
+- [ ] C) etcd pushes event notifications directly to worker node kube-proxies.
+- [ ] D) Admission webhooks persist rejected objects directly in etcd for audit logs.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) Only the kube-apiserver communicates directly with etcd; all other components interact via the API server.
+
+**Explanation:** kube-apiserver is the sole gateway and concurrency boundary for etcd, ensuring all reads and writes pass through authentication, authorization, and validation.
+
+</details>
+
+**Q2: In what order does the kube-apiserver process an incoming resource creation request?**
+
+- [ ] A) Mutating Admission -> Authentication -> Validation -> etcd
+- [ ] B) Authentication -> Authorization -> Mutating Admission -> Schema/Validating Admission -> etcd
+- [ ] C) Authorization -> Schema Validation -> Authentication -> etcd
+- [ ] D) etcd Write -> Mutating Admission -> Authorization
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) Authentication -> Authorization -> Mutating Admission -> Schema/Validating Admission -> etcd
+
+**Explanation:** A request must first be authenticated (who are you?), then authorized (can you do this?), then mutated (defaults/sidecars injected), then validated (schema & policy rules), before being committed to etcd.
+
+</details>
+
 ## 4. etcd
 
 **Part 1 — Technical Discussion:** etcd is a strongly consistent distributed key-value store that holds Kubernetes API state, including specifications, metadata, and status needed by controllers. The API server uses it as the authoritative record, so quorum, disk latency, encryption, access control, snapshots, and restore testing directly affect control-plane reliability. Existing containers may continue briefly during an etcd outage, but new decisions and durable state changes cannot safely converge.
@@ -326,6 +431,41 @@ CLEANUP
 NOTE
   Works on the kubeadm-style control plane used by kind. Managed clusters (EKS, GKE, AKS) hide etcd, so this will not work there. Do not use -it with a piped command.
 </pre></div>
+
+
+### Knowledge Check — Quiz
+
+**Q1: In a 3-node etcd cluster, how many node failures can the cluster tolerate while maintaining write operations?**
+
+- [ ] A) 2 nodes
+- [ ] B) 1 node
+- [ ] C) 0 nodes
+- [ ] D) 3 nodes
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) 1 node
+
+**Explanation:** etcd requires a strict majority quorum ((N/2) + 1). For N=3, quorum is 2, meaning only 1 node failure is tolerated before writes are blocked.
+
+</details>
+
+**Q2: Why is low-latency disk I/O (such as NVMe/SSD) critical for etcd performance in production?**
+
+- [ ] A) etcd compiles Go binaries on every write transaction.
+- [ ] B) Raft consensus requires sequential fsync writes to the write-ahead log (WAL) before acknowledging mutations.
+- [ ] C) etcd stores container image layers on disk.
+- [ ] D) kube-proxy streams raw packet capture logs into etcd.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) Raft consensus requires sequential fsync writes to the write-ahead log (WAL) before acknowledging mutations.
+
+**Explanation:** Every Raft proposal requires appending to disk and fsyncing to the WAL; high disk write latency directly stalls Raft consensus heartbeats and API server writes.
+
+</details>
 
 ## 5. kube-scheduler
 
@@ -380,6 +520,41 @@ NOTE
   The Scheduled event is the exact moment the scheduler picked a node.
 </pre></div>
 
+
+### Knowledge Check — Quiz
+
+**Q1: During the scheduling cycle for an unscheduled Pod, what occurs if all candidate nodes are eliminated during the Filtering (predicates) phase?**
+
+- [ ] A) The Pod is scheduled on the control-plane node automatically.
+- [ ] B) The Pod remains in Pending status with a PodScheduled condition of False and reason FailedScheduling.
+- [ ] C) The kube-scheduler deletes the Pod from etcd.
+- [ ] D) The Pod is assigned to a random worker node regardless of constraints.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) The Pod remains in Pending status with a PodScheduled condition of False and reason FailedScheduling.
+
+**Explanation:** If no node passes filtering (e.g. due to insufficient CPU/memory or untolerated taints), the pod stays Pending until cluster capacity or constraints change.
+
+</details>
+
+**Q2: How does the scheduler communicate its placement decision to the assigned worker node?**
+
+- [ ] A) The scheduler connects via SSH directly to the worker node.
+- [ ] B) The scheduler creates a Binding subresource via the API server that sets pod.spec.nodeName.
+- [ ] C) The scheduler pushes a gRPC message directly to containerd on the worker node.
+- [ ] D) The scheduler writes the node IP into CoreDNS.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) The scheduler creates a Binding subresource via the API server that sets pod.spec.nodeName.
+
+**Explanation:** The scheduler does not contact nodes directly; it creates a Binding object via the API server, setting spec.nodeName. The target node's kubelet watches for pods bound to itself.
+
+</details>
+
 ## 6. kube-controller-manager
 
 **Part 1 — Technical Discussion:** kube-controller-manager hosts independent reconciliation loops for objects such as Nodes, endpoints, namespaces, and replication resources. Each controller watches API events, compares desired and observed state, and makes idempotent API changes until the difference converges. This eventual-consistency model enables self-healing, but bad probes, ownership, or resource settings can cause repeated ineffective repairs.
@@ -433,6 +608,41 @@ NOTE
   The control loop noticed the gap and closed it with no command from you.
 </pre></div>
 
+
+### Knowledge Check — Quiz
+
+**Q1: What design principle enables Kubernetes controllers to recover gracefully from network partitions or restarts without missing state changes?**
+
+- [ ] A) Edge-triggered interrupts stored in persistent message queues.
+- [ ] B) Level-triggered reconciliation loops comparing desired state from the API server with observed cluster state.
+- [ ] C) Synchronous RPC heartbeats between all worker nodes.
+- [ ] D) Hardcoded sleep timers between sequential shell commands.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) Level-triggered reconciliation loops comparing desired state from the API server with observed cluster state.
+
+**Explanation:** Level-triggered design means controllers reconcile based on current observed state rather than relying on having received every intermediate edge event, making them self-healing and idempotent.
+
+</details>
+
+**Q2: If a user manually deletes a Pod managed by a Deployment (via its ReplicaSet), what will the ReplicaSet controller do?**
+
+- [ ] A) It updates the Deployment replicas count to N - 1.
+- [ ] B) It marks the Deployment as Failed.
+- [ ] C) It observes that current replicas < desired replicas and creates a replacement Pod via the API server.
+- [ ] D) It recreates the entire cluster worker node.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** C) It observes that current replicas < desired replicas and creates a replacement Pod via the API server.
+
+**Explanation:** The ReplicaSet controller continuously compares observed replicas matching its selector against spec.replicas. If one is missing, it immediately issues an API request to create a new one.
+
+</details>
+
 ## 7. cloud-controller-manager
 
 **Part 1 — Technical Discussion:** cloud-controller-manager isolates provider-specific integrations from the Kubernetes core. Its controllers translate Services, Nodes, routes, and persistent volumes into cloud API operations, then write the resulting addresses, identities, and status back to Kubernetes. Provisioning depends on cloud credentials, quotas, API latency, regional topology, and provider-specific behavior.
@@ -484,6 +694,41 @@ CLEANUP
 NOTE
   Kind has no cloud provider by default, so &lt;pending&gt; is the expected result. To provision a real LoadBalancer on kind, install and run cloud-provider-kind separately; for a simple local HTTP test, use a NodePort instead.
 </pre></div>
+
+
+### Knowledge Check — Quiz
+
+**Q1: What was the primary motivation for introducing the cloud-controller-manager (CCM) as a separate binary from kube-controller-manager?**
+
+- [ ] A) To make Kubernetes compatible with Windows worker nodes.
+- [ ] B) To extract vendor-specific cloud provider code out-of-tree so cloud providers can update independently of Kubernetes core releases.
+- [ ] C) To replace etcd with cloud databases like AWS DynamoDB.
+- [ ] D) To eliminate the need for kubelet on cloud virtual machines.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) To extract vendor-specific cloud provider code out-of-tree so cloud providers can update independently of Kubernetes core releases.
+
+**Explanation:** Out-of-tree cloud controllers decouple cloud provider SDKs and release cycles from the core Kubernetes repository, removing proprietary drivers from the core codebase.
+
+</details>
+
+**Q2: Which controller within cloud-controller-manager is responsible for provisioning cloud load balancers when a Service of type LoadBalancer is created?**
+
+- [ ] A) Node lifecycle controller
+- [ ] B) Service controller
+- [ ] C) Route controller
+- [ ] D) PersistentVolume label controller
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) Service controller
+
+**Explanation:** The cloud Service controller watches for Services of type: LoadBalancer and calls the cloud provider's API to provision and wire up external load balancers.
+
+</details>
 
 ## 8. Static Pods
 
@@ -537,6 +782,41 @@ NOTE
   The kubelet reads those files directly, with no API server round-trip. Run the ls on the control-plane node itself, not your laptop.
 </pre></div>
 
+
+### Knowledge Check — Quiz
+
+**Q1: Who manages the lifecycle of a Static Pod running on a worker node?**
+
+- [ ] A) The kube-scheduler running on the control plane.
+- [ ] B) The local kubelet on that specific node watching a local file directory or HTTP endpoint directly.
+- [ ] C) The Deployment controller.
+- [ ] D) CoreDNS.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) The local kubelet on that specific node watching a local file directory or HTTP endpoint directly.
+
+**Explanation:** Static Pods are configured locally on a node (typically in /etc/kubernetes/manifests) and supervised directly by the kubelet without scheduler involvement.
+
+</details>
+
+**Q2: What is a 'Mirror Pod' in the context of Static Pods?**
+
+- [ ] A) An identical backup container running on a secondary worker node.
+- [ ] B) A read-only Pod representation created on the API server by kubelet so the Static Pod is visible via kubectl get pods.
+- [ ] C) A sidecar container injected into every pod for logging.
+- [ ] D) A container that replicates network packets for auditing.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) A read-only Pod representation created on the API server by kubelet so the Static Pod is visible via kubectl get pods.
+
+**Explanation:** The kubelet creates a Mirror Pod on the API server matching the static pod spec so cluster operators can observe its status using standard Kubernetes API tools.
+
+</details>
+
 ## 9. kubelet
 
 **Part 1 — Technical Discussion:** kubelet is the per-Node agent that reconciles assigned PodSpecs into running sandboxes and containers. It coordinates with the CRI runtime, mounts volumes, executes startup/readiness/liveness probes, applies restart policy, and reports conditions and container status to the API server. It can enforce local state, but it does not schedule Pods or replace the control plane’s higher-level controllers.
@@ -588,6 +868,41 @@ CLEANUP
 NOTE
   The Pod's conditions are reported by the kubelet on that node.
 </pre></div>
+
+
+### Knowledge Check — Quiz
+
+**Q1: If a container's liveness probe fails consecutively beyond failureThreshold, what action does the kubelet take?**
+
+- [ ] A) The kubelet removes the Pod from Service endpoints without restarting the container.
+- [ ] B) The kubelet terminates the container and restarts it according to the Pod's restartPolicy.
+- [ ] C) The kubelet evicts the Pod to a different worker node.
+- [ ] D) The kubelet drains the entire node.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) The kubelet terminates the container and restarts it according to the Pod's restartPolicy.
+
+**Explanation:** Liveness probe failures indicate an unhealthy process that cannot recover on its own; kubelet kills the container and restarts it according to restartPolicy.
+
+</details>
+
+**Q2: How does the kubelet authenticate itself when communicating with the kube-apiserver?**
+
+- [ ] A) Using plain HTTP with no authentication.
+- [ ] B) Using mutual TLS (mTLS) with client certificates typically issued in the system:nodes group.
+- [ ] C) Using the host operating system's root password.
+- [ ] D) Through SSH key exchange on port 22.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) Using mutual TLS (mTLS) with client certificates typically issued in the system:nodes group.
+
+**Explanation:** Kubelets use client X.509 certificates belonging to the system:nodes group, authorized by the Node authorization mode on the API server.
+
+</details>
 
 ## 10. kube-proxy
 
@@ -643,6 +958,41 @@ NOTE
   If your cluster runs kube-proxy in IPVS mode, use 'sudo ipvsadm -Ln' instead. The Endpoints list and the rules line up.
 </pre></div>
 
+
+### Knowledge Check — Quiz
+
+**Q1: What is the key performance advantage of kube-proxy running in ipvs mode compared to standard iptables mode in large clusters?**
+
+- [ ] A) IPVS compresses network packets using gzip.
+- [ ] B) IPVS uses hash tables with O(1) lookup complexity, whereas iptables uses sequential rule chains with O(N) evaluation latency.
+- [ ] C) IPVS replaces TCP with UDP for faster packet transmission.
+- [ ] D) IPVS eliminates the need for container network interfaces.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) IPVS uses hash tables with O(1) lookup complexity, whereas iptables uses sequential rule chains with O(N) evaluation latency.
+
+**Explanation:** Sequential iptables rule chains incur linear O(N) processing overhead as rule counts grow to tens of thousands; IPVS uses ipset hash tables providing near-constant O(1) routing latency.
+
+</details>
+
+**Q2: When an application inside a Pod sends traffic to a ClusterIP:port, where is the destination IP translated to an actual backend Pod IP?**
+
+- [ ] A) By the CoreDNS pod using DNS round-robin.
+- [ ] B) In the Linux kernel on the sending node via iptables/IPVS NAT rules maintained by kube-proxy.
+- [ ] C) In the cloud provider's external hardware gateway.
+- [ ] D) Inside the application container's glibc runtime.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) In the Linux kernel on the sending node via iptables/IPVS NAT rules maintained by kube-proxy.
+
+**Explanation:** The virtual ClusterIP does not exist on any physical interface; packet destination is rewritten (DNAT) directly inside the node's kernel by the netfilter rules programmed by kube-proxy.
+
+</details>
+
 ## 11. Container Runtime & CRI
 
 **Part 1 — Technical Discussion:** The container runtime pulls images, creates Pod sandboxes, starts processes, applies isolation, and reports their status. kubelet reaches it through the Container Runtime Interface, a standard gRPC contract that hides runtime-specific APIs and allows implementations such as containerd or CRI-O. Runtime configuration still affects cgroups, filesystem behavior, logging, image security, resource accounting, and node performance.
@@ -693,6 +1043,41 @@ CLEANUP
 NOTE
   crictl bypasses Kubernetes and talks to the runtime through CRI. Run it on the node, not your laptop.
 </pre></div>
+
+
+### Knowledge Check — Quiz
+
+**Q1: What role does the Container Runtime Interface (CRI) play in the Kubernetes node architecture?**
+
+- [ ] A) It compiles application source code into container images on the worker node.
+- [ ] B) It is a gRPC interface that standardizes how kubelet communicates with pluggable container runtimes like containerd or CRI-O.
+- [ ] C) It encrypts network traffic between pods across nodes.
+- [ ] D) It manages persistent disk volume attachments in cloud storage.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) It is a gRPC interface that standardizes how kubelet communicates with pluggable container runtimes like containerd or CRI-O.
+
+**Explanation:** CRI defines the gRPC protobuf specification for runtime and image services, allowing Kubernetes to support any compliant runtime without vendor lock-in.
+
+</details>
+
+**Q2: Why does a Pod sandbox include a 'pause' (or infra) container?**
+
+- [ ] A) To pause container execution when the node is low on memory.
+- [ ] B) To hold the Linux network, IPC, and mount namespaces that all containers in the Pod share throughout its lifecycle.
+- [ ] C) To provide a graphical terminal interface for container debugging.
+- [ ] D) To cache container image layers locally.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) To hold the Linux network, IPC, and mount namespaces that all containers in the Pod share throughout its lifecycle.
+
+**Explanation:** The pause container holds the shared namespaces (particularly the network namespace) so that if an application container restarts, the Pod IP and network interface remain intact.
+
+</details>
 
 ## 12. Sidecar Containers
 
@@ -759,6 +1144,41 @@ NOTE
   Two containers share one Pod: one address, one lifecycle.
 </pre></div>
 
+
+### Knowledge Check — Quiz
+
+**Q1: How do two containers residing within the same Pod communicate over the network?**
+
+- [ ] A) Through external Ingress controllers.
+- [ ] B) Via localhost on their shared loopback network interface.
+- [ ] C) By creating a public NodePort service.
+- [ ] D) They cannot communicate over network sockets.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) Via localhost on their shared loopback network interface.
+
+**Explanation:** All containers in a Pod share the exact same network namespace and IP address, meaning they reach each other directly via localhost and shared ports.
+
+</details>
+
+**Q2: What is the primary operational trade-off of deploying sidecar containers across thousands of application pods?**
+
+- [ ] A) Incompatible CPU architectures between containers.
+- [ ] B) Multiplied resource overhead (CPU/memory requests & limits) and increased pod startup/shutdown latency.
+- [ ] C) Inability to mount volume storage.
+- [ ] D) Breaking CoreDNS name resolution for the cluster.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) Multiplied resource overhead (CPU/memory requests & limits) and increased pod startup/shutdown latency.
+
+**Explanation:** Every sidecar consumes reserved CPU and memory quota across every pod replica, and lifecycle coupling can complicate graceful shutdown if the sidecar terminates before the main app finishes.
+
+</details>
+
 ## 13. Init Containers
 
 **Part 1 — Technical Discussion:** An init container runs to completion before ordinary application containers are started. Init containers execute sequentially, and Kubernetes retries a failed init phase according to Pod restart behavior, making them useful for configuration generation, schema preparation, permissions, or dependency checks. Because they gate readiness, slow or non-idempotent initialization directly affects rollout and recovery time.
@@ -824,6 +1244,41 @@ NOTE
   The init container sleeps 10 seconds so the Init:0/1 state is easy to catch on screen.
 </pre></div>
 
+
+### Knowledge Check — Quiz
+
+**Q1: What happens if an Init Container fails its execution (exits with non-zero status) and the Pod's restartPolicy is Always?**
+
+- [ ] A) The main application container starts anyway.
+- [ ] B) The kubelet restarts the failed Init Container repeatedly with exponential backoff until it succeeds.
+- [ ] C) The Pod is immediately deleted from the cluster.
+- [ ] D) The worker node is rebooted.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) The kubelet restarts the failed Init Container repeatedly with exponential backoff until it succeeds.
+
+**Explanation:** Init containers must run sequentially to successful completion (exit 0) before any app container can launch; failures trigger kubelet restarts subject to restart policy backoff.
+
+</details>
+
+**Q2: In what order do multiple Init Containers defined in a Pod spec execute?**
+
+- [ ] A) In parallel simultaneously.
+- [ ] B) In the exact sequential order they are listed in the spec.initContainers array.
+- [ ] C) In reverse alphabetical order by name.
+- [ ] D) Randomly based on image pull completion.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) In the exact sequential order they are listed in the spec.initContainers array.
+
+**Explanation:** Kubernetes guarantees strict sequential execution: Init Container 1 must finish with code 0 before Init Container 2 begins execution.
+
+</details>
+
 ## 14. CNI (Container Network Interface)
 
 **Part 1 — Technical Discussion:** The Container Network Interface is the plugin contract used to create Pod interfaces, allocate addresses, and configure routes or tunnels between Nodes. Implementations such as Calico and Cilium may also enforce NetworkPolicy, encrypt traffic, expose observability, or use eBPF datapaths. Kubernetes defines the expected Pod network model, while the CNI determines performance, failure behavior, and troubleshooting tools.
@@ -877,6 +1332,41 @@ NOTE
   Flat Pod addressing works because the CNI plugin paved the roads between nodes.
 </pre></div>
 
+
+### Knowledge Check — Quiz
+
+**Q1: What fundamental networking requirement does the Kubernetes network model mandate for all CNI plugins?**
+
+- [ ] A) Every pod must use the same IP address as its host worker node.
+- [ ] B) All pods can communicate with all other pods across nodes on a flat network without NAT.
+- [ ] C) Every pod must have a dedicated public IPv4 address.
+- [ ] D) Nodes can only communicate via SSH tunnels.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) All pods can communicate with all other pods across nodes on a flat network without NAT.
+
+**Explanation:** The fundamental Kubernetes IP-per-pod model requires that pods on any node can communicate with pods on any other node without Network Address Translation (NAT).
+
+</details>
+
+**Q2: What Linux kernel mechanism is typically created by a CNI plugin to connect a Pod's network namespace to the host network?**
+
+- [ ] A) A virtual ethernet (veth) pair connecting the pod's eth0 to a host bridge or routing table.
+- [ ] B) A loopback-only interface with no host connection.
+- [ ] C) An NFS network mount point.
+- [ ] D) A Unix domain socket in /tmp.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** A) A virtual ethernet (veth) pair connecting the pod's eth0 to a host bridge or routing table.
+
+**Explanation:** A veth pair functions like a virtual patch cable: one end sits inside the pod's network namespace as eth0, and the peer end sits in the host namespace attached to a bridge or routing engine.
+
+</details>
+
 ## 15. CoreDNS
 
 **Part 1 — Technical Discussion:** CoreDNS provides cluster-local DNS for Services, Pods, and configured external names. It watches Kubernetes records and answers names using zones and search paths, allowing clients to resolve a stable Service name while backend Pod IPs change. DNS latency, cache behavior, upstream forwarding, readiness, and CoreDNS capacity are operational dependencies for many applications.
@@ -929,6 +1419,41 @@ CLEANUP
 NOTE
   The name resolves through CoreDNS, like asking the directory board.
 </pre></div>
+
+
+### Knowledge Check — Quiz
+
+**Q1: How does a Pod resolve the service name 'auth-service' located in the same namespace 'production' without specifying an FQDN?**
+
+- [ ] A) CoreDNS broadcasts an ARP request across the node subnet.
+- [ ] B) The pod's /etc/resolv.conf specifies search paths like production.svc.cluster.local, which the resolver appends automatically.
+- [ ] C) The application container must hardcode the IP address in /etc/hosts.
+- [ ] D) The Linux kernel queries the root DNS servers on the internet.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) The pod's /etc/resolv.conf specifies search paths like production.svc.cluster.local, which the resolver appends automatically.
+
+**Explanation:** Kubelet configures /etc/resolv.conf with search domains (<namespace>.svc.cluster.local, svc.cluster.local, etc.), allowing short names to be expanded and resolved.
+
+</details>
+
+**Q2: Where does CoreDNS source its real-time mapping of Service names to ClusterIPs and Endpoint IPs?**
+
+- [ ] A) From a static text file hosted on GitHub.
+- [ ] B) By watching the Kubernetes API server for Service and EndpointSlice resource events.
+- [ ] C) By scanning worker node ARP tables every second.
+- [ ] D) From the host operating system's /etc/bind/named.conf.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) By watching the Kubernetes API server for Service and EndpointSlice resource events.
+
+**Explanation:** The CoreDNS kubernetes plugin connects to the kube-apiserver with an informer cache, watching Services and Endpoints to answer queries from live cluster state.
+
+</details>
 
 ## 16. Services
 
@@ -985,6 +1510,41 @@ NOTE
   The mailbox stayed bolted to the wall while the tenants changed.
 </pre></div>
 
+
+### Knowledge Check — Quiz
+
+**Q1: Why is a Service's ClusterIP virtual IP address preferred over calling individual Pod IPs directly from client applications?**
+
+- [ ] A) Pod IPs are slower because they require hardware encryption.
+- [ ] B) Pod IPs are ephemeral and change upon container restart or rescheduling, whereas ClusterIP remains stable.
+- [ ] C) Pod IPs are only reachable from the control plane node.
+- [ ] D) ClusterIP bypasses all container network interfaces.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) Pod IPs are ephemeral and change upon container restart or rescheduling, whereas ClusterIP remains stable.
+
+**Explanation:** Pods are dynamic and mortal; a Service provides a durable, static IP and DNS name that load-balances traffic across the ever-shifting set of backend pods.
+
+</details>
+
+**Q2: Which Service type creates an external cloud load balancer and automatically configures NodePort and ClusterIP routes as well?**
+
+- [ ] A) type: ClusterIP
+- [ ] B) type: NodePort
+- [ ] C) type: LoadBalancer
+- [ ] D) type: ExternalName
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** C) type: LoadBalancer
+
+**Explanation:** In Kubernetes, Service types build upon each other: LoadBalancer allocates a cloud LB, which forwards to NodePort, which routes to ClusterIP.
+
+</details>
+
 ## 17. Endpoints
 
 **Part 1 — Technical Discussion:** EndpointSlices are the scalable, controller-maintained representation of Service backends. They record addresses and conditions such as ready, serving, terminating, and sometimes topology hints, allowing proxies to avoid sending new traffic to unsuitable Pods. The older Endpoints object is useful for inspection but is less efficient for large Services and is being superseded by EndpointSlices.
@@ -1039,6 +1599,41 @@ CLEANUP
 NOTE
   That is the forwarding list being rewritten live. On Kubernetes 1.33+ you may see a deprecation warning for Endpoints; 'kubectl get endpointslices -n zine-demo' shows the same data.
 </pre></div>
+
+
+### Knowledge Check — Quiz
+
+**Q1: Why did Kubernetes introduce EndpointSlice resources to replace monolithic Endpoints objects in large clusters?**
+
+- [ ] A) To support IPv6-only clusters.
+- [ ] B) Monolithic Endpoints objects caused massive API server write amplification when a single pod changed in a service with thousands of replicas.
+- [ ] C) Because EndpointSlice completely eliminates the need for kube-proxy.
+- [ ] D) Endpoints could only store up to 5 IP addresses.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) Monolithic Endpoints objects caused massive API server write amplification when a single pod changed in a service with thousands of replicas.
+
+**Explanation:** With monolithic Endpoints, a change to 1 pod in a 5,000-pod service required resending the entire multi-megabyte object to all nodes; EndpointSlices chunk endpoints into groups of 100, dramatically reducing API bandwidth.
+
+</details>
+
+**Q2: What condition must a Pod satisfy before the EndpointSlice controller adds its IP address to the active serving endpoints of a Service?**
+
+- [ ] A) The Pod must have passed its readiness probe (ContainersReady: True).
+- [ ] B) The Pod must be running for at least 10 minutes.
+- [ ] C) The Pod must be scheduled on the control plane node.
+- [ ] D) The Pod must have no CPU limits defined.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** A) The Pod must have passed its readiness probe (ContainersReady: True).
+
+**Explanation:** A pod is only considered ready to serve live user traffic when its readiness probes pass; unready pods are excluded from active service endpoints.
+
+</details>
 
 ## 18. Ingress
 
@@ -1115,6 +1710,41 @@ NOTE
   One external address, and the hostname in the request decides which Service you reach. This demo needs the kind ingress-nginx manifest and the 8080 -> 80 mapping in kind-multinode.yaml.
 </pre></div>
 
+
+### Knowledge Check — Quiz
+
+**Q1: What is the primary difference between a Kubernetes Ingress resource and an Ingress Controller?**
+
+- [ ] A) The Ingress resource is an active proxy process; the controller is just a documentation file.
+- [ ] B) The Ingress resource is a declarative configuration object; the Ingress Controller is the actual daemon that watches the API and proxies traffic.
+- [ ] C) Ingress operates at Layer 4 (TCP), while the controller operates at Layer 3 (IP).
+- [ ] D) Ingress requires cloud provider hardware, while controllers run on bare metal.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) The Ingress resource is a declarative configuration object; the Ingress Controller is the actual daemon that watches the API and proxies traffic.
+
+**Explanation:** An Ingress manifest (kind: Ingress) only declares routing rules; traffic does not flow until an Ingress Controller is deployed to parse those rules and proxy incoming HTTP requests.
+
+</details>
+
+**Q2: Which OSI layer does a standard Kubernetes Ingress operate at to provide host-based and path-based routing?**
+
+- [ ] A) Layer 3 (Network - IP packets)
+- [ ] B) Layer 4 (Transport - TCP/UDP sockets)
+- [ ] C) Layer 7 (Application - HTTP/HTTPS URLs, headers, and hostnames)
+- [ ] D) Layer 2 (Data Link - MAC addresses)
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** C) Layer 7 (Application - HTTP/HTTPS URLs, headers, and hostnames)
+
+**Explanation:** Ingress inspects HTTP requests (Host headers like api.example.com and URL paths like /v1/users) to direct traffic to appropriate internal services.
+
+</details>
+
 ## 19. NetworkPolicy
 
 **Part 1 — Technical Discussion:** NetworkPolicy is a declarative allow-list boundary for Pod ingress and egress. Policies select Pods and permit traffic by namespace, Pod labels, ports, and protocol, but enforcement is supplied by a policy-capable CNI rather than the API object itself. A rollout must account for DNS, health checks, control-plane access, default-allow behavior, and the fact that network policy is not application authentication.
@@ -1181,6 +1811,41 @@ CLEANUP
 NOTE
   The default kind CNI (kindnet) does not enforce NetworkPolicy, so the second request will still succeed. Run this demo on a separate kind cluster configured with Calico or Cilium; do not try to replace kindnet in an already-running cluster.
 </pre></div>
+
+
+### Knowledge Check — Quiz
+
+**Q1: What happens in a namespace when no NetworkPolicies are applied versus when a single NetworkPolicy with podSelector: {} and ingress: [] is applied?**
+
+- [ ] A) Default behavior is allow-all; applying an empty ingress policy creates an isolation boundary that defaults to deny-all incoming traffic.
+- [ ] B) Default behavior is deny-all; applying a policy enables allow-all.
+- [ ] C) Applying a policy disables DNS resolution across the entire cluster.
+- [ ] D) The container runtime pauses all running containers.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** A) Default behavior is allow-all; applying an empty ingress policy creates an isolation boundary that defaults to deny-all incoming traffic.
+
+**Explanation:** By default, pod networking is non-isolated (allow all). As soon as any NetworkPolicy selects a pod, that pod enters isolated mode where unselected traffic is rejected.
+
+</details>
+
+**Q2: Why might a newly created NetworkPolicy fail to enforce traffic blocking in a cluster running standard default kind?**
+
+- [ ] A) The policy YAML had invalid syntax.
+- [ ] B) The default CNI plugin in standard kind (kindnet) does not implement NetworkPolicy enforcement; a policy-capable CNI (like Calico or Cilium) is required.
+- [ ] C) NetworkPolicies only work in production cloud clusters.
+- [ ] D) kube-apiserver disables NetworkPolicy by default.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) The default CNI plugin in standard kind (kindnet) does not implement NetworkPolicy enforcement; a policy-capable CNI (like Calico or Cilium) is required.
+
+**Explanation:** NetworkPolicy is a declarative API spec; enforcement is the responsibility of the underlying CNI plugin dataplane (eBPF or iptables). Kindnet does not support NetworkPolicy.
+
+</details>
 
 ## 20. PersistentVolume (PV)
 
@@ -1265,6 +1930,41 @@ NOTE
   This setup creates a claim and Pod so a PV exists to look at. The PV outlives the Pod.
 </pre></div>
 
+
+### Knowledge Check — Quiz
+
+**Q1: What is the difference in scope between a PersistentVolume (PV) and a PersistentVolumeClaim (PVC)?**
+
+- [ ] A) A PV is namespaced, while a PVC is cluster-scoped.
+- [ ] B) A PV is a cluster-wide storage resource, while a PVC is a namespaced request for storage.
+- [ ] C) Both PV and PVC must reside in the kube-system namespace.
+- [ ] D) A PV can only be mounted by one pod across the entire cluster lifetime.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) A PV is a cluster-wide storage resource, while a PVC is a namespaced request for storage.
+
+**Explanation:** PVs are cluster-level infrastructure objects created by admins or dynamic provisioners; PVCs are namespaced consumer objects created by developers.
+
+</details>
+
+**Q2: If a PersistentVolume has persistentVolumeReclaimPolicy set to Retain, what occurs when its bound PVC is deleted?**
+
+- [ ] A) The underlying storage disk and data are immediately wiped.
+- [ ] B) The PV moves to Released status; the volume and data remain intact on physical storage until manually reclaimed.
+- [ ] C) The PV is automatically assigned to a random new Pod.
+- [ ] D) The storage volume is resized to 0GB.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) The PV moves to Released status; the volume and data remain intact on physical storage until manually reclaimed.
+
+**Explanation:** Retain prevents automated data loss: when the claim is deleted, the volume transitions to Released and requires manual administrator cleanup.
+
+</details>
+
 ## 21. PersistentVolumeClaim (PVC)
 
 **Part 1 — Technical Discussion:** A PersistentVolumeClaim is a workload-facing request for capacity and storage characteristics rather than a provider-specific disk definition. Kubernetes binds it to a compatible PV—or triggers dynamic provisioning—using capacity, access mode, volume mode, StorageClass, and topology constraints. A Pending claim is therefore a useful diagnostic signal for missing capacity, an unavailable provisioner, or incompatible scheduling requirements.
@@ -1346,6 +2046,41 @@ NOTE
   The claim is matched to a real volume without anyone creating the PV by hand.
 </pre></div>
 
+
+### Knowledge Check — Quiz
+
+**Q1: What state does a PVC remain in if no existing PV matches its capacity and accessModes, and no dynamic provisioner is configured?**
+
+- [ ] A) Failed
+- [ ] B) Pending
+- [ ] C) Terminating
+- [ ] D) Running
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) Pending
+
+**Explanation:** The PVC remains Pending until a matching PV is created or dynamically provisioned, and any Pod referencing that PVC will be blocked from starting.
+
+</details>
+
+**Q2: Which access mode allows a single volume to be mounted read-write by multiple pods simultaneously across different worker nodes?**
+
+- [ ] A) ReadWriteOnce (RWO)
+- [ ] B) ReadOnlyMany (ROX)
+- [ ] C) ReadWriteMany (RWX)
+- [ ] D) ReadWriteOncePod (RWOP)
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** C) ReadWriteMany (RWX)
+
+**Explanation:** ReadWriteMany (RWX) permits simultaneous read/write mounting across multiple nodes (typically backed by NFS, CephFS, or cloud file storage).
+
+</details>
+
 ## 22. StorageClass
 
 **Part 1 — Technical Discussion:** A StorageClass defines the policy for dynamically provisioning volumes. It selects a provisioner and parameters such as disk type, filesystem, replication, encryption, reclaim policy, and volume-binding mode. Dynamic provisioning reduces manual work, but its defaults directly affect cost, performance, data retention, and whether a volume can be placed in the same topology as its consumer.
@@ -1397,6 +2132,41 @@ NOTE
   This is the blueprint used automatically when a PVC names no class, which is why the PV in entry 21 appeared with no manual step. The default class in this kind cluster is commonly named 'standard'. Verify with 'kubectl get storageclass' because the name depends on the provisioner installed.
 </pre></div>
 
+
+### Knowledge Check — Quiz
+
+**Q1: What is the primary purpose of setting volumeBindingMode: WaitForFirstConsumer on a StorageClass?**
+
+- [ ] A) It ensures volumes are created without filesystem formatting.
+- [ ] B) It delays dynamic volume creation until a Pod referencing the PVC is scheduled, ensuring the volume is provisioned in the same availability zone as the Pod.
+- [ ] C) It disables volume caching in memory.
+- [ ] D) It prevents users from deleting the PVC.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) It delays dynamic volume creation until a Pod referencing the PVC is scheduled, ensuring the volume is provisioned in the same availability zone as the Pod.
+
+**Explanation:** Without this setting, volumes might be provisioned in an availability zone where candidate worker nodes lack capacity, preventing the pod from scheduling.
+
+</details>
+
+**Q2: In dynamic volume provisioning, what component detects an unbound PVC and calls the underlying storage infrastructure to create the disk?**
+
+- [ ] A) The kube-scheduler.
+- [ ] B) The CSI external-provisioner controller.
+- [ ] C) The CoreDNS daemon.
+- [ ] D) The container runtime runc binary.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) The CSI external-provisioner controller.
+
+**Explanation:** The CSI external-provisioner sidecar watches for PVCs with an associated StorageClass and issues CreateVolume gRPC requests to the CSI driver.
+
+</details>
+
 ## 23. Role
 
 **Part 1 — Technical Discussion:** A Role defines namespaced RBAC permissions as API groups, resources, resource names, and verbs such as get, list, create, or update. It is a permission rule—not an identity or a grant—and has no effect until a RoleBinding attaches it to a subject. Least privilege requires avoiding unnecessary wildcards and treating access to Secrets or workload creation as potentially sensitive.
@@ -1447,6 +2217,41 @@ CLEANUP
 NOTE
   The house rules are posted, but no name is attached to them yet.
 </pre></div>
+
+
+### Knowledge Check — Quiz
+
+**Q1: Can a standard Kubernetes Role grant permissions to list nodes or create namespaces?**
+
+- [ ] A) Yes, if the namespace field is omitted.
+- [ ] B) No, because a Role is strictly namespaced and can only grant permissions on namespaced resources within its own namespace; cluster-scoped resources require a ClusterRole.
+- [ ] C) Yes, if granted by an administrator.
+- [ ] D) Only on worker nodes, not control plane nodes.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) No, because a Role is strictly namespaced and can only grant permissions on namespaced resources within its own namespace; cluster-scoped resources require a ClusterRole.
+
+**Explanation:** Roles are bounded by namespace; non-namespaced resources (like Nodes, Namespaces, and PersistentVolumes) can only be governed by ClusterRoles.
+
+</details>
+
+**Q2: How does the Kubernetes RBAC authorization engine evaluate permissions when multiple Roles or rules apply to a single identity?**
+
+- [ ] A) It uses a deny-first evaluation where explicit denies override allows.
+- [ ] B) It uses purely additive (allow-only) evaluation; if any matching rule grants the verb on the resource, the action is permitted.
+- [ ] C) It takes the intersection of all granted permissions.
+- [ ] D) It grants access only if the client certificate was created within 24 hours.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) It uses purely additive (allow-only) evaluation; if any matching rule grants the verb on the resource, the action is permitted.
+
+**Explanation:** Kubernetes RBAC has no 'deny' rules; all permissions are additive (whitelisting). Access is authorized if at least one rule grants the requested verb.
+
+</details>
 
 ## 24. RoleBinding
 
@@ -1500,6 +2305,41 @@ NOTE
   The name got added to the sign-up sheet.
 </pre></div>
 
+
+### Knowledge Check — Quiz
+
+**Q1: Can a RoleBinding located in namespace 'dev' reference a ClusterRole in its roleRef?**
+
+- [ ] A) No, RoleBindings can only bind namespaced Roles.
+- [ ] B) Yes; it binds the ClusterRole's defined permissions, but scopes them strictly to namespace 'dev'.
+- [ ] C) Yes, and it automatically grants the user cluster-wide admin access.
+- [ ] D) Only if the user has root privileges on the control-plane host.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) Yes; it binds the ClusterRole's defined permissions, but scopes them strictly to namespace 'dev'.
+
+**Explanation:** Referencing a ClusterRole in a namespaced RoleBinding is a common pattern to reuse common permission sets (e.g. edit or view) within an individual namespace.
+
+</details>
+
+**Q2: What happens if an administrator attempts to modify the roleRef field of an existing RoleBinding object?**
+
+- [ ] A) The API server updates all bound subjects immediately.
+- [ ] B) The API server rejects the mutation because the roleRef field is immutable; the binding must be deleted and recreated.
+- [ ] C) The referenced Role is deleted.
+- [ ] D) The subjects lose access to the cluster permanently.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) The API server rejects the mutation because the roleRef field is immutable; the binding must be deleted and recreated.
+
+**Explanation:** roleRef is an immutable field in Kubernetes RBAC to prevent accidental privilege escalation; you must delete and recreate the binding to point to a new role.
+
+</details>
+
 ## 25. ClusterRole
 
 **Part 1 — Technical Discussion:** A ClusterRole describes reusable RBAC permissions that can apply across namespaces or to cluster-scoped resources such as Nodes and PersistentVolumes. A namespaced RoleBinding can use a ClusterRole while restricting the grant to that namespace, whereas a ClusterRoleBinding grants it cluster-wide. This reuse improves consistency, but broad rules can expose or mutate resources far beyond one application.
@@ -1550,6 +2390,41 @@ CLEANUP
 NOTE
   Nodes are cluster-scoped, so this had to be a ClusterRole and could not be a plain Role.
 </pre></div>
+
+
+### Knowledge Check — Quiz
+
+**Q1: When is a ClusterRole strictly required instead of a namespaced Role?**
+
+- [ ] A) When deploying a container that uses more than 1GB of memory.
+- [ ] B) When granting access to non-namespaced resources (e.g. Nodes, PersistentVolumes) or non-resource URLs (e.g. /healthz).
+- [ ] C) Whenever using kind on a local machine.
+- [ ] D) When mounting an emptyDir volume.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) When granting access to non-namespaced resources (e.g. Nodes, PersistentVolumes) or non-resource URLs (e.g. /healthz).
+
+**Explanation:** Non-namespaced API endpoints and cluster-wide resources do not belong to any individual namespace and therefore cannot be expressed in a namespaced Role.
+
+</details>
+
+**Q2: How do aggregated ClusterRoles work in Kubernetes?**
+
+- [ ] A) They combine multiple physical worker nodes into a single logical entity.
+- [ ] B) The cluster dynamically combines rules from other ClusterRoles matching specified label selectors into an aggregate role.
+- [ ] C) They merge all user passwords into a single hash.
+- [ ] D) They compress API requests to improve network throughput.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) The cluster dynamically combines rules from other ClusterRoles matching specified label selectors into an aggregate role.
+
+**Explanation:** ClusterRole aggregation allows custom controllers to extend built-in roles (like admin or edit) by labeling new ClusterRoles that are automatically merged.
+
+</details>
 
 ## 26. ClusterRoleBinding
 
@@ -1604,6 +2479,41 @@ NOTE
   The master key is not scoped to any one building.
 </pre></div>
 
+
+### Knowledge Check — Quiz
+
+**Q1: What is the operational risk of binding the built-in cluster-admin ClusterRole to a ServiceAccount using a ClusterRoleBinding?**
+
+- [ ] A) It limits the ServiceAccount to reading configmaps only.
+- [ ] B) It grants unrestricted superuser privileges across every namespace and cluster-scoped resource, creating a critical security risk if the token is compromised.
+- [ ] C) It causes the kubelet to reboot every worker node.
+- [ ] D) It disables TLS encryption across the cluster.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) It grants unrestricted superuser privileges across every namespace and cluster-scoped resource, creating a critical security risk if the token is compromised.
+
+**Explanation:** cluster-admin provides unrestricted access (* verbs on * resources); granting it globally violates least privilege and exposes the entire platform to compromise.
+
+</details>
+
+**Q2: Can a ClusterRoleBinding grant permissions that are limited to a single namespace?**
+
+- [ ] A) Yes, by setting the namespace field in the binding metadata.
+- [ ] B) No; ClusterRoleBindings are cluster-scoped and always apply across all namespaces; to scope permissions to one namespace, use a RoleBinding.
+- [ ] C) Yes, if the subject is a ServiceAccount.
+- [ ] D) Only on worker nodes.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) No; ClusterRoleBindings are cluster-scoped and always apply across all namespaces; to scope permissions to one namespace, use a RoleBinding.
+
+**Explanation:** ClusterRoleBindings are inherently global; scoping permissions to a specific namespace requires a namespaced RoleBinding.
+
+</details>
+
 ## 27. ServiceAccount
 
 **Part 1 — Technical Discussion:** A ServiceAccount is a Kubernetes identity intended for workloads rather than human operators. A Pod can receive a projected, usually short-lived token for that identity, and the API server uses RBAC to decide what the application may do. Dedicated accounts, automount controls, rotation, and minimal permissions reduce the impact of a compromised workload.
@@ -1654,6 +2564,41 @@ CLEANUP
 NOTE
   Every Pod gets a token mounted automatically: its staff ID badge. The token is short-lived and rotated by the kubelet.
 </pre></div>
+
+
+### Knowledge Check — Quiz
+
+**Q1: Under modern Kubernetes token projection (BoundServiceAccountTokenVolume), what happens when a Pod is deleted?**
+
+- [ ] A) The token remains valid indefinitely.
+- [ ] B) The projected token is tied to the Pod's lifecycle and becomes invalid when the Pod is deleted.
+- [ ] C) The entire ServiceAccount is automatically deleted.
+- [ ] D) The API server revokes all client certificates.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) The projected token is tied to the Pod's lifecycle and becomes invalid when the Pod is deleted.
+
+**Explanation:** Projected service account tokens are cryptographically signed, audience-bound, time-limited, and bound to the specific Pod's UID, mitigating stolen token replay attacks.
+
+</details>
+
+**Q2: Where does kubelet mount the projected ServiceAccount token inside a container by default?**
+
+- [ ] A) /etc/kubernetes/admin.conf
+- [ ] B) /var/run/secrets/kubernetes.io/serviceaccount/
+- [ ] C) /root/.kube/config
+- [ ] D) /tmp/k8s/
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) /var/run/secrets/kubernetes.io/serviceaccount/
+
+**Explanation:** Kubelet automatically mounts the token, ca.crt, and namespace files into /var/run/secrets/kubernetes.io/serviceaccount/ unless automountServiceAccountToken: false is configured.
+
+</details>
 
 ## 28. Node (controller)
 
@@ -1710,6 +2655,41 @@ NOTE
   Needs a multi-node cluster. Do NOT stop the kubelet on your only node or the control plane goes dark.
 </pre></div>
 
+
+### Knowledge Check — Quiz
+
+**Q1: How does the Node lifecycle controller detect that a worker node has become unhealthy?**
+
+- [ ] A) By attempting to ping the host over ICMP every millisecond.
+- [ ] B) By monitoring the node's Lease object in kube-node-lease; if no heartbeat renewal occurs within node-monitor-grace-period, the node is flagged NotReady.
+- [ ] C) By polling the cloud provider's billing dashboard.
+- [ ] D) By checking whether the containers on the node are serving HTTP 200.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) By monitoring the node's Lease object in kube-node-lease; if no heartbeat renewal occurs within node-monitor-grace-period, the node is flagged NotReady.
+
+**Explanation:** Kubelets post periodic lease updates (heartbeats) every 10s; if missed beyond the grace period (default 40s), the controller marks the node NotReady.
+
+</details>
+
+**Q2: When a node transitions to NotReady, what taint is automatically applied to begin the pod eviction process?**
+
+- [ ] A) node.kubernetes.io/unreachable:NoExecute or node.kubernetes.io/not-ready:NoExecute
+- [ ] B) node-role.kubernetes.io/control-plane:NoSchedule
+- [ ] C) kubernetes.io/drain-active:PreferNoSchedule
+- [ ] D) node.kubernetes.io/memory-pressure:AllowAll
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** A) node.kubernetes.io/unreachable:NoExecute or node.kubernetes.io/not-ready:NoExecute
+
+**Explanation:** NoExecute taints evict pods immediately unless those pods specify a matching toleration with a tolerationSeconds grace window.
+
+</details>
+
 ## 29. Namespace (controller)
 
 **Part 1 — Technical Discussion:** Namespaces scope namespaced objects and provide a boundary for RBAC, quotas, and many policy resources. The Namespace controller coordinates deletion by discovering and removing contained objects before finalizing the Namespace. Finalizers or unavailable controllers can leave deletion in Terminating, so forced removal should be treated as a repair action with possible orphaned resources.
@@ -1762,6 +2742,41 @@ CLEANUP
 NOTE
   The fence does not come down until the section is empty.
 </pre></div>
+
+
+### Knowledge Check — Quiz
+
+**Q1: Why does a namespace sometimes become stuck in the Terminating state indefinitely?**
+
+- [ ] A) Because the cluster has run out of CPU capacity.
+- [ ] B) Because one or more resources inside the namespace have finalizers that cannot be completed or cleared.
+- [ ] C) Because the namespace name was longer than 10 characters.
+- [ ] D) Because kube-proxy is running in iptables mode.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) Because one or more resources inside the namespace have finalizers that cannot be completed or cleared.
+
+**Explanation:** A namespace cannot be deleted until all resources within it are gone; if a custom resource or PVC has an unfulfilled finalizer, deletion hangs in Terminating.
+
+</details>
+
+**Q2: Which objects are NOT deleted when a namespace is deleted?**
+
+- [ ] A) Deployments and ReplicaSets in that namespace.
+- [ ] B) Cluster-scoped objects like Nodes, PersistentVolumes, and ClusterRoles.
+- [ ] C) Secrets and ConfigMaps in that namespace.
+- [ ] D) Pods and Services in that namespace.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) Cluster-scoped objects like Nodes, PersistentVolumes, and ClusterRoles.
+
+**Explanation:** Namespace deletion cascades to all namespaced objects within its boundary, but cluster-scoped resources exist independently outside any namespace.
+
+</details>
 
 ## 30. ResourceQuota
 
@@ -1825,6 +2840,41 @@ NOTE
   The namespace hit its posted occupancy limit. The namespace is set with -n, so the YAML has no namespace field.
 </pre></div>
 
+
+### Knowledge Check — Quiz
+
+**Q1: If a namespace has a ResourceQuota specifying limits on requests.cpu, what requirement is placed on all pods created in that namespace?**
+
+- [ ] A) Pods must run on bare metal servers.
+- [ ] B) Every container in every submitted Pod must explicitly declare a CPU request, or a LimitRange must provide a default.
+- [ ] C) Pods cannot use sidecar containers.
+- [ ] D) Pods must be scheduled on the control-plane node.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) Every container in every submitted Pod must explicitly declare a CPU request, or a LimitRange must provide a default.
+
+**Explanation:** If a quota restricts a resource type, the admission controller rejects any pod that fails to declare an explicit request/limit for that resource.
+
+</details>
+
+**Q2: At what point in the request lifecycle is a ResourceQuota enforced?**
+
+- [ ] A) By the kubelet when launching the container.
+- [ ] B) By the ResourceQuota admission plugin in the kube-apiserver during API admission control.
+- [ ] C) By the scheduler during node scoring.
+- [ ] D) By CoreDNS when resolving DNS queries.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) By the ResourceQuota admission plugin in the kube-apiserver during API admission control.
+
+**Explanation:** Quotas are enforced synchronously by admission controllers before the object is accepted and committed to etcd; violations return HTTP 403 Forbidden.
+
+</details>
+
 ## 31. Garbage Collector
 
 **Part 1 — Technical Discussion:** The garbage collector follows ownerReferences to identify dependent objects and remove them when an owner is deleted. Foreground, background, and orphan propagation policies control whether dependents block deletion, disappear asynchronously, or are intentionally retained. Controllers must set ownership deliberately because incorrect references can cause unexpected cleanup or leave unmanaged objects behind.
@@ -1879,6 +2929,41 @@ NOTE
   Nobody deleted the Pods or ReplicaSet directly; deletion cascaded through owner references.
 </pre></div>
 
+
+### Knowledge Check — Quiz
+
+**Q1: How does the Kubernetes Garbage Collector determine which dependent child objects to delete when a parent object is deleted?**
+
+- [ ] A) By scanning container image names for matches.
+- [ ] B) By inspecting the metadata.ownerReferences field on child objects pointing to the parent UID.
+- [ ] C) By searching for pods with matching creation timestamps.
+- [ ] D) By asking the container runtime for process tree IDs.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) By inspecting the metadata.ownerReferences field on child objects pointing to the parent UID.
+
+**Explanation:** Child resources (e.g. ReplicaSets created by a Deployment) maintain an ownerReferences array listing the parent's uid, kind, and apiVersion.
+
+</details>
+
+**Q2: What is the difference between Background cascading deletion and Orphan deletion?**
+
+- [ ] A) Background deletion deletes child objects after or alongside the parent; Orphan deletion leaves child objects running with their owner references cleared.
+- [ ] B) Background deletion removes the cluster; Orphan deletion restores from backup.
+- [ ] C) Orphan deletion is only used for temporary testing pods.
+- [ ] D) Background deletion requires pausing the kubelet.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** A) Background deletion deletes child objects after or alongside the parent; Orphan deletion leaves child objects running with their owner references cleared.
+
+**Explanation:** With propagationPolicy: Orphan, the parent is removed while child resources survive as unowned, standalone objects.
+
+</details>
+
 ## 32. ReplicaSet
 
 **Part 1 — Technical Discussion:** A ReplicaSet reconciles a target count of interchangeable Pods selected by labels. It replaces missing or excess replicas, but it does not provide application-version strategy, rollout pacing, or rollback history. Deployments normally own ReplicaSets so that this low-level count reconciliation is combined with controlled releases.
@@ -1931,6 +3016,41 @@ CLEANUP
 NOTE
   The ReplicaSet only cares about the number, not which Pods make it up.
 </pre></div>
+
+
+### Knowledge Check — Quiz
+
+**Q1: Why do modern Kubernetes deployments use Deployments instead of managing ReplicaSets directly?**
+
+- [ ] A) ReplicaSets cannot run on Linux.
+- [ ] B) ReplicaSets do not provide declarative rolling updates, revision histories, or automated rollbacks; Deployments manage ReplicaSets to orchestrate those workflows.
+- [ ] C) ReplicaSets only support a single replica.
+- [ ] D) ReplicaSets bypass kube-proxy.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) ReplicaSets do not provide declarative rolling updates, revision histories, or automated rollbacks; Deployments manage ReplicaSets to orchestrate those workflows.
+
+**Explanation:** A ReplicaSet only maintains an exact pod count; it has no mechanism to update container images with zero downtime. Deployments orchestrate transitions between old and new ReplicaSets.
+
+</details>
+
+**Q2: What type of label selector syntax does a ReplicaSet support that the older ReplicationController lacked?**
+
+- [ ] A) SQL WHERE clauses.
+- [ ] B) Set-based requirements (e.g. environment in (production, staging)).
+- [ ] C) Regex evaluation on container logs.
+- [ ] D) Plain text substring matching only.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) Set-based requirements (e.g. environment in (production, staging)).
+
+**Explanation:** ReplicaSets support rich set-based selectors (in, notin, exists), whereas legacy ReplicationControllers only supported exact equality (key = value).
+
+</details>
 
 ## 33. Deployment
 
@@ -1987,6 +3107,41 @@ CLEANUP
 NOTE
   The container is named 'nginx' because create deployment names it after the image. Rolling update, then rollback with zero downtime.
 </pre></div>
+
+
+### Knowledge Check — Quiz
+
+**Q1: How does a Deployment perform a RollingUpdate without causing service downtime?**
+
+- [ ] A) It reboots all nodes simultaneously.
+- [ ] B) It creates a new ReplicaSet and incrementally scales it up while scaling down the old ReplicaSet according to maxSurge and maxUnavailable parameters.
+- [ ] C) It rewrites container binaries in-place inside running pods.
+- [ ] D) It redirects traffic to an external maintenance page.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) It creates a new ReplicaSet and incrementally scales it up while scaling down the old ReplicaSet according to maxSurge and maxUnavailable parameters.
+
+**Explanation:** The Deployment controller creates a new ReplicaSet for the new revision and shifts traffic replica-by-replica, ensuring healthy pods always satisfy availability thresholds.
+
+</details>
+
+**Q2: How do you roll back a failed Deployment to its previous revision?**
+
+- [ ] A) By deleting the worker nodes.
+- [ ] B) Using kubectl rollout undo deployment/<name>.
+- [ ] C) By modifying the etcd Raft log manually.
+- [ ] D) By restarting the kubelet daemon.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) Using kubectl rollout undo deployment/<name>.
+
+**Explanation:** kubectl rollout undo instructs the Deployment controller to roll back the pod template spec to the previous recorded revision in its history.
+
+</details>
 
 ## 34. StatefulSet
 
@@ -2072,6 +3227,41 @@ NOTE
   A StatefulSet needs a headless Service (clusterIP: None), so the YAML includes one. The tenant returns to the same numbered unit.
 </pre></div>
 
+
+### Knowledge Check — Quiz
+
+**Q1: Why does a StatefulSet require a Headless Service (clusterIP: None)?**
+
+- [ ] A) To encrypt pod network traffic with TLS.
+- [ ] B) To provide predictable direct DNS A/SRV records for individual pods (e.g. pod-0.headless-svc.namespace.svc.cluster.local) rather than load-balancing across them.
+- [ ] C) Because stateful applications cannot use IP addresses.
+- [ ] D) To bypass the Linux kernel iptables rules.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) To provide predictable direct DNS A/SRV records for individual pods (e.g. pod-0.headless-svc.namespace.svc.cluster.local) rather than load-balancing across them.
+
+**Explanation:** Clustered stateful applications (databases, ZooKeeper, Kafka) need to address specific ordinal members directly for clustering and replication.
+
+</details>
+
+**Q2: When a StatefulSet replica pod is deleted or crashes, what happens to its PersistentVolumeClaim?**
+
+- [ ] A) The PVC is automatically deleted and recreated fresh.
+- [ ] B) The PVC and storage are retained and automatically reattached to the replacement pod with the same ordinal index.
+- [ ] C) The PVC is wiped and reformatted.
+- [ ] D) The storage volume is converted into an emptyDir volume.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) The PVC and storage are retained and automatically reattached to the replacement pod with the same ordinal index.
+
+**Explanation:** StatefulSet storage is persistent and sticky; data-web-0 is never deleted automatically when web-0 terminates, preserving data upon pod recreation.
+
+</details>
+
 ## 35. DaemonSet
 
 **Part 1 — Technical Discussion:** A DaemonSet expresses node coverage rather than a fixed replica count: one Pod is scheduled on every matching Node, including eligible Nodes added later. It is suited to log collectors, monitoring agents, storage helpers, and networking components that need local access. Selectors, taints, tolerations, host access, and resource requests determine coverage and the amount of workload capacity consumed.
@@ -2143,6 +3333,41 @@ NOTE
   Add a toleration for node-role.kubernetes.io/control-plane:NoSchedule to the Pod template if you want the control-plane node included; the Pod count then equals the node count.
 </pre></div>
 
+
+### Knowledge Check — Quiz
+
+**Q1: What is the primary use case for a DaemonSet compared to a standard Deployment?**
+
+- [ ] A) Running short batch jobs that exit with code 0.
+- [ ] B) Running cluster infrastructure agents (such as log shippers, monitoring agents, or CNI plugins) that must run exactly once on every eligible node.
+- [ ] C) Running stateless web frontends behind an Ingress controller.
+- [ ] D) Managing relational database failover.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) Running cluster infrastructure agents (such as log shippers, monitoring agents, or CNI plugins) that must run exactly once on every eligible node.
+
+**Explanation:** A DaemonSet ensures that all (or some matching) nodes run a copy of a pod, automatically scaling as nodes are added or removed from the cluster.
+
+</details>
+
+**Q2: If a new worker node is added to a Kubernetes cluster, how does a DaemonSet respond?**
+
+- [ ] A) It waits for manual administrator approval before acting.
+- [ ] B) The DaemonSet controller detects the new node and automatically schedules an agent pod onto it.
+- [ ] C) It evicts pods from older nodes to free up licenses.
+- [ ] D) It restarts all pods in the cluster.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) The DaemonSet controller detects the new node and automatically schedules an agent pod onto it.
+
+**Explanation:** The DaemonSet controller continuously watches for node additions and ensures immediate agent coverage without manual intervention.
+
+</details>
+
 ## 36. Job
 
 **Part 1 — Technical Discussion:** A Job represents finite work and tracks successful and failed Pod completions. It can retry failures, run completions in parallel, and retain or clean up finished Pods according to policy, making it appropriate for migrations, batch processing, and maintenance. The task should be idempotent or otherwise safe to retry because a failure can occur after work has partially completed.
@@ -2207,6 +3432,41 @@ CLEANUP
 NOTE
   Once it hits 1/1 the Job stops; the crew finished the move.
 </pre></div>
+
+
+### Knowledge Check — Quiz
+
+**Q1: What differentiates a Job's container lifecycle from a Deployment's container lifecycle?**
+
+- [ ] A) Jobs only run on Linux; Deployments run on Windows.
+- [ ] B) A Job runs containers until a designated number of completions succeed (exit 0), whereas a Deployment continuously restarts containers to keep them running indefinitely.
+- [ ] C) Job containers cannot access persistent volumes.
+- [ ] D) Jobs bypass the Kubernetes API server.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) A Job runs containers until a designated number of completions succeed (exit 0), whereas a Deployment continuously restarts containers to keep them running indefinitely.
+
+**Explanation:** Jobs supervise batch workloads designed to terminate upon completion; Deployments supervise persistent services designed to never terminate.
+
+</details>
+
+**Q2: What happens to a Job's pods after the workload has successfully completed?**
+
+- [ ] A) They are immediately deleted along with their logs.
+- [ ] B) The pods are kept in Completed status so operators can inspect logs and exit statuses until the Job is cleaned up.
+- [ ] C) The pods automatically transition to running web servers.
+- [ ] D) The worker node is shut down.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) The pods are kept in Completed status so operators can inspect logs and exit statuses until the Job is cleaned up.
+
+**Explanation:** Retaining completed pods allows operators to run kubectl logs and view output; automated cleanup can be managed via ttlSecondsAfterFinished.
+
+</details>
 
 ## 37. CronJob
 
@@ -2276,6 +3536,41 @@ CLEANUP
 NOTE
   The schedule is every 2 minutes for the demo; a real nightly job would use 0 2 * * *.
 </pre></div>
+
+
+### Knowledge Check — Quiz
+
+**Q1: What does the concurrencyPolicy: Forbid setting on a CronJob do if a previous job execution is still running when the next scheduled interval arrives?**
+
+- [ ] A) It kills the currently running job immediately.
+- [ ] B) It skips the new execution until the currently running job has completed.
+- [ ] C) It crashes the CronJob controller.
+- [ ] D) It scales the worker node capacity.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) It skips the new execution until the currently running job has completed.
+
+**Explanation:** Forbid prevents concurrent executions of the same job, avoiding duplicate batch processing or database lock contention.
+
+</details>
+
+**Q2: What Kubernetes object does the CronJob controller create when a scheduled trigger fires?**
+
+- [ ] A) A bare container process via SSH.
+- [ ] B) A standard Job object, which in turn creates the execution pod.
+- [ ] C) A StatefulSet.
+- [ ] D) An Ingress rule.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) A standard Job object, which in turn creates the execution pod.
+
+**Explanation:** CronJob operates as a higher-level orchestrator: on schedule, it instantiates a standard Job based on its jobTemplate.
+
+</details>
 
 ## 38. ReplicationController (legacy)
 
@@ -2348,6 +3643,41 @@ NOTE
   Still works, but nobody builds new systems on it. Use a Deployment instead.
 </pre></div>
 
+
+### Knowledge Check — Quiz
+
+**Q1: Why is ReplicationController considered legacy in modern Kubernetes clusters?**
+
+- [ ] A) It cannot run in containerized environments.
+- [ ] B) It was superseded by Deployments and ReplicaSets, which offer set-based selectors, declarative rolling updates, and rollback capabilities.
+- [ ] C) It does not support Docker containers.
+- [ ] D) It only works on single-node clusters.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) It was superseded by Deployments and ReplicaSets, which offer set-based selectors, declarative rolling updates, and rollback capabilities.
+
+**Explanation:** ReplicationController was the original v1 replica primitive; Deployments and ReplicaSets replaced it with superior rollout orchestration and selector power.
+
+</details>
+
+**Q2: What label selector restriction does a ReplicationController have?**
+
+- [ ] A) It only supports equality-based selectors (key = value).
+- [ ] B) It cannot select pods by label at all.
+- [ ] C) It requires JSONPath expressions.
+- [ ] D) It only works with pods named default.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** A) It only supports equality-based selectors (key = value).
+
+**Explanation:** ReplicationController only understands exact equality (app = frontend), while modern controllers support expressive set-based selectors (app in (frontend, api)).
+
+</details>
+
 ## 39. HorizontalPodAutoscaler (HPA)
 
 **Part 1 — Technical Discussion:** HPA adjusts a scalable target’s replica count from observed resource, custom, or external metrics. It compares current values with a target, applies stabilization and scaling policies, and changes the workload’s desired replicas; it does not resize an individual Pod. Effective horizontal scaling requires usable metrics, meaningful resource requests, startup tolerance, sufficient cluster capacity, and an application that can distribute traffic across replicas.
@@ -2406,6 +3736,41 @@ CLEANUP
 NOTE
   Needs metrics-server. Until it reports, TARGETS shows &lt;unknown&gt;. Scale-down is deliberately slow (about 5 minutes).
 </pre></div>
+
+
+### Knowledge Check — Quiz
+
+**Q1: What component must be running in the cluster for the HorizontalPodAutoscaler to scale based on CPU and memory utilization?**
+
+- [ ] A) An NFS storage server.
+- [ ] B) The metrics-server (or a custom metrics provider implementing the Metrics API).
+- [ ] C) Docker Desktop on macOS.
+- [ ] D) A Ceph storage cluster.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) The metrics-server (or a custom metrics provider implementing the Metrics API).
+
+**Explanation:** HPA queries metrics.k8s.io to evaluate resource utilization; metrics-server collects container cgroup metrics from node kubelets and exposes them through this API.
+
+</details>
+
+**Q2: Why does HPA have a default stabilization window (typically 5 minutes) for scaling down replicas?**
+
+- [ ] A) Because the kube-apiserver is throttled to 1 write per 5 minutes.
+- [ ] B) To prevent 'flapping' (rapid oscillation of scaling up and down in response to transient metric spikes).
+- [ ] C) To allow container images to download.
+- [ ] D) To wait for node operating system updates.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) To prevent 'flapping' (rapid oscillation of scaling up and down in response to transient metric spikes).
+
+**Explanation:** Rapid scaling oscillations degrade application stability; the cooldown window smooths out scale-down decisions over time.
+
+</details>
 
 ## 40. VerticalPodAutoscaler (VPA)
 
@@ -2477,6 +3842,41 @@ NOTE
   In Auto mode VPA evicts and recreates the Pod with the new sizes; use updateMode: "Off" if you only want recommendations. The Deployment is created fresh here, so this demo does not depend on entry 39.
 </pre></div>
 
+
+### Knowledge Check — Quiz
+
+**Q1: What is the primary operational difference between HPA and VPA?**
+
+- [ ] A) HPA scales the number of Pod replicas (horizontal scaling), while VPA adjusts the CPU and memory requests/limits of existing containers (vertical scaling).
+- [ ] B) HPA only works on worker nodes; VPA only works on the control plane.
+- [ ] C) HPA scales storage; VPA scales networking.
+- [ ] D) HPA requires Windows; VPA requires Linux.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** A) HPA scales the number of Pod replicas (horizontal scaling), while VPA adjusts the CPU and memory requests/limits of existing containers (vertical scaling).
+
+**Explanation:** HPA adds/removes pod replicas to handle load; VPA right-sizes individual container CPU and RAM requests based on historical consumption patterns.
+
+</details>
+
+**Q2: In updateMode: 'Auto', how does VPA apply updated CPU and memory recommendations to a running Pod?**
+
+- [ ] A) By dynamically adjusting kernel memory without restarting the container.
+- [ ] B) By evicting the existing Pod so that the workload controller recreates it, at which point the VPA mutating admission webhook injects the new resource values.
+- [ ] C) By editing the host BIOS settings.
+- [ ] D) By changing the container image.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) By evicting the existing Pod so that the workload controller recreates it, at which point the VPA mutating admission webhook injects the new resource values.
+
+**Explanation:** In current Kubernetes releases, pod resource changes require pod recreation; VPA evicts the pod and its admission webhook mutates the pod spec during recreation.
+
+</details>
+
 ## 41. Pod Disruption Budget (PDB)
 
 **Part 1 — Technical Discussion:** A PodDisruptionBudget limits voluntary evictions of selected Pods during operations such as node drain or voluntary cluster maintenance. `minAvailable` and `maxUnavailable` express an availability requirement, but the budget does not prevent crashes, hardware loss, or every involuntary disruption. A strict budget can also block maintenance when there are too few replicas or no spare schedulable Nodes, so it must match real capacity and recovery behavior.
@@ -2544,3 +3944,38 @@ CLEANUP
 NOTE
   Needs 2 or more worker nodes so evicted Pods have somewhere to go. Do not drain your only node.
 </pre></div>
+
+
+### Knowledge Check — Quiz
+
+**Q1: What type of disruptions does a Pod Disruption Budget (PDB) protect against?**
+
+- [ ] A) Involuntary disruptions like hardware power loss or kernel panics.
+- [ ] B) Voluntary disruptions initiated by cluster administrators or automation, such as kubectl drain, node upgrades, and cluster autoscaler scale-down.
+- [ ] C) Malicious cyberattacks on the network.
+- [ ] D) Pod crashes caused by out-of-memory (OOM) errors.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) Voluntary disruptions initiated by cluster administrators or automation, such as kubectl drain, node upgrades, and cluster autoscaler scale-down.
+
+**Explanation:** PDBs govern voluntary management operations; they cannot prevent hardware crashes, but they intercept Eviction API calls during node maintenance to safeguard minimum available replicas.
+
+</details>
+
+**Q2: What happens if an administrator runs kubectl drain node-1 and evicting a pod would violate its PDB minAvailable constraint?**
+
+- [ ] A) The node drain immediately deletes the pod forcefully.
+- [ ] B) The Eviction API rejects or delays the eviction request, causing kubectl drain to wait or retry until sufficient healthy replicas exist elsewhere.
+- [ ] C) The PDB is automatically deleted.
+- [ ] D) The entire cluster is placed in read-only mode.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) The Eviction API rejects or delays the eviction request, causing kubectl drain to wait or retry until sufficient healthy replicas exist elsewhere.
+
+**Explanation:** The Eviction API checks active PDBs and returns HTTP 429 (Too Many Requests) if an eviction would breach the budget, protecting application availability during maintenance.
+
+</details>

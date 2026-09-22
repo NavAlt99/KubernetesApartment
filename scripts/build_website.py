@@ -1,12 +1,18 @@
 #!/usr/bin/env python3
 """
 scripts/build_website.py
-Generates index.html, updates demos-complete.md, and creates serve.py.
+Generates index.html with interactive architecture diagrams and quizzes,
+updates demos-complete.md with embedded diagrams and quizzes,
+and creates serve.py.
 """
 
 import os
 import re
 import json
+import sys
+
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+from quiz_data import QUIZZES
 
 def get_topics_and_header():
     with open("demos-complete.md", "r", encoding="utf-8") as f:
@@ -81,7 +87,8 @@ def get_topics_and_header():
             "demo": demo,
             "tech_img": f"generated/kubernetes-apartment-complex/{num:02d}-technical.png",
             "zine_img": f"generated/kubernetes-apartment-complex/{num:02d}-zine.png",
-            "diagram": f"diagrams/topic-{num:02d}.html"
+            "diagram": f"diagrams/topic-{num:02d}.html",
+            "quiz": QUIZZES.get(num, [])
         })
 
     return header, topics
@@ -271,7 +278,6 @@ def generate_index_html(topics):
   .node-title {{ fill: var(--text-main); font-size: 12px; font-weight: 600; transition: fill 0.25s ease; cursor: pointer; }}
   .node-title.active {{ fill: var(--accent); }}
   .node-sub {{ fill: var(--text-dim); font-size: 9.5px; cursor: pointer; }}
-  .node-tag {{ fill: var(--accent); font-size: 8.5px; font-weight: 600; opacity: 0.85; }}
 
   .connector {{ stroke: var(--line); stroke-width: 1.4; fill: none; transition: stroke 0.3s ease; }}
   .connector.active {{ stroke: var(--accent); }}
@@ -436,7 +442,7 @@ def generate_index_html(topics):
     color: var(--text-dim);
   }}
 
-  /* 5-Part Layout in Topic View */
+  /* Sections in Topic View */
   .part-section {{
     background: var(--panel);
     border: 1px solid var(--panel-border);
@@ -518,6 +524,81 @@ def generate_index_html(topics):
     margin: 0;
     white-space: pre-wrap;
     font-family: inherit;
+  }}
+
+  /* Interactive Quiz Styles */
+  .quiz-card {{
+    background: #080d1a;
+    border: 1px solid var(--panel-border);
+    border-radius: 8px;
+    padding: 18px 16px;
+    margin-bottom: 18px;
+  }}
+  .quiz-question {{
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-main);
+    margin-bottom: 14px;
+    line-height: 1.5;
+  }}
+  .quiz-options {{
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }}
+  .quiz-opt {{
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    border-radius: 6px;
+    padding: 10px 14px;
+    font-size: 12px;
+    color: var(--text-main);
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    text-align: left;
+    font-family: inherit;
+    line-height: 1.5;
+  }}
+  .quiz-opt:hover:not(:disabled) {{
+    border-color: var(--accent);
+    background: #142036;
+  }}
+  .quiz-opt.selected-correct {{
+    border-color: #10b981 !important;
+    background: rgba(16, 185, 129, 0.15) !important;
+    color: #34d399 !important;
+    font-weight: 600;
+  }}
+  .quiz-opt.selected-incorrect {{
+    border-color: #ef4444 !important;
+    background: rgba(239, 68, 68, 0.15) !important;
+    color: #f87171 !important;
+  }}
+  .quiz-opt.reveal-correct {{
+    border-color: #10b981 !important;
+    background: rgba(16, 185, 129, 0.1) !important;
+    color: #34d399 !important;
+  }}
+  .quiz-explanation {{
+    margin-top: 14px;
+    padding: 12px 16px;
+    border-radius: 6px;
+    font-size: 11.5px;
+    line-height: 1.6;
+    display: none;
+  }}
+  .quiz-explanation.correct {{
+    background: rgba(16, 185, 129, 0.1);
+    border-left: 3px solid #10b981;
+    color: #e5edf7;
+  }}
+  .quiz-explanation.incorrect {{
+    background: rgba(239, 68, 68, 0.1);
+    border-left: 3px solid #ef4444;
+    color: #e5edf7;
   }}
 
   /* Footer */
@@ -737,7 +818,7 @@ def generate_index_html(topics):
       </div>
     </div>
 
-    <!-- VIEW 2: TOPIC VIEW (5 Parts) -->
+    <!-- VIEW 2: TOPIC VIEW (6 Parts including Quiz) -->
     <div id="topicView" class="topic-view-wrap">
       <div class="topic-nav-bar">
         <div class="topic-crumb">
@@ -800,6 +881,17 @@ def generate_index_html(topics):
         <div class="part-header">Part 5 — Runnable Demo (Terminal Experiment)</div>
         <div class="demo-block">
           <pre id="topicDemo">SETUP ... STEPS ... WHAT YOU SHOULD SEE ... CLEANUP</pre>
+        </div>
+      </section>
+
+      <!-- PART 6: Knowledge Check — Interactive Quiz -->
+      <section class="part-section">
+        <div class="part-header">Part 6 — Knowledge Check (Interactive Quiz)</div>
+        <p class="part-text" style="color: var(--text-dim); font-size: 11.5px; margin-bottom: 14px;">
+          Test your operational understanding. Select an option to check your answer and view the detailed architectural rationale.
+        </p>
+        <div id="topicQuizContainer">
+          <!-- Dynamically populated via JS -->
         </div>
       </section>
     </div>
@@ -953,10 +1045,82 @@ def generate_index_html(topics):
       document.getElementById('topicReading').innerHTML = formatMarkdownLinks(topic.reading);
       document.getElementById('topicDemo').textContent = topic.demo;
 
+      // Render Quiz
+      renderQuiz(topic.quiz || []);
+
       document.getElementById('prevTopicBtn').disabled = (num <= 1);
       document.getElementById('nextTopicBtn').disabled = (num >= 41);
 
       window.scrollTo(0, 0);
+    }}
+
+    function renderQuiz(questions) {{
+      const container = document.getElementById('topicQuizContainer');
+      container.innerHTML = '';
+      if (!questions || questions.length === 0) {{
+        container.innerHTML = '<div style="color: var(--text-dim); font-size: 12px;">No quiz questions currently available for this topic.</div>';
+        return;
+      }}
+
+      questions.forEach((q, qIndex) => {{
+        const card = document.createElement('div');
+        card.className = 'quiz-card';
+        card.id = `quizCard_${{qIndex}}`;
+
+        const qTitle = document.createElement('div');
+        qTitle.className = 'quiz-question';
+        qTitle.textContent = `Q${{qIndex + 1}}: ${{q.question}}`;
+        card.appendChild(qTitle);
+
+        const optionsWrap = document.createElement('div');
+        optionsWrap.className = 'quiz-options';
+
+        const optLetters = ['A', 'B', 'C', 'D'];
+        q.options.forEach((optText, optIndex) => {{
+          const optBtn = document.createElement('button');
+          optBtn.className = 'quiz-opt';
+          optBtn.id = `opt_${{qIndex}}_${{optIndex}}`;
+          optBtn.innerHTML = `<strong>${{optLetters[optIndex]}})</strong> <span>${{optText}}</span>`;
+          optBtn.onclick = () => selectQuizAnswer(qIndex, optIndex, q.answer, q.explanation);
+          optionsWrap.appendChild(optBtn);
+        }});
+        card.appendChild(optionsWrap);
+
+        const expBox = document.createElement('div');
+        expBox.className = 'quiz-explanation';
+        expBox.id = `exp_${{qIndex}}`;
+        card.appendChild(expBox);
+
+        container.appendChild(card);
+      }});
+    }}
+
+    function selectQuizAnswer(qIndex, selectedIndex, correctIndex, explanation) {{
+      const card = document.getElementById(`quizCard_${{qIndex}}`);
+      if (!card) return;
+
+      const buttons = card.querySelectorAll('.quiz-opt');
+      buttons.forEach(btn => btn.disabled = true);
+
+      const isCorrect = (selectedIndex === correctIndex);
+      const selectedBtn = document.getElementById(`opt_${{qIndex}}_${{selectedIndex}}`);
+      const correctBtn = document.getElementById(`opt_${{qIndex}}_${{correctIndex}}`);
+      const expBox = document.getElementById(`exp_${{qIndex}}`);
+
+      if (isCorrect) {{
+        selectedBtn.classList.add('selected-correct');
+        selectedBtn.innerHTML += ' ✓';
+        expBox.className = 'quiz-explanation correct';
+        expBox.innerHTML = `<strong>Correct!</strong> ${{explanation}}`;
+      }} else {{
+        selectedBtn.classList.add('selected-incorrect');
+        selectedBtn.innerHTML += ' ✗';
+        correctBtn.classList.add('reveal-correct');
+        correctBtn.innerHTML += ' (Correct Answer)';
+        expBox.className = 'quiz-explanation incorrect';
+        expBox.innerHTML = `<strong>Incorrect.</strong> ${{explanation}}`;
+      }}
+      expBox.style.display = 'block';
     }}
 
     function navigateTopic(delta) {{
@@ -989,7 +1153,7 @@ def generate_index_html(topics):
             <div class="topic-desc">${{t.tech_disc || t.tech_persp}}</div>
           </div>
           <div class="topic-footer">
-            Explore topic &amp; diagram →
+            Explore topic, diagram &amp; quiz →
           </div>
         `;
         grid.appendChild(card);
@@ -1043,7 +1207,7 @@ def generate_index_html(topics):
 
 
 def update_demos_complete_markdown(header, topics):
-    """Updates demos-complete.md by inserting the diagram iframe for all 41 topics."""
+    """Updates demos-complete.md by inserting the diagram iframe and quiz for all 41 topics."""
     with open("demos-complete.md", "r", encoding="utf-8") as f:
         content = f.read()
 
@@ -1051,6 +1215,7 @@ def update_demos_complete_markdown(header, topics):
     header = header_and_topics[0]
     topics_raw = header_and_topics[1:]
 
+    opt_letters = ['A', 'B', 'C', 'D']
     new_topics = []
     for idx, sec in enumerate(topics_raw, 1):
         m = re.match(r"## (\d+)\. (.+)", sec)
@@ -1059,12 +1224,9 @@ def update_demos_complete_markdown(header, topics):
             continue
         num = int(m.group(1))
 
-        # Check if iframe already present
-        if f"diagrams/topic-{num:02d}.html" in sec:
-            new_topics.append(sec)
-            continue
-
-        diagram_block = f"""
+        # Ensure diagram iframe is present
+        if f"diagrams/topic-{num:02d}.html" not in sec:
+            diagram_block = f"""
 
 ### Component architecture flow
 
@@ -1073,26 +1235,45 @@ def update_demos_complete_markdown(header, topics):
 > [!TIP]
 > View the interactive animated diagram in [diagrams/topic-{num:02d}.html](diagrams/topic-{num:02d}.html).
 """
-
-        # Insert right before **Part 2 — Analogy / Zine:**
-        if "**Part 2 — Analogy / Zine:**" in sec:
-            parts = sec.split("**Part 2 — Analogy / Zine:**", 1)
-            new_sec = parts[0].rstrip() + "\n" + diagram_block + "\n**Part 2 — Analogy / Zine:**" + parts[1]
-        else:
-            parts = re.split(r"\n(?=\!\[.*?zine\.png\])", sec, 1)
-            if len(parts) == 2:
-                new_sec = parts[0].rstrip() + "\n" + diagram_block + "\n" + parts[1]
+            if "**Part 2 — Analogy / Zine:**" in sec:
+                parts = sec.split("**Part 2 — Analogy / Zine:**", 1)
+                sec = parts[0].rstrip() + "\n" + diagram_block + "\n**Part 2 — Analogy / Zine:**" + parts[1]
             else:
-                new_sec = sec + "\n" + diagram_block
+                parts = re.split(r"\n(?=\!\[.*?zine\.png\])", sec, 1)
+                if len(parts) == 2:
+                    sec = parts[0].rstrip() + "\n" + diagram_block + "\n" + parts[1]
+                else:
+                    sec = sec + "\n" + diagram_block
 
-        new_topics.append(new_sec)
+        # Check if quiz already present in section
+        if "### Knowledge Check — Quiz" in sec:
+            # Remove previous quiz to allow update
+            sec = sec.split("### Knowledge Check — Quiz")[0].rstrip()
+
+        # Build quiz markdown
+        q_list = QUIZZES.get(num, [])
+        if q_list:
+            quiz_md_lines = ["\n\n### Knowledge Check — Quiz\n"]
+            for q_idx, q in enumerate(q_list, 1):
+                quiz_md_lines.append(f"**Q{q_idx}: {q['question']}**\n")
+                for o_idx, opt in enumerate(q['options']):
+                    quiz_md_lines.append(f"- [ ] {opt_letters[o_idx]}) {opt}")
+                quiz_md_lines.append("\n<details>")
+                quiz_md_lines.append("<summary>Reveal Answer &amp; Explanation</summary>\n")
+                quiz_md_lines.append(f"**Correct Answer:** {opt_letters[q['answer']]}) {q['options'][q['answer']]}\n")
+                quiz_md_lines.append(f"**Explanation:** {q['explanation']}\n")
+                quiz_md_lines.append("</details>\n")
+            quiz_block = "\n".join(quiz_md_lines)
+            sec = sec.rstrip() + "\n" + quiz_block
+
+        new_topics.append(sec)
 
     updated_content = header + "\n" + "\n".join(new_topics)
 
     with open("demos-complete.md", "w", encoding="utf-8") as f:
         f.write(updated_content)
 
-    print("Updated demos-complete.md with embedded diagrams for all 41 topics.")
+    print("Updated demos-complete.md with embedded diagrams and quizzes for all 41 topics.")
 
 
 def create_server_script():
@@ -1157,7 +1338,7 @@ if __name__ == "__main__":
     html = generate_index_html(topics)
     with open("index.html", "w", encoding="utf-8") as f:
         f.write(html)
-    print("Generated index.html successfully.")
+    print("Generated index.html with interactive quizzes successfully.")
 
     # Update demos-complete.md
     update_demos_complete_markdown(header, topics)
@@ -1165,4 +1346,4 @@ if __name__ == "__main__":
     # Create serve.py
     create_server_script()
 
-    print("Complete build finished successfully!")
+    print("Complete build with quizzes finished successfully!")

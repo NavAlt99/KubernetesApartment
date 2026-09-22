@@ -6,20 +6,24 @@
 <title>Kubernetes Architecture — Container Runtime & CRI</title>
 <style>
   :root {
-    --bg: #0b1120;
-    --panel: #111a2e;
-    --panel-border: #1e2b47;
-    --cp-tint: #0f1f38;
-    --wn-tint: #14231c;
-    --accent: #38bdf8;
-    --accent-glow: rgba(56, 189, 248, 0.55);
-    --packet: #f59e0b;
-    --packet-glow: rgba(245, 158, 11, 0.6);
-    --text-main: #e5edf7;
-    --text-dim: #7f93b3;
-    --line: #24324f;
-    --region-cp-border: #2b3f66;
-    --region-wn-border: #234030;
+    --bg: #090d16;
+    --panel: #121526;
+    --panel-border: #3b1d38;
+    --cp-tint: #1e0b1c;
+    --wn-tint: #1c1006;
+    --accent: #f43f5e;
+    --accent-glow: rgba(244, 63, 94, 0.65);
+    --accent-pink: #ec4899;
+    --accent-orange: #f97316;
+    --accent-orange-glow: rgba(249, 115, 22, 0.7);
+    --accent-red: #ef4444;
+    --packet: #ff5722;
+    --packet-glow: rgba(255, 87, 34, 0.9);
+    --text-main: #fce7f3;
+    --text-dim: #94a3b8;
+    --line: #4a213a;
+    --region-cp-border: #ec4899;
+    --region-wn-border: #f97316;
   }
   * { box-sizing: border-box; }
   html, body {
@@ -36,47 +40,66 @@
   .wrap { max-width: 920px; margin: 0 auto; }
   h1 {
     font-size: 14px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase;
-    color: var(--accent); text-align: center; margin: 0 0 4px;
+    color: #fb7185; text-align: center; margin: 0 0 4px;
+    text-shadow: 0 0 14px rgba(251, 113, 133, 0.35);
   }
-  .subtitle { text-align: center; color: var(--text-dim); font-size: 11.5px; margin: 0 0 16px; }
+  .subtitle { text-align: center; color: #cbd5e1; font-size: 11.5px; margin: 0 0 16px; }
   .stage-label {
-    text-align: center; min-height: 24px; font-size: 12.5px; color: var(--text-main);
+    text-align: center; min-height: 24px; font-size: 12.5px; color: #fff;
     margin-bottom: 12px; letter-spacing: 0.02em; line-height: 1.4;
   }
   .controls { display: flex; justify-content: center; gap: 10px; margin-bottom: 20px; }
   button {
     font-family: inherit; font-size: 11.5px; letter-spacing: 0.03em;
-    background: var(--panel); color: var(--accent); border: 1px solid var(--panel-border);
+    background: #190e1f; color: #fb7185; border: 1px solid #be185d;
     border-radius: 6px; padding: 7px 15px; cursor: pointer;
-    transition: border-color 0.2s, box-shadow 0.2s;
+    transition: all 0.2s ease;
   }
-  button:hover { border-color: var(--accent); box-shadow: 0 0 12px rgba(56, 189, 248, 0.25); }
+  button:hover {
+    border-color: #f43f5e; color: #ffffff;
+    box-shadow: 0 0 14px rgba(244, 63, 94, 0.5), 0 0 20px rgba(249, 115, 22, 0.3);
+  }
   button:active { transform: translateY(1px); }
 
   svg { display: block; width: 100%; height: auto; overflow: visible; }
 
-  .region-box { fill: none; stroke-width: 1.2; stroke-dasharray: 3 4; }
-  .region-cp { stroke: var(--region-cp-border); }
-  .region-wn { stroke: var(--region-wn-border); }
-  .region-neutral { stroke: var(--panel-border); }
-  .region-label { fill: var(--text-dim); font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; }
+  .region-box { fill: none; stroke-width: 1.4; stroke-dasharray: 4 4; }
+  .region-cp { stroke: var(--region-cp-border); filter: drop-shadow(0 0 6px rgba(236, 72, 153, 0.3)); }
+  .region-wn { stroke: var(--region-wn-border); filter: drop-shadow(0 0 6px rgba(249, 115, 22, 0.3)); }
+  .region-neutral { stroke: #64748b; }
+  .region-label { font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; font-weight: 700; fill: #f472b6; }
+  .region-wn + .region-label, rect.region-wn ~ text.region-label { fill: #fb923c !important; }
 
   .node-box {
-    stroke-width: 1.2; transition: stroke 0.3s ease, filter 0.3s ease;
+    stroke-width: 1.3; transition: stroke 0.3s ease, filter 0.3s ease, fill 0.3s ease;
   }
-  .node-box.cp { fill: var(--cp-tint); stroke: var(--panel-border); }
-  .node-box.wn { fill: var(--wn-tint); stroke: var(--panel-border); }
-  .node-box.client { fill: var(--panel); stroke: var(--panel-border); }
-  .node-box.neutral { fill: var(--panel); stroke: var(--panel-border); }
-  .node-box.active { stroke: var(--accent); filter: drop-shadow(0 0 8px var(--accent-glow)); }
+  .node-box.cp { fill: var(--cp-tint); stroke: #ec4899; }
+  .node-box.wn { fill: var(--wn-tint); stroke: #f97316; }
+  .node-box.client { fill: #1a0f1b; stroke: #ef4444; }
+  .node-box.neutral { fill: #160e20; stroke: #db2777; }
+  .node-box.active {
+    stroke: #f43f5e !important;
+    filter: drop-shadow(0 0 10px rgba(244, 63, 94, 0.95)) drop-shadow(0 0 20px rgba(249, 115, 22, 0.6)) !important;
+  }
 
-  .node-title { fill: var(--text-main); font-size: 12px; font-weight: 600; transition: fill 0.3s ease; }
-  .node-title.active { fill: var(--accent); }
-  .node-sub { fill: var(--text-dim); font-size: 9.5px; }
+  /* Highlighting distinct component types with pink, red, and orange */
+  g[id*="Etcd"] .node-box, g[id*="etcd"] .node-box { stroke: #ef4444 !important; fill: #240c12 !important; }
+  g[id*="Api"] .node-box, g[id*="api"] .node-box { stroke: #f43f5e !important; }
+  g[id*="Sched"] .node-box, g[id*="sched"] .node-box { stroke: #ec4899 !important; }
+  g[id*="Ctrl"] .node-box, g[id*="ctrl"] .node-box { stroke: #f472b6 !important; }
+  g[id*="Kubelet"] .node-box, g[id*="kubelet"] .node-box { stroke: #ea580c !important; }
+  g[id*="Proxy"] .node-box, g[id*="proxy"] .node-box { stroke: #f97316 !important; }
+  g[id*="Cri"] .node-box, g[id*="cri"] .node-box { stroke: #fb923c !important; }
+  g[id*="Cni"] .node-box, g[id*="cni"] .node-box { stroke: #fdba74 !important; }
+
+  .node-title { fill: #ffffff; font-size: 12px; font-weight: 600; transition: fill 0.3s ease; }
+  .node-title.active { fill: #fb7185; text-shadow: 0 0 8px rgba(251, 113, 133, 0.7); }
+  .node-sub { fill: #cbd5e1; font-size: 9.5px; }
 
   .connector { stroke: var(--line); stroke-width: 1.4; fill: none; transition: stroke 0.3s ease; }
-  .connector.active { stroke: var(--accent); }
+  .connector.active { stroke: #f43f5e; filter: drop-shadow(0 0 6px rgba(249, 115, 22, 0.7)); }
   .connector-dash {
+    stroke: #f97316;
     stroke-dasharray: 4 5; animation: dash-flow 0.9s linear infinite;
     opacity: 0; transition: opacity 0.25s ease;
   }
@@ -84,7 +107,8 @@
   @keyframes dash-flow { to { stroke-dashoffset: -18; } }
 
   .packet {
-    fill: var(--packet); filter: drop-shadow(0 0 6px var(--packet-glow));
+    fill: #ff5722;
+    filter: drop-shadow(0 0 8px #ff5722) drop-shadow(0 0 16px #ec4899);
     opacity: 0; transition: opacity 0.2s ease, cx 0.55s cubic-bezier(.4,0,.2,1), cy 0.55s cubic-bezier(.4,0,.2,1);
   }
   .packet.on { opacity: 1; }
@@ -94,7 +118,7 @@
     .packet { transition: opacity 0.2s ease; }
   }
 
-  footer { text-align: center; color: var(--text-dim); font-size: 10px; margin-top: 22px; letter-spacing: 0.02em; }
+  footer { text-align: center; color: #cbd5e1; font-size: 10px; margin-top: 22px; letter-spacing: 0.02em; }
 </style>
 </head>
 <body>

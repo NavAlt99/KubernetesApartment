@@ -108,22 +108,26 @@ def generate_index_html(topics):
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root {{
-    --bg: #0b1120;
-    --panel: #111a2e;
-    --panel-hover: #16223b;
-    --panel-border: #1e2b47;
-    --cp-tint: #0f1f38;
-    --wn-tint: #14231c;
-    --accent: #38bdf8;
-    --accent-glow: rgba(56, 189, 248, 0.55);
-    --accent-dim: rgba(56, 189, 248, 0.15);
-    --packet: #f59e0b;
-    --packet-glow: rgba(245, 158, 11, 0.6);
-    --text-main: #e5edf7;
-    --text-dim: #7f93b3;
-    --line: #24324f;
-    --region-cp-border: #2b3f66;
-    --region-wn-border: #234030;
+    --bg: #090d16;
+    --panel: #121526;
+    --panel-hover: #191c32;
+    --panel-border: #3b1d38;
+    --cp-tint: #1e0b1c;
+    --wn-tint: #1c1006;
+    --accent: #f43f5e;
+    --accent-glow: rgba(244, 63, 94, 0.6);
+    --accent-dim: rgba(244, 63, 94, 0.15);
+    --accent-pink: #ec4899;
+    --accent-orange: #f97316;
+    --accent-orange-glow: rgba(249, 115, 22, 0.65);
+    --accent-red: #ef4444;
+    --packet: #ff5722;
+    --packet-glow: rgba(255, 87, 34, 0.85);
+    --text-main: #fce7f3;
+    --text-dim: #94a3b8;
+    --line: #421e36;
+    --region-cp-border: #ec4899;
+    --region-wn-border: #f97316;
   }}
   * {{ box-sizing: border-box; margin: 0; padding: 0; }}
   html, body {{
@@ -248,40 +252,53 @@ def generate_index_html(topics):
 
   /* SVG interactive styles */
   svg {{ display: block; width: 100%; height: auto; overflow: visible; }}
-  .region-box {{ fill: none; stroke-width: 1.2; stroke-dasharray: 3 4; }}
-  .region-cp {{ stroke: var(--region-cp-border); }}
-  .region-wn {{ stroke: var(--region-wn-border); }}
-  .region-neutral {{ stroke: var(--panel-border); }}
-  .region-label {{ fill: var(--text-dim); font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; }}
+  .region-box {{ fill: none; stroke-width: 1.4; stroke-dasharray: 4 4; }}
+  .region-cp {{ stroke: var(--region-cp-border); filter: drop-shadow(0 0 6px rgba(236, 72, 153, 0.3)); }}
+  .region-wn {{ stroke: var(--region-wn-border); filter: drop-shadow(0 0 6px rgba(249, 115, 22, 0.3)); }}
+  .region-neutral {{ stroke: #64748b; }}
+  .region-label {{ fill: #f472b6; font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; font-weight: 700; }}
+  .region-wn + .region-label, rect.region-wn ~ text.region-label {{ fill: #fb923c !important; }}
 
   .node-box {{
-    stroke-width: 1.2;
+    stroke-width: 1.3;
     transition: stroke 0.25s ease, filter 0.25s ease, fill 0.25s ease;
     cursor: pointer;
   }}
-  .node-box.cp {{ fill: var(--cp-tint); stroke: var(--panel-border); }}
-  .node-box.wn {{ fill: var(--wn-tint); stroke: var(--panel-border); }}
-  .node-box.client {{ fill: #132238; stroke: var(--panel-border); }}
-  .node-box.neutral {{ fill: var(--panel); stroke: var(--panel-border); }}
+  .node-box.cp {{ fill: var(--cp-tint); stroke: #ec4899; }}
+  .node-box.wn {{ fill: var(--wn-tint); stroke: #f97316; }}
+  .node-box.client {{ fill: #1a0f1b; stroke: #ef4444; }}
+  .node-box.neutral {{ fill: #160e20; stroke: #db2777; }}
   
   .interactive-node:hover .node-box {{
     stroke: var(--accent);
     filter: drop-shadow(0 0 10px var(--accent-glow));
   }}
   .interactive-node:hover .node-title {{
-    fill: var(--accent);
+    fill: #fb7185;
   }}
   .node-box.active {{
-    stroke: var(--accent) !important;
-    filter: drop-shadow(0 0 10px var(--accent-glow)) !important;
+    stroke: #f43f5e !important;
+    filter: drop-shadow(0 0 10px rgba(244, 63, 94, 0.9)) drop-shadow(0 0 20px rgba(249, 115, 22, 0.6)) !important;
   }}
-  .node-title {{ fill: var(--text-main); font-size: 12px; font-weight: 600; transition: fill 0.25s ease; cursor: pointer; }}
-  .node-title.active {{ fill: var(--accent); }}
-  .node-sub {{ fill: var(--text-dim); font-size: 9.5px; cursor: pointer; }}
+
+  /* Distinct color highlights in master flow */
+  #mEtcd .node-box {{ stroke: #ef4444 !important; fill: #240c12 !important; }}
+  #mApi .node-box {{ stroke: #f43f5e !important; }}
+  #mSched .node-box {{ stroke: #ec4899 !important; }}
+  #mCtrl .node-box {{ stroke: #f472b6 !important; }}
+  #mKubelet .node-box {{ stroke: #ea580c !important; }}
+  #mProxy .node-box {{ stroke: #f97316 !important; }}
+  #mCri .node-box {{ stroke: #fb923c !important; }}
+  #mCni .node-box {{ stroke: #fdba74 !important; }}
+
+  .node-title {{ fill: #ffffff; font-size: 12px; font-weight: 600; transition: fill 0.25s ease; cursor: pointer; }}
+  .node-title.active {{ fill: #fb7185; text-shadow: 0 0 8px rgba(251, 113, 133, 0.7); }}
+  .node-sub {{ fill: #cbd5e1; font-size: 9.5px; cursor: pointer; }}
 
   .connector {{ stroke: var(--line); stroke-width: 1.4; fill: none; transition: stroke 0.3s ease; }}
-  .connector.active {{ stroke: var(--accent); }}
+  .connector.active {{ stroke: #f43f5e; filter: drop-shadow(0 0 6px rgba(249, 115, 22, 0.7)); }}
   .connector-dash {{
+    stroke: #f97316;
     stroke-dasharray: 4 5; animation: dash-flow 0.9s linear infinite;
     opacity: 0; transition: opacity 0.25s ease;
   }}
@@ -289,10 +306,28 @@ def generate_index_html(topics):
   @keyframes dash-flow {{ to {{ stroke-dashoffset: -18; }} }}
 
   .packet {{
-    fill: var(--packet); filter: drop-shadow(0 0 8px var(--packet-glow));
+    fill: #ff5722; filter: drop-shadow(0 0 8px #ff5722) drop-shadow(0 0 16px #ec4899);
     opacity: 0; transition: opacity 0.2s ease, cx 0.55s cubic-bezier(.4,0,.2,1), cy 0.55s cubic-bezier(.4,0,.2,1);
   }}
   .packet.on {{ opacity: 1; }}
+
+  /* Rich Technical Discussion & Manifest Typography */
+  .content-h3 {{ font-size: 15px; font-weight: 700; color: #fb7185; margin: 20px 0 10px; text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid #3d1b32; padding-bottom: 4px; }}
+  .content-h4 {{ font-size: 13.5px; font-weight: 700; color: #f97316; margin: 16px 0 8px; letter-spacing: 0.04em; }}
+  .content-h5 {{ font-size: 12px; font-weight: 600; color: #fdba74; margin: 12px 0 6px; }}
+  .content-p {{ font-size: 12px; line-height: 1.7; color: #e2e8f0; margin-bottom: 12px; }}
+  .content-list {{ margin: 8px 0 14px 18px; list-style-type: none; }}
+  .content-list li {{ position: relative; font-size: 12px; line-height: 1.65; color: #cbd5e1; margin-bottom: 7px; }}
+  .content-list li::before {{ content: "▸"; position: absolute; left: -16px; color: #f43f5e; font-weight: bold; }}
+  .inline-code {{ background: rgba(244, 63, 94, 0.12); border: 1px solid rgba(244, 63, 94, 0.28); color: #fda4af; padding: 1px 5px; border-radius: 4px; font-size: 11px; }}
+
+  .code-block-wrapper {{ margin: 14px 0 18px; border-radius: 8px; border: 1px solid #3d1b32; overflow: hidden; background: #080c16; box-shadow: 0 4px 16px rgba(0,0,0,0.4); }}
+  .code-block-header {{ background: #150e1d; padding: 7px 12px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid #291427; font-size: 10.5px; font-weight: 700; color: #fb7185; letter-spacing: 0.08em; }}
+  .code-dot {{ width: 8px; height: 8px; border-radius: 50%; display: inline-block; }}
+  .code-dot.red {{ background: #ef4444; }}
+  .code-dot.yellow {{ background: #f59e0b; }}
+  .code-dot.green {{ background: #10b981; }}
+  .code-box {{ background: transparent; padding: 12px 16px; overflow-x: auto; margin: 0; font-family: inherit; font-size: 11.5px; line-height: 1.55; color: #f1f5f9; white-space: pre; }}
 
   /* Topics Directory */
   .section-title {{
@@ -1031,8 +1066,8 @@ def generate_index_html(topics):
       document.getElementById('topicTitle').textContent = topic.title;
       document.getElementById('topicMeta').textContent = topic.category + ' · Technical Reference & Apartment Zine';
 
-      document.getElementById('topicTechDisc').textContent = topic.tech_disc;
-      document.getElementById('topicTechPersp').textContent = topic.tech_persp;
+      document.getElementById('topicTechDisc').innerHTML = formatRichMarkdown(topic.tech_disc);
+      document.getElementById('topicTechPersp').innerHTML = formatRichMarkdown(topic.tech_persp);
       document.getElementById('topicTechImg').src = topic.tech_img;
 
       document.getElementById('topicDiagramIframe').src = topic.diagram;
@@ -1130,6 +1165,67 @@ def generate_index_html(topics):
       }}
     }}
 
+    function stripMarkdown(text) {{
+      if (!text) return "";
+      return text.replace(/```[\\s\\S]*?```/g, "")
+                 .replace(/###+[\\s]+/g, "")
+                 .replace(/[-*][\\s]+/g, "")
+                 .replace(/[*_`]/g, "")
+                 .replace(/[\\r\\n]+/g, " ")
+                 .trim();
+    }}
+
+    function formatRichMarkdown(text) {{
+      if (!text) return "";
+      let html = text
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
+
+      html = html.replace(/```([a-zA-Z0-9_\\-]+)?[\\r\\n]([\\s\\S]*?)```/g, function(match, lang, code) {{
+        const displayLang = lang ? lang.toUpperCase() : "YAML / CONFIG";
+        return `<div class="code-block-wrapper"><div class="code-block-header"><span class="code-dot red"></span><span class="code-dot yellow"></span><span class="code-dot green"></span><span class="code-lang">${{displayLang}}</span></div><pre class="code-box"><code>${{code.trim()}}</code></pre></div>`;
+      }});
+
+      html = html.replace(/`([^`]+)`/g, '<code class="inline-code">$1</code>');
+      html = html.replace(/^#### (.*?)$/gm, '<h5 class="content-h5">$1</h5>');
+      html = html.replace(/^### (.*?)$/gm, '<h4 class="content-h4">$1</h4>');
+      html = html.replace(/^## (.*?)$/gm, '<h3 class="content-h3">$1</h3>');
+      html = html.replace(/\\*\\*([^*]+)\\*\\*/g, '<strong>$1</strong>');
+      html = html.replace(/\\[([^\\]]+)\\]\\(([^)]+)\\)/g, '<a href="$2" target="_blank" rel="noopener">$1 ↗</a>');
+
+      const lines = html.split(/[\\r\\n]+/);
+      let inList = false;
+      let out = [];
+
+      for (let i = 0; i < lines.length; i++) {{
+        let line = lines[i];
+        if (/^[\\s]*[-*][\\s]+(.*)$/.test(line)) {{
+          let content = line.replace(/^[\\s]*[-*][\\s]+/, "");
+          if (!inList) {{
+            out.push('<ul class="content-list">');
+            inList = true;
+          }}
+          out.push(`<li>${{content}}</li>`);
+        }} else {{
+          if (inList) {{
+            out.push("</ul>");
+            inList = false;
+          }}
+          if (line.trim().length > 0 && !line.startsWith("<h") && !line.startsWith("<div") && !line.startsWith("<pre") && !line.startsWith("</pre") && !line.startsWith("</div")) {{
+            out.push(`<p class="content-p">${{line}}</p>`);
+          }} else {{
+            out.push(line);
+          }}
+        }}
+      }}
+      if (inList) {{
+        out.push("</ul>");
+      }}
+
+      return out.join('\\n');
+    }}
+
     function formatMarkdownLinks(text) {{
       if (!text) return '<span style="color: var(--text-dim)">Refer to official Kubernetes documentation.</span>';
       return text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1 ↗</a>');
@@ -1150,7 +1246,7 @@ def generate_index_html(topics):
               <span class="topic-cat">${{t.category}}</span>
             </div>
             <div class="topic-title">${{t.title}}</div>
-            <div class="topic-desc">${{t.tech_disc || t.tech_persp}}</div>
+            <div class="topic-desc">${{stripMarkdown(t.tech_disc || t.tech_persp)}}</div>
           </div>
           <div class="topic-footer">
             Explore topic, diagram &amp; quiz →

@@ -14,3 +14,7 @@ Failure 1/
 
 # Duplicate source archive; the unpacked source files are kept in the repo
 files.zip
+
+# Zine prompt pack
+kubernetes-full-controllers-zine-prompts.fixed.md
+kubernetes-full-controllers-zine-prompts.fixed*

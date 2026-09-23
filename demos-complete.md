@@ -1892,14 +1892,13 @@ kind: ConfigMap
 metadata:
   name: coredns
   namespace: kube-system
-spec:
-  data:
-    Corefile: |
-      .:53 {
-          errors
-          health {
-             lameduck 5s
-          }
+data:
+  Corefile: |
+    .:53 {
+        errors
+        health {
+           lameduck 5s
+        }
           ready
           kubernetes cluster.local in-addr.arpa ip6.arpa {
              pods insecure

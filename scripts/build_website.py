@@ -1175,17 +1175,27 @@ def generate_index_html(topics):
                  .trim();
     }}
 
-    function formatRichMarkdown(text) {{
-      if (!text) return "";
-      let html = text
+    function escapeHtml(str) {{
+      return str
         .replace(/&/g, "&amp;")
         .replace(/</g, "&lt;")
         .replace(/>/g, "&gt;");
+    }}
 
-      html = html.replace(/```([a-zA-Z0-9_\\-]+)?[\\r\\n]([\\s\\S]*?)```/g, function(match, lang, code) {{
+    function formatRichMarkdown(text) {{
+      if (!text) return "";
+
+      const codeBlocks = [];
+      let working = text.replace(/```([a-zA-Z0-9_\\-]+)?[\\r\\n]([\\s\\S]*?)```/g, function(match, lang, code) {{
         const displayLang = lang ? lang.toUpperCase() : "YAML / CONFIG";
-        return `<div class="code-block-wrapper"><div class="code-block-header"><span class="code-dot red"></span><span class="code-dot yellow"></span><span class="code-dot green"></span><span class="code-lang">${{displayLang}}</span></div><pre class="code-box"><code>${{code.trim()}}</code></pre></div>`;
+        const placeholder = `__CODE_BLOCK_${{codeBlocks.length}}__`;
+        codeBlocks.push(
+          `<div class="code-block-wrapper"><div class="code-block-header"><span class="code-dot red"></span><span class="code-dot yellow"></span><span class="code-dot green"></span><span class="code-lang">${{displayLang}}</span></div><pre class="code-box"><code>${{escapeHtml(code.trim())}}</code></pre></div>`
+        );
+        return `\\n\\n${{placeholder}}\\n\\n`;
       }});
+
+      let html = escapeHtml(working);
 
       html = html.replace(/`([^`]+)`/g, '<code class="inline-code">$1</code>');
       html = html.replace(/^#### (.*?)$/gm, '<h5 class="content-h5">$1</h5>');
@@ -1199,9 +1209,22 @@ def generate_index_html(topics):
       let out = [];
 
       for (let i = 0; i < lines.length; i++) {{
-        let line = lines[i];
-        if (/^[\\s]*[-*][\\s]+(.*)$/.test(line)) {{
-          let content = line.replace(/^[\\s]*[-*][\\s]+/, "");
+        let line = lines[i].trim();
+        if (!line) continue;
+
+        const blockMatch = line.match(/^__CODE_BLOCK_(\\d+)__$/);
+        if (blockMatch) {{
+          if (inList) {{
+            out.push("</ul>");
+            inList = false;
+          }}
+          const idx = parseInt(blockMatch[1], 10);
+          out.push(codeBlocks[idx]);
+          continue;
+        }}
+
+        if (/^[-*][\\s]+(.*)$/.test(line)) {{
+          let content = line.replace(/^[-*][\\s]+/, "");
           if (!inList) {{
             out.push('<ul class="content-list">');
             inList = true;
@@ -1212,10 +1235,10 @@ def generate_index_html(topics):
             out.push("</ul>");
             inList = false;
           }}
-          if (line.trim().length > 0 && !line.startsWith("<h") && !line.startsWith("<div") && !line.startsWith("<pre") && !line.startsWith("</pre") && !line.startsWith("</div")) {{
-            out.push(`<p class="content-p">${{line}}</p>`);
-          }} else {{
+          if (line.startsWith("<h") || line.startsWith("<div") || line.startsWith("<pre")) {{
             out.push(line);
+          }} else {{
+            out.push(`<p class="content-p">${{line}}</p>`);
           }}
         }}
       }}

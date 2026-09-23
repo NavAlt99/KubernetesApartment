@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kubernetes Pod Creation — Animated Flow</title>
+  <style>
+    :root { color-scheme: dark; }
+    body { max-width: 980px; margin: 0 auto; padding: 2rem 1.25rem 4rem; background: #090d16; color: #e2e8f0; font: 16px/1.65 system-ui, sans-serif; }
+    a { color: #fb7185; }
+    img { max-width: 100%; height: auto; }
+    pre { overflow-x: auto; padding: 1rem; background: #111827; border-radius: .5rem; }
+    code { background: #1e293b; padding: .1em .3em; border-radius: .25rem; }
+    pre code { background: transparent; padding: 0; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { border: 1px solid #334155; padding: .5rem; text-align: left; }
+    blockquote { border-left: 3px solid #fb7185; margin-left: 0; padding-left: 1rem; }
+  </style>
+</head>
+<body><main class="markdown-page"><h1 id="kubernetes-pod-creation-animated-flow">Kubernetes Pod Creation — Animated Flow</h1>
+<p>An animated, dark-themed (ByteMonk/system-design-video style) diagram tracing a pod creation request from <code>kubectl</code> to a running container. Dependency-free HTML/CSS/JS — no external libraries.</p>
+<h2 id="files">Files</h2>
+<ul>
+<li><code>k8s-pod-flow-bytemonk.html</code> — the standalone animated diagram. Open it directly in any browser.</li>
+</ul>
+<h2 id="option-a-open-directly-in-a-browser">Option A — Open directly in a browser</h2>
+<p>Just double-click <code>k8s-pod-flow-bytemonk.html</code>, or run:</p>
+<pre><code class="language-bash">open k8s-pod-flow-bytemonk.html   # macOS
+xdg-open k8s-pod-flow-bytemonk.html   # Linux
+start k8s-pod-flow-bytemonk.html   # Windows
+</code></pre>
+<h2 id="option-b-embed-in-this-markdown-rendered-in-a-browser-works-in-vs-code-preview-obsidian-browser-based-markdown-viewers">Option B — Embed in this Markdown, rendered in a browser (works in VS Code preview, Obsidian, browser-based Markdown viewers)</h2>
+<p>Most Markdown renderers (VS Code preview, Obsidian, Typora, browser Markdown extensions) allow raw HTML passthrough, including <code>&lt;iframe&gt;</code>. <strong>GitHub's own web renderer strips <code>&lt;script&gt;</code> and sanitizes <code>&lt;iframe&gt;</code>/inline JS for security</strong>, so the animation will not run natively on github.com — the file will still be there and downloadable/openable, just not animated on the page itself. Everywhere else that renders raw HTML in Markdown, this works:</p>
+<pre><code class="language-html">&lt;iframe src=&quot;k8s-pod-flow-bytemonk.html&quot; width=&quot;100%&quot; height=&quot;760&quot; style=&quot;border:none;&quot;&gt;&lt;/iframe&gt;
+</code></pre>
+<h2 id="option-c-github-pages-any-static-host">Option C — GitHub Pages / any static host</h2>
+<p>Since GitHub itself won't execute the JS inline, if you want it live <em>on GitHub</em> specifically:
+1. Push <code>k8s-pod-flow-bytemonk.html</code> to your repo.
+2. Enable GitHub Pages (Settings → Pages → deploy from branch).
+3. Link to it from your README: <code>[▶ View animated diagram](https://&lt;username&gt;.github.io/&lt;repo&gt;/k8s-pod-flow-bytemonk.html)</code></p>
+<p>This gives you a live, animated, fully working page — GitHub Pages serves the raw HTML/JS with no sanitization, unlike the repo file viewer.</p>
+<h2 id="option-d-static-fallback-for-the-github-readme-itself">Option D — Static fallback for the GitHub README itself</h2>
+<p>If you want <em>something</em> visible directly on the GitHub-rendered README (not just a link), pair this animated version with the static Mermaid sequence diagram from <code>k8s-pod-creation-flow.md</code> — Mermaid renders natively on GitHub without needing JS. Use the animated HTML as the "click to see it live" companion.</p></main></body>
+</html>

@@ -1,0 +1,488 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>04. Application Lifecycle Management</title>
+  <style>
+    :root { color-scheme: dark; }
+    body { max-width: 980px; margin: 0 auto; padding: 2rem 1.25rem 4rem; background: #090d16; color: #e2e8f0; font: 16px/1.65 system-ui, sans-serif; }
+    a { color: #fb7185; }
+    img { max-width: 100%; height: auto; }
+    pre { overflow-x: auto; padding: 1rem; background: #111827; border-radius: .5rem; }
+    code { background: #1e293b; padding: .1em .3em; border-radius: .25rem; }
+    pre code { background: transparent; padding: 0; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { border: 1px solid #334155; padding: .5rem; text-align: left; }
+    blockquote { border-left: 3px solid #fb7185; margin-left: 0; padding-left: 1rem; }
+  </style>
+</head>
+<body><main class="markdown-page"><h1 id="04-application-lifecycle-management">04. Application Lifecycle Management</h1>
+<h2 id="application-lifecycle-management">Application Lifecycle Management</h2>
+<h3 id="rolling-updates-and-rollbacks">Rolling Updates and Rollbacks</h3>
+<p>Updates and rollbacks in a deployment. Before we look at how we upgrade our application, let's try to understand rollouts and versioning in a deployment. When you first create a deployment, it triggers a rollout, a new rollout, creates a new <strong>deployment revision</strong>, let's call it revision one.</p>
+<p><img alt="Diagram" src="images/image268.png" /></p>
+<p>In the future, when the application is upgraded, meaning when the container version is updated to a new one, a new rollout is triggered and a new <strong>deployment revision</strong> is created named “revision two” this helps us keep track of the changes made to our deployment and enables us to roll back to a previous version of deployment if necessary.</p>
+<p>You can see the status of your rollout by running the command <code>kubectl rollout status deployment/myapp</code>, followed by the name of the deployment. </p>
+<pre><code class="language-bash">$ kubectl rollout status deployment/myapp-deployment
+</code></pre>
+<p><img alt="Diagram" src="images/image194.png" /></p>
+<p>To see the revisions and history of rollout run the <code>kubectl rollout history</code> command followed by the deployment name. </p>
+<pre><code class="language-bash">$ kubectl rollout history deployment/myapp-deployment And this will show you the revisions and history of our deployment.
+</code></pre>
+<p>There are two types of deployment strategies. Say, for example, you have five replicas of your Web application instance deployed. One way to upgrade these to a newer version is to destroy all of these and then create newer versions of application instances, meaning first destroy the five running instances and then deploy five new instances of the new application version.The problem with this, as you can imagine, is that during the period after the older versions are down and before any newer version is up, the application is down and inaccessible to users. This strategy is known as the <strong>recreate strategy</strong>, and thankfully, this is not the default deployment strategy.</p>
+<p><img alt="Diagram" src="images/image377.png" /></p>
+<p>The second strategy is where we do not destroy all of them at once. Instead, we take down the older version and bring up a newer version one by one, this way the application never goes down and the upgrade is seamless.<strong>Remember, if you do not specify your strategy while creating the deployment, it will assume it to</strong> <strong>be rolling</strong> <strong>update.</strong>In other words, rolling update is the default deployment strategy. </p>
+<p><strong>So we talked about upgrades. How exactly do you update your deployment?</strong></p>
+<p><strong>When I say update</strong> it could be different things, such as updating your application version by updating the version of <strong>Docker</strong> containers used, updating their <strong>labels</strong> or updating the number of <strong>replicas</strong>, etc. Since we already have a deployment definition file, it is easy for us to modify these files once we make the necessary changes.</p>
+<pre><code class="language-yaml">apiVersion: apps/v1
+kind: Deployment
+metadata:
+ name: myapp-deployment
+ labels:
+  app: nginx
+spec:
+ template:
+   metadata:
+     name: myap-pod
+     labels:
+       app: myapp
+       type: front-end
+   spec:
+    containers:
+    - name: nginx-container
+      image: nginx:1.7.1
+ replicas: 3
+ selector:
+  matchLabels:
+</code></pre>
+<pre><code>`type: front-end`
+</code></pre>
+<pre><code class="language-bash">$ kubectl apply -f deployment-definition.yaml
+</code></pre>
+<p>A new rollout is triggered and a new revision after deployment is created. But there is another way to do the same thing. Alternate way to update a deployment say for example for updating an image.You could use the <code>kubectl set Image</code> command, to update the image of your application.</p>
+<pre><code class="language-bash">$ kubectl set image deployment/myapp-deployment nginx=nginx:1.9.1
+</code></pre>
+<p>Note:  <strong>remember, doing it this way will result in the deployment definition file having a different configuration.</strong> So you must be careful when using the same definition file to make changes in the future. </p>
+<p>The differences between the recreate and rolling update strategies can also be seen when you view the deployments in detail from the <code>kubectl describe deployment</code> command to see the detailed information regarding the deployments. You will notice when the recreated strategy was used, The events indicate that the old ReplicaSet was scaled down to zero first, and then the new replicaSet scaled up to five.</p>
+<p>However, when the rolling update strategy was used, the old ReplicaSet was scaled down one at a time.Simultaneously scaling up the new ReplicaSet one at a time.</p>
+<p><img alt="Diagram" src="images/image323.png" /></p>
+<p>Let's look at how a deployment performs an upgrade under the hood,  when a new deployment is created. Say  to deploy five replicas. It first creates a replicaSet automatically, which in turn creates the number of PODs required to meet the number of replicas. </p>
+<p>When you upgrade your application, as we saw in the previous `, the kubernetes deployment object creates a new replicaSet under the hood and starts deploying the containers there at the same time, taking down the paths in the old ReplicaSet following a rolling update strategy. </p>
+<p>This can be seen when you try to list the replicaSets using the <code>kubectl get ReplicaSets</code> command.</p>
+<p><img alt="Diagram" src="images/image81.png" /></p>
+<p>Here we see the old ReplicaSet with zero PODs and the new ReplicaSet with five PODs.</p>
+<p>Say, for instance, once you upgrade your application, you realise something is inferior, right?</p>
+<p>Something's wrong with the new version of Build you used for upgrading. So you would like to roll back your update.</p>
+<p>Kubernetes deployments  allow you to roll back to a previous revision.To undo a change run the  <code>kubectl rollout undo deployment/myapp-deployment</code> command followed by the name of the deployment. The deployment will then destroy the PODs in the new ReplicaSet and bring the older ones up in the old ReplicaSet. And your application is back to its older format.</p>
+<p>When you compare the output of the <code>kubectl get replicasets</code> command before and after the roll back, you will be able to notice the difference. </p>
+<p><img alt="Diagram" src="images/image333.png" /></p>
+<p>Before the rollback the first ReplicaSet had zero pods and new replicas that had five pods. And this is reversed after the rollback is finished.</p>
+<p>To summarise the commands real quick, use the kubectl create command to create the deployment.</p>
+<p>get deployment's, command to list the deployments.</p>
+<p>Apply and set image commands to update the deployments and <code>rollout status</code> commands to see the status of rollouts and <code>rollout undo</code> command to roll back a deployment operation.</p>
+<pre><code class="language-bash">$ kubectl create -f deployment-definition.yaml
+$ kubectl get deployments
+$ kubectl apply -f deployment-definition.yaml
+$ kubectl set image deployment/myapp-deployment nginx=nginx:1.9.1
+$ kubectl rollout status deployment/myapp-deployment
+$ kubectl rollout history deployment/myapp-deployment
+$ kubectl rollout undo deployment/myapp-deployment
+</code></pre>
+<h4 id="practice-test">Practice Test</h4>
+<pre><code class="language-bash">controlplane ~ ➜  cat curl-test.sh
+for i in {1..35}; do
+   kubectl exec --namespace=kube-public curl -- sh -c 'test=`wget -qO- -T 2  http://webapp-service.default.svc.cluster.local:8080/info 2&gt;&amp;1` &amp;&amp; echo &quot;$test OK&quot; || echo &quot;Failed&quot;';
+   echo &quot;&quot;
+done
+</code></pre>
+<p>Configuring applications comprises of understanding the following concepts:</p>
+<ul>
+<li>
+<p>Configuring Command and Arguments on applications</p>
+</li>
+<li>
+<p>Configuring Environment Variables</p>
+</li>
+<li>
+<p>Configuring Secrets</p>
+</li>
+</ul>
+<h3 id="command-and-arguments-in-a-pod-definition-file">Command and Arguments in a Pod Definition file.</h3>
+<p>We will first look at command arguments and entry points in Docker. Let's start with a simple scenario.</p>
+<p>Say you were to run a docker container from an Ubuntu image, when you run the “<code>docker run ubuntu</code>” command, <em>it runs an instance of Ubuntu image and exits immediately.</em> If you were to list the running containers you wouldn't see the container running. If you list all containers including those that are stopped you will see that the new container you ran is in an exited state. <strong>Now why is that ?</strong> <strong>Unlike virtual machines, Containers are not meant to host an operating system</strong> </p>
+<pre><code class="language-bash">$ docker run ubuntu # To run a docker container$ docker ps #To list running containers$ docker ps -a #To list all containers including that are stopped
+</code></pre>
+<p><img alt="Diagram" src="images/image130.png" /></p>
+<p>“<em>Containers are meant to run a specific task or process such as to host an instance of a web server or application server or a database or simply to carry out some kind of computation or analysis. Once the task is complete, the container exits. A container only lives as long as the process inside it is alive.”</em></p>
+<p>If the web service inside the container is stopped or crashes the container exits. </p>
+<p><strong>So who defines what process is run within the container.</strong></p>
+<p>If you look at the docker file for popular Docker images like NGINX you will see an instruction called CMD which stands for command that defines the program that will be run within the container when it starts. For the NGINX image it is the nginx command, for the mysql image it is the mysqld command. </p>
+<p><img alt="Diagram" src="images/image188.png" /></p>
+<p>What we tried to do earlier was to run a container with a plain Ubuntu Operating System. Let us look at the docker file for this image and you will see that it uses bash as the default command. Now bash is not really a process like a web server or database server. It is a shell that listens for inputs from a terminal if it cannot find a terminal it exits. </p>
+<p>When we ran the Ubuntu container earlier Docker created a container from the Ubuntu image and launched the bash program, by default Docker does not attach a terminal to a container when it is run. And so the bash program does not find the terminal and so it exits since the process that was started when the container was created finished and the container exits as well.</p>
+<p><strong>So how do you specify a different command to start the container?</strong></p>
+<p>One option is to append a command to the docker run command and that way it overrides the default command specified within the image.</p>
+<pre><code class="language-bash">$ docker run ubuntu sleep 5
+</code></pre>
+<p>In this case we run the <code>docker run ubuntu</code> command with the “sleep 5” command as the added option.</p>
+<p>This way when the container starts it runs the sleep program, waits for 5 seconds and then exits.</p>
+<p>But how do you make that change permanent?</p>
+<p><img alt="Diagram" src="images/image74.png" /></p>
+<p>Say you want the image to always run the sleep command when it starts. You would then create your own image from the base Ubuntu image and specify a new command. There are different ways of specifying the command, either the command simply as is in a shell form or Or in a JSON array format like this.</p>
+<p><img alt="Diagram" src="images/image40.png" /></p>
+<p>But remember, when you specify in a JSON array format, the first element in the array should be the  executable.</p>
+<p>Do not specify the command and parameters together like in this case of the sleep program , the command and its parameters should be separate elements in the list. </p>
+<p>So I now build my new image using the docker build command, and name it as ubuntu-sleeper.</p>
+<p>I could now simply run the docker Ubuntu sleeper command and get the same results. It always sleeps for five seconds and exits. <code>$ docker build -t ubuntu-sleeper .</code></p>
+<pre><code class="language-bash">$ docker run ubuntu-sleeper 
+</code></pre>
+<p><em>But what if I wish to change the number of seconds it sleeps currently. It is hard coded to five seconds as we learned before.</em> </p>
+<p>One option is to run the docker run command with the new command appended to it. </p>
+<pre><code class="language-bash">$ docker run ubuntu-sleeper sleep 10 
+</code></pre>
+<p>In this case sleep 10 and so the command that will be run at startup will be sleep 10 but it doesn't look very good.</p>
+<p>The name of the image Ubuntu sleeper in itself implies that the container will sleep. So we shouldn't have to specify the sleep command again. Instead we would like it to be something like this.</p>
+<pre><code class="language-text">$ Docker run Ubuntu sleeper 10
+</code></pre>
+<p>We only want to pass in the number of seconds the containers should sleep and sleep command should be invoked automatically and that is where the entry point instruction comes into play.</p>
+<p>The <strong>entry point instruction</strong> is like the command instruction as in you can specify the program that will be run when the container starts and whatever you specify on the command line. In this case 10 will get appended to the entry point so the command that will be run when the container starts is sleep 10.</p>
+<p><img alt="Diagram" src="images/image271.png" /></p>
+<p>So that's the difference between the two. In case of the CMD instruction the command line parameters passed will get replaced entirely, whereas in case of entry point the command line parameters will get appended. </p>
+<p>Now, in the second case, what if I run the ubuntu-sleeper without appending the number of seconds,  then the command at startup will just sleep and you get the error that the operand is missing.</p>
+<p><img alt="Diagram" src="images/image308.png" /></p>
+<p>So how do you configure a default value for the command. If one was not specified in the command line that's where you would use both entry point as well as the command instruction. </p>
+<p>In this case the command instruction will be appended to the entry point instruction so at startup the</p>
+<p>command would be sleep 5 if you didn't specify any parameters in the command line. if you did then that will override the command instruction and remember for this to happen you should always specify the entry point and command instructions in a JSON format. </p>
+<p>Finally, what if you really really want to modify the entrypoint during runtime say from sleep to an imaginary sleep 2.0 command.</p>
+<p>Well in that case you can override it by using the entry point option in the docker run command.</p>
+<p>The final command at startup would then be sleep 2.0 10.<code>docker run --entrypoint sleep2.0 ubuntu-sleeper 10</code></p>
+<h3 id="commands-and-arguments-in-kubernetes">Commands and Arguments in Kubernetes</h3>
+<p>Command and Arguments in a Kubernetes POD. In the previous lecture we created a simple Docker image that sleeps for a given number of seconds. We named it <strong>ubuntu-sleeper</strong> and we ran it using the docker command </p>
+<pre><code class="language-bash">$ docker run --name ubuntu-sleeper ubuntu-sleeper
+</code></pre>
+<p>By default It sleeps for five seconds but you can override it by passing a command line argument. </p>
+<pre><code class="language-bash">$ docker run --name ubuntu-sleeper ubuntu-sleeper 10 
+</code></pre>
+<p>We will now create a pod using this image. We start with a blank pod definition template, input the name of the pod and specify the image name.  When the pod is created, it creates a container from the specified image, and the container sleeps for five seconds before exiting. Now if you need the container to sleep for 10 seconds as in the second command how do you specify the additional argument in the pod definition file ? </p>
+<p>Anything that is appended to the docker run command will go into the “args” property of the pod definition file in the form of an array like this. </p>
+<pre><code class="language-yaml">apiVersion: v1
+kind: Pod
+metadata:
+  name: ubuntu-sleeper-pod
+spec:
+ containers:
+ - name: ubuntu-sleeper
+   image: ubuntu-sleeper
+   command: [&quot;sleep2.0&quot;]
+   args: [&quot;10&quot;]
+</code></pre>
+<p><img alt="Diagram" src="images/image410.png" /></p>
+<pre><code class="language-bash">$ kubectl create -f pod-definition.yaml 
+</code></pre>
+<p>Let us try to relate that to the docker file we created earlier. The Dockerfile has an ENTRYPOINT as well as a CMD instruction specified. The ENTRYPOINT is the command that is run at startup, and the CMD is the default parameter passed to the command. With the args option in the pod definition file we <strong>override</strong> the CMD instruction in the Dockerfile. </p>
+<p>But what if you need to override the ENTRYPOINT? Say from sleep to a hypothetical sleep2.0 command? <code>$ docker run --name ubuntu-sleeper \</code>       <code>--entrypoint sleep2.0</code>        <code>ubuntu-sleeper 10</code> </p>
+<p>In the docker world we would run the docker run command with the entry point option set to the new command the corresponding entry in the pod definition file would be using a command field the command field corresponds to entry point instruction in the docker file </p>
+<p>So to summarize there are two fields that correspond to two instructions in the docker file. The command field overrides the entry point instruction and the args field overrides the command instruction in the docker file. <strong>Remember</strong> it is not the command field that overrides the CMD instruction in the docker file. </p>
+<h3 id="configure-environment-variables-in-applications">Configure Environment Variables in Applications</h3>
+<p><strong>How to set an environment variable in Kubernetes ?</strong> Given a pod definition file which uses the same image as the dockor command we ran in the last lecture. To set an environment variable, use the ENV property. <code>$ docker run -e APP_COLOR=pink simple-webapp-color</code></p>
+<pre><code class="language-yaml">apiVersion: v1
+kind: Pod
+metadata:
+  name: simple-webapp-color
+spec:
+ containers:
+ - name: simple-webapp-color
+   image: simple-webapp-color
+   ports:
+   - containerPort: 8080
+   env:
+   - name: APP_COLOR
+     value: pink
+</code></pre>
+<p><code>env:</code> is an array so every item under the env property starts with a dash, indicating an item in the array.  Each item has a name and a value property. The name is the name of the environment variable made available with the container and the value is its value.</p>
+<p>What we just saw was a direct way of specifying the environment variables using a plain key value pair format, however there are other ways of setting the environment variables such as using configMaps and secrets.</p>
+<p><img alt="Diagram" src="images/image138.png" /></p>
+<p>The difference in this case is that instead of specifying value, we say valueFrom And then a specification of configMap or secret.</p>
+<h3 id="configmaps-in-applications">ConfigMaps in Applications</h3>
+<p><strong>How to work with configuration data in Kubernetes.?</strong> In the previous lecture we saw how to define environment variables in the pod definition file. When you have a lot of pod definition files it will become difficult to manage the environment data stored within the various files.</p>
+<p>We can take this information out of the pod definition file and manage it centrally using ConfigurationMaps. ConfigMaps are used to pass configuration data in the form of key value pairs in Kubernetes. When the pod is created, inject the config map into the pod. So the key value pairs that are available as environment variables for the application hosted inside the container in the pod. </p>
+<p>There are two phases involved in configuring ConfigMaps. First create the ConfigMaps and second Inject them into the POD. </p>
+<p>Just like any other Kubernetes object there are two ways of creating a configmap. </p>
+<p><strong>The imperative way</strong> - without using a ConfigMap definition file and  <strong>The Declarative way</strong> by using a Config map definition file. </p>
+<p>If you do not wish to create a configmap definition, you could simply use the <code>kubectl create configmap</code> command and specify the required arguments.</p>
+<p>Let's take a look at that first with this method. You can directly specify the key value pairs in the command line. To create a configMap of the given values, run the <code>kubectl create configmap</code> command. The command is followed by the config name and the option <code>-–from-literal</code>. The from literal option is used to specify the key value pairs in the command itself. </p>
+<p>In this example, we are creating a configmap by the name app-config, with a key value pair <code>APP_COLOR=blue.</code> If you wish to add additional key value pairs simply specify the <code>--from-literal</code> options multiple times.</p>
+<pre><code class="language-bash">$ kubectl create configmap app-config --from-literal=APP_COLOR=blue --from-literal=APP_MODE=prod
+</code></pre>
+<p>However this will get complicated when you have too many configuration items. Another way to input configuration data is through a file. Use the <code>--from-file</code> option and specify a path to the file that contains the required data. The data from this file is read and stored under the name of the file. </p>
+<pre><code class="language-bash">$ kubectl create configmap app-config --from-file=app_config.properties #Another way
+</code></pre>
+<p>Let us now look at the declarative approach. For this we create a definition file just like how we did for the pod. The file has apiVersion, kind, metadata and instead of spec, here we have “data”. </p>
+<pre><code class="language-yaml">apiVersion: v1
+kind: ConfigMap
+metadata:
+ name: app-config
+data:
+ APP_COLOR: blue
+ APP_MODE: prod
+</code></pre>
+<p>The apiVersion is v1, kind is ConfigMap. Under metadata specify the name of the configmap. </p>
+<p>We will call it app-config. Under data add the configuration data in a key-value format. Run the <code>kubectl create</code> command and specify the configuration file name. So that creates the app-config ConfigMap with the values we specified.<code>$ kubectl create -f config-map.yaml</code></p>
+<p>You can create as many configmaps as you need in the same way for various different purposes. </p>
+<pre><code class="language-bash">$ kubectl get configmaps (or)
+$ kubectl get cm$ kubectl describe configmaps
+</code></pre>
+<p>Here lets say I have one for my application, another for mysql and yet another one for redis. So it is important to name the configmaps appropriately as you will be using these names later while associating it with PODs. To view the configmaps, run the <code>kubectl get configmaps</code> command. This lists  the newly created configmap named app-config.  The <code>describe configmaps</code> command List the configuration data as well under the data section.  Now that we have the configmap created let us proceed with step 2 configuring it with a pod. Here I have a simple pod definition file that runs a simple web application, to inject an environment variable and add a new property to the container called envFrom. The <code>envFrom</code> property is a list, so we can pass as many environment variables as required. </p>
+<pre><code class="language-yaml">apiVersion: v1
+kind: Pod
+metadata:
+  name: simple-webapp-color
+spec:
+ containers:
+ - name: simple-webapp-color
+   image: simple-webapp-color
+   ports:
+   - containerPort: 8080
+   envFrom:
+   - configMapRef:
+       name: app-config
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+data:
+  APP_COLOR: blue
+  APP_MODE: prod
+
+$ kubectl create -f pod-definition.yaml
+</code></pre>
+<p>Each item in the list corresponds to a configMap item. Specify the name of the configmap we created earlier. This is how we inject a specific configmap from the ones we created before. </p>
+<p>Creating the pod definition file now creates a web application with a blue background. What we just saw was using configMaps to inject environment variables. There are other ways to inject configuration data into pods; you can inject it as a single environment variable or you can inject the whole data as files in a volume. </p>
+<p>We will look at some of these options in the coding exercises that accompany this lecture. </p>
+<pre><code class="language-bash">$ kubectl create configmap webapp-config-map --from-literal=APP_COLOR=darkblue
+</code></pre>
+<h3 id="secrets">SECRETS</h3>
+<p>Here we have a simple python web application that connects to a mysql database. On success the application displays a successful message.</p>
+<p><img alt="Diagram" src="images/image89.png" /></p>
+<p>If you look closely into the code you will see the hostname username and password hardcoded. This is of course not a good idea. As we learned in the previous lecture, one option would be to move these values into a configMap. The configMap stores configuration data in plain text format, So while it would be okay to move the hostname and username into a configMap it is definitely not the right place to store a password. </p>
+<p><img alt="Diagram" src="images/image150.png" /></p>
+<p><img alt="Diagram" src="images/image69.png" /></p>
+<p>This is where secrets come in, secrets are used to store sensitive information like passwords or keys. They're similar to configMap except that they're stored in an encoded or hashed format. As with config maps. There are two steps involved in working with secrets. First create the secret and second inject it into a pod.   </p>
+<p>There are two ways of creating a secret. <strong>The imperative way</strong> - without using a Secret definition file and the <strong>Declarative way</strong> by using a Secret definition file  With the imperative method you can directly specify the key value pairs in the command line itself to create a secret of the given values, run the <code>kubectl create secret</code> <code>generic</code> command. </p>
+<p><img alt="Diagram" src="images/image220.png" /></p>
+<p>The command is followed by the secret name and the option <code>–from-literal</code>. The from literal option is used to specify the key value pairs in the command itself. <code>$ kubectl create secret generic app-secret --from-literal=DB_Host=mysql --from-literal=DB_User=root --from-literal=DB_Password=paswrd</code></p>
+<p>In this example, we are creating a secret by the name app-secret, with a key value pair <code>DB_Host=mysql</code>. If you wish to add additional key value pairs, simply specify the from literal options multiple times however this could get complicated when you have too many secrets to pass in.</p>
+<p>Another way to input the secret data is through a file. Use the <code>–from-file</code> option to specify a path to the file that contains the required data.  The data from this file is read and stored under the name of the file. <code>$ kubectl create secret generic app-secret --from-file=app_secret.properties</code></p>
+<p><strong>Let us now look at the declarative approach.</strong></p>
+<p>For this we create a definition file, just like how we did for the ConfigMap. </p>
+<p><img alt="Diagram" src="images/image162.png" /></p>
+<p>The file has apiVersion, kind, metadata and data. The apiVersion is v1, kind is Secret. Under metadata specify the name of the secret. We will call it app-secret. Under data add the secret data in a key-value format. However one thing we discussed about secrets was that they are used to store sensitive data and are stored in an encoded format. Here we have specified the data in plain text which is not very safe. So while creating a secret with a declarative approach you must specify the secret values in a hashed format. So you must specify the data in an encoded form like this. But how do you convert the data from plain text to an encoded format on a linux host from the command. <code>echo –n</code> followed by the text you are trying to convert, which is mysql in this case and pipe  that to the base64 utility. <code>Generate a hash value of the password and pass it to secret-data.yaml definition value as a value to DB_Password variable.``$ echo -n "mysql" | base64``$ echo -n "root" | base64``$ echo -n "paswrd"| base64</code></p>
+<p><img alt="Diagram" src="images/image276.png" /></p>
+<p>Create a secret definition file and run kubectl create to deploy it</p>
+<pre><code class="language-yaml">apiVersion: v1
+kind: Secret
+metadata:
+ name: app-secret
+data:
+  DB_Host: bX1zcWw=
+  DB_User: cm9vdA==
+  DB_Password: cGFzd3Jk
+
+$ kubectl create -f secret-data.yaml
+</code></pre>
+<p>To view secrets run the <code>kubectl get secrets</code> command. This lists the newly created secret along with another secret previously created by kubernetes for its internal purposes to view more information on the newly created secret.  run the <code>kubectl describe secret</code> command.This shows the attributes in the secret but hides the value themselves to view the values as well. run the kubectl get secret command with the output displayed in a YAML format using the <code>–o</code> option.</p>
+<pre><code class="language-bash">To view secrets $ kubectl get secrets
+To describe secret $ kubectl describe secret
+To view the values of the secret $ kubectl get secret app-secret -o yaml
+</code></pre>
+<p><strong>Now how do you decode these hashed values?</strong> </p>
+<p>Use the same base64 Command used earlier to encode it but this time add a <code>--decode</code> option to it.<code>$ echo -n "bX1zcWw=" | base64 --decode</code></p>
+<pre><code class="language-text">$ echo -n &quot;cm9vdA==&quot; | base64 --decode
+$ echo -n &quot;cGFzd3Jk&quot; | base64 --decode
+</code></pre>
+<p>Now that we have a secret created let us proceed with step 2 configuring it with a pod. </p>
+<p>Here I have a simple pod definition file that runs my application.</p>
+<p>To inject an environment variable, add a new property to the container called <strong>envFrom</strong>. The envFrom property is a list so we can pass as many environment variables as required each item in the list corresponds to a secret item.<code>apiVersion: v1</code></p>
+<pre><code class="language-yaml">kind: Secret
+metadata:
+ name: app-secret
+data:
+  DB_Host: bX1zcWw=
+  DB_User: cm9vdA==
+  DB_Password: cGFzd3Jk
+
+apiVersion: v1
+ kind: Pod
+ metadata:
+   name: simple-webapp-color
+ spec:
+  containers:
+  - name: simple-webapp-color
+    image: simple-webapp-color
+    ports:
+    - containerPort: 8080
+    envFrom:
+    - secretRef:
+        name: app-secret
+
+$ kubectl create -f pod-definition.yaml
+</code></pre>
+<p>Specify the name of the secret we created earlier. Creating the pod definition file now makes the data in the secret available as environment variables for the application. What we just saw was injecting secrets as environment variables into the PODs. There are other ways to inject <strong>secret</strong> into PODs. You can inject as single environment variables or inject the whole secret as files in a volume if you were to mount the secret as a volume in the pod. Each attribute in the secret is created as a file with the value of the secret as its content.  In this case since we have three attributes in our secret, three files are created and if we look at the contents of the DB password file we see the password in it. <strong>there are other better ways of handling sensitive data like passwords in Kubernetes, such as using tools like Helm Secrets,</strong> <a href="https://www.vaultproject.io/">HashiCorp Vault</a><strong>. +</strong></p>
+<h4 id="a-note-on-secrets">A note on Secrets</h4>
+<p><strong>Remember that secrets encode data in base64 format. Anyone with the base64 encoded secret can easily decode it. As such the secrets can be considered not very safe.</strong></p>
+<p><strong>The concept of safety of the Secrets is a bit confusing in Kubernetes. The</strong> <a href="https://kubernetes.io/docs/concepts/configuration/secret">kubernetes documentation</a> <strong>page and a lot of blogs out there refer to secrets as a “safer option” to store sensitive data. They are safer than storing in plain text as they reduce the risk of accidentally exposing passwords and other sensitive data. In my opinion it’s not the secret itself that is safe, it is the practices around it.</strong></p>
+<p><strong>Secrets are not encrypted, so it is not safer in that sense. However, some best practices around using secrets make it safer. As in best practices like:</strong></p>
+<ul>
+<li>
+<p><em>Not checking-in secret object definition files to source code repositories.</em>*</p>
+</li>
+<li>
+<p><a href="https://kubernetes.io/docs/tasks/administer-cluster/encrypt-data/">Enabling Encryption at Rest</a> <strong>for Secrets so they are stored encrypted in ETCD.</strong></p>
+</li>
+</ul>
+<p><strong>Also the way kubernetes handles secrets. Such as:</strong></p>
+<ul>
+<li>
+<p><em>A secret is only sent to a node if a pod on that node requires it.</em>*</p>
+</li>
+<li>
+<p><em>Kubelet stores the secret into a tmpfs so that the secret is not written to disk storage.</em>*</p>
+</li>
+<li>
+<p><em>Once the Pod that depends on the secret is deleted, kubelet will delete its local copy of the secret data as well.</em>*</p>
+</li>
+</ul>
+<p><strong>Read about the</strong> <a href="https://kubernetes.io/docs/concepts/configuration/secret/#protections">protections</a> <strong>and</strong> <a href="https://kubernetes.io/docs/concepts/configuration/secret/#risks">risks</a> <strong>of using secrets</strong> <a href="https://kubernetes.io/docs/concepts/configuration/secret/#risks">here</a></p>
+<p><strong>Having said that, there are other better ways of handling sensitive data like passwords in Kubernetes, such as using tools like Helm Secrets,</strong> <a href="https://www.vaultproject.io/">HashiCorp Vault</a><strong>. I hope to make a lecture on these in the future.</strong></p>
+<h3 id="multi-container-pods">Multi Container Pods</h3>
+<p>The idea of decoupling a large monolithic application into sub-components known as microservices enables us to develop and deploy a set of independent small and reusable code. This architecture can then help us scale up and down as well as modify each service as required as opposed to modifying the entire applicationHowever at times you may need two services to work together such as a web server and a logging service. You need one agent instance per web server instance paired together. </p>
+<p>You don't want to march and bloat the code of the two services as each of them target different functionalities and you'd still like them to be developed and deployed separately, you only need the two functionality to work together. </p>
+<p>You need one agent per web server instance paired together that can scale up and down together, and that is why you have multi-container pods that share the same lifecycle which means they are created together and destroyed together they share the same network space which means they can refer to each other as local host and they have access to the same storage volumes. </p>
+<p>This way you do not have to establish volume sharing or services between the pods, to enable communication between them. To create a multi container pod add the new container information to the pod definition file. Remember the container section under the spec section in a pod definition file is an array and the reason it is an array is to allow multiple containers in a single pod. </p>
+<p>In this case we add a new container named log agent to our existing pod.</p>
+<pre><code class="language-yaml">apiVersion: v1
+kind: Pod
+metadata:
+  name: simple-webapp
+  labels:
+    name: simple-webapp
+spec:
+  containers:
+  - name: simple-webapp
+    image: simple-webapp
+    ports:
+    - ContainerPort: 8080
+  - name: log-agent
+    image: log-agent 
+</code></pre>
+<p>There are 3 common patterns, when it comes to designing multi-container PODs. The first and what we just saw with the logging service example is known as a side car pattern. The others are the adapter and the ambassador pattern.</p>
+<p><img alt="Diagram" src="images/image320.png" /></p>
+<p>But these fall under the CKAD curriculum and are not required for the CKA exam. So we will be discuss these in more detail in the CKAD course. </p>
+<h3 id="init-containers">Init Containers</h3>
+<p>In a multi-container pod, each container is expected to run a process that stays alive as long as the POD’s lifecycle. For example in the multi-container pod that we talked about earlier that has a web application and logging agent, both the containers are expected to stay alive at all times. The process running in the log agent container is expected to stay alive as long as the web application is running. If any of them fails, the POD restarts. </p>
+<p>But at times you may want to run a process that runs to completion in a container. For example a process that pulls a code or binary from a repository that will be used by the main web application. That is a task that will be run only one time when the pod is first created. Or a process that waits for an external service or database to be up before the actual application starts. That’s where <strong>initContainers</strong> comes in.An <strong>initContainer</strong> is configured in a pod like all other containers, except that it is specified inside a initContainers section, like this:</p>
+<pre><code class="language-yaml">apiVersion: v1
+kind: Pod
+metadata:
+  name: myapp-pod
+  labels:
+    app: myapp
+spec:
+  containers:
+  - name: myapp-container
+    image: busybox:1.28
+    command: ['sh', '-c', 'echo The app is running! &amp;&amp; sleep 3600']
+  initContainers:
+  - name: init-myservice
+    image: busybox
+    command: ['sh', '-c', 'git clone &lt;some-repository-that-will-be-used-by-application&gt; ;']
+</code></pre>
+<p>When a POD is first created the initContainer is run, and the process in the initContainer must run to a completion before the real container hosting the application starts.You can configure multiple such initContainers as well, like how we did for multi-pod containers. In that case each init container is run <strong>one at a time in sequential order</strong>.</p>
+<p>If any of the initContainers fail to complete, Kubernetes restarts the Pod repeatedly until the Init Container succeeds.</p>
+<pre><code class="language-yaml">apiVersion: v1
+kind: Pod
+metadata:
+  name: myapp-pod
+  labels:
+    app: myapp
+spec:
+  containers:
+  - name: myapp-container
+    image: busybox:1.28
+    command: ['sh', '-c', 'echo The app is running! &amp;&amp; sleep 3600']
+  initContainers:
+  - name: init-myservice
+    image: busybox:1.28
+    command: ['sh', '-c', 'until nslookup myservice; do echo waiting for myservice; sleep 2; done;']
+  - name: init-mydb
+    image: busybox:1.28
+    command: ['sh', '-c', 'until nslookup mydb; do echo waiting for mydb; sleep 2; done;']
+</code></pre>
+<h3 id="self-healing-applications-container-probes">Self Healing Applications &amp; Container Probes</h3>
+<p>Kubernetes supports self-healing applications through ReplicaSets, Deployments, and native Container Probes executed by the node's <code>kubelet</code>.</p>
+<h4 id="container-health-probes-liveness-readiness-startup">Container Health Probes (Liveness, Readiness, Startup)</h4>
+<p>Modern Kubernetes supports three native probe mechanisms to evaluate container status:</p>
+<ol>
+<li>
+<p><strong><code>startupProbe</code></strong>:
+   - Protects slow-starting applications (e.g., legacy enterprise Java/JVM apps) from premature eviction.
+   - Pauses all <code>livenessProbe</code> and <code>readinessProbe</code> executions until it succeeds.
+   - If it fails <code>failureThreshold</code> times, the container is killed and restarted.</p>
+</li>
+<li>
+<p><strong><code>livenessProbe</code></strong>:
+   - Detects when an application enters an unrecoverable deadlocked state or infinite loop.
+   - If consecutive failures reach <code>failureThreshold</code>, kubelet terminates the container process and triggers a restart according to <code>restartPolicy</code>.</p>
+</li>
+<li>
+<p><strong><code>readinessProbe</code></strong>:
+   - Determines whether the container is ready to accept user network traffic.
+   - When a readiness probe fails, the Pod's <code>Ready</code> condition is set to <code>False</code>.
+   - The endpoints controller immediately removes the Pod's IP from Service backends and <code>EndpointSlices</code>. <strong>The container process is not killed</strong>.</p>
+</li>
+</ol>
+<h4 id="probe-handlers">Probe Handlers</h4>
+<ul>
+<li><strong><code>httpGet</code></strong>: Performs an HTTP GET on a given path/port. Status codes 200–399 count as success.</li>
+<li><strong><code>tcpSocket</code></strong>: Checks if a TCP 3-way handshake succeeds on the given port.</li>
+<li><strong><code>exec</code></strong>: Runs a command inside the container namespace; exit code 0 indicates success.</li>
+<li><strong><code>grpc</code></strong>: Evaluates response using standard gRPC health checking protocol.</li>
+</ul>
+<h4 id="complete-production-probes-manifest">Complete Production Probes Manifest</h4>
+<pre><code class="language-yaml">apiVersion: v1
+kind: Pod
+metadata:
+  name: resilient-service
+  labels:
+    app: api-server
+spec:
+  containers:
+  - name: api
+    image: nginx:alpine
+    ports:
+    - containerPort: 8080
+    startupProbe:
+      httpGet:
+        path: /healthz
+        port: 8080
+      initialDelaySeconds: 10
+      periodSeconds: 5
+      failureThreshold: 20 # Allows up to 100s for initialization
+    livenessProbe:
+      httpGet:
+        path: /healthz
+        port: 8080
+      periodSeconds: 10
+      timeoutSeconds: 2
+      failureThreshold: 3
+    readinessProbe:
+      httpGet:
+        path: /ready
+        port: 8080
+      periodSeconds: 5
+      successThreshold: 1
+      failureThreshold: 2
+</code></pre></main></body>
+</html>

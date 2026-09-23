@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Page not found</title>
+</head>
+<body>
+  <p>Page not found. Redirecting…</p>
+  <script>
+    // Keep old Markdown URLs useful after the Pages HTML migration.
+    const path = window.location.pathname;
+    if (/\.md$/i.test(path)) {
+      window.location.replace(path.replace(/\.md$/i, '.html') + window.location.search + window.location.hash);
+    } else {
+      document.body.insertAdjacentHTML('beforeend', '<p><a href="./">Return to the Kubernetes Apartment Complex.</a></p>');
+    }
+  </script>
+</body>
+</html>

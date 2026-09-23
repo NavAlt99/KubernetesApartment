@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Certified Kubernetes Administrator (CKA) - Complete Study Notes</title>
+  <style>
+    :root { color-scheme: dark; }
+    body { max-width: 980px; margin: 0 auto; padding: 2rem 1.25rem 4rem; background: #090d16; color: #e2e8f0; font: 16px/1.65 system-ui, sans-serif; }
+    a { color: #fb7185; }
+    img { max-width: 100%; height: auto; }
+    pre { overflow-x: auto; padding: 1rem; background: #111827; border-radius: .5rem; }
+    code { background: #1e293b; padding: .1em .3em; border-radius: .25rem; }
+    pre code { background: transparent; padding: 0; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { border: 1px solid #334155; padding: .5rem; text-align: left; }
+    blockquote { border-left: 3px solid #fb7185; margin-left: 0; padding-left: 1rem; }
+  </style>
+</head>
+<body><main class="markdown-page"><h1 id="certified-kubernetes-administrator-cka-complete-study-notes">Certified Kubernetes Administrator (CKA) - Complete Study Notes</h1>
+<p>Converted from <code>Copy of Kodekloud CKA 2.docx</code> into organized Markdown modules with diagrams and formatted code/manifest blocks.</p>
+<h2 id="table-of-contents">📚 Table of Contents</h2>
+<h3 id="01-core-concepts"><a href="./01-core-concepts.html">01. Core Concepts</a></h3>
+<ul>
+<li><strong>File:</strong> <a href="./01-core-concepts.html"><code>01-core-concepts.md</code></a></li>
+<li><strong>Summary:</strong> Kubernetes architecture, ETCD, API server, Controller Manager, Scheduler, Kubelet, Kube-Proxy, Pods, ReplicaSets, Deployments, Services, Namespaces, Imperative Commands, kubectl apply, and CustomResourceDefinitions (CRDs) &amp; Operators.</li>
+</ul>
+<h3 id="02-scheduling"><a href="./02-scheduling.html">02. Scheduling</a></h3>
+<ul>
+<li><strong>File:</strong> <a href="./02-scheduling.html"><code>02-scheduling.md</code></a></li>
+<li><strong>Summary:</strong> Manual scheduling, Labels and Selectors, Taints and Tolerations, Node Affinity, Resource Requirements/Limits, DaemonSets, Static Pods, Multiple Schedulers, Topology Spread Constraints, PriorityClass &amp; Pod Preemption, Pod Disruption Budgets (PDB), and LimitRanges.</li>
+</ul>
+<h3 id="03-logging-monitoring"><a href="./03-logging-and-monitoring.html">03. Logging &amp; Monitoring</a></h3>
+<ul>
+<li><strong>File:</strong> <a href="./03-logging-and-monitoring.html"><code>03-logging-and-monitoring.md</code></a></li>
+<li><strong>Summary:</strong> Metrics Server, cluster component monitoring (top node, top pod), advanced kubectl logs streaming/filtering, JSONPath queries and custom columns, sorting, event investigation, and systemd journal logs.</li>
+</ul>
+<h3 id="04-application-lifecycle-management"><a href="./04-application-lifecycle-management.html">04. Application Lifecycle Management</a></h3>
+<ul>
+<li><strong>File:</strong> <a href="./04-application-lifecycle-management.html"><code>04-application-lifecycle-management.md</code></a></li>
+<li><strong>Summary:</strong> Rolling updates, rollbacks, commands and args (ENTRYPOINT/CMD), environment variables, ConfigMaps, Secrets, multi-container pods, init containers, self-healing, and Container Health Probes (Startup, Liveness, Readiness).</li>
+</ul>
+<h3 id="05-cluster-maintenance"><a href="./05-cluster-maintenance.html">05. Cluster Maintenance</a></h3>
+<ul>
+<li><strong>File:</strong> <a href="./05-cluster-maintenance.html"><code>05-cluster-maintenance.md</code></a></li>
+<li><strong>Summary:</strong> OS upgrades (drain, cordon, uncordon), Kubernetes version lifecycle, step-by-step kubeadm cluster upgrade playbook (control plane &amp; worker nodes), kubeadm certificate expiration and renewal, and ETCD backup/restore methods.</li>
+</ul>
+<h3 id="06-security"><a href="./06-security.html">06. Security</a></h3>
+<ul>
+<li><strong>File:</strong> <a href="./06-security.html"><code>06-security.md</code></a></li>
+<li><strong>Summary:</strong> Security primitives, TLS certificate generation/validation, Certificates API, KubeConfig, API groups, RBAC (Roles &amp; ClusterRoles), modern Projected ServiceAccount Tokens (TokenRequest API), Image security, SecurityContexts, NetworkPolicies, Admission Controllers, and Pod Security Standards &amp; Admission (PSA/PSS).</li>
+</ul>
+<h3 id="07-networking"><a href="./07-networking.html">07. Networking</a></h3>
+<ul>
+<li><strong>File:</strong> <a href="./07-networking.html"><code>07-networking.md</code></a></li>
+<li><strong>Summary:</strong> Linux networking prerequisites (routing, iptables, netns, DNS), CNI plugins (Weave, Flannel), Pod networking, Service networking (ClusterIP, NodePort), CoreDNS, modern Ingress v1 specification with TLS, Gateway API overview, kubectl port-forward debugging, and EndpointSlices &amp; Headless Services.</li>
+</ul>
+<h3 id="08-storage"><a href="./08-storage.html">08. Storage</a></h3>
+<ul>
+<li><strong>File:</strong> <a href="./08-storage.html"><code>08-storage.md</code></a></li>
+<li><strong>Summary:</strong> Docker storage drivers, volumes, Container Storage Interface (CSI), Persistent Volumes (PV), Persistent Volume Claims (PVC), volume mounts, StorageClasses, live PVC volume expansion, and CSI VolumeSnapshots &amp; VolumeSnapshotClasses.</li>
+</ul>
+<h3 id="09-design-and-install-a-kubernetes-cluster"><a href="./09-cluster-design-and-installation.html">09. Design and Install a Kubernetes Cluster</a></h3>
+<ul>
+<li><strong>File:</strong> <a href="./09-cluster-design-and-installation.html"><code>09-cluster-design-and-installation.md</code></a></li>
+<li><strong>Summary:</strong> Cluster infrastructure planning, High Availability (HA) topology, stacked vs external ETCD, and automated deployment with kubeadm.</li>
+</ul>
+<h3 id="10-troubleshooting"><a href="./10-troubleshooting.html">10. Troubleshooting</a></h3>
+<ul>
+<li><strong>File:</strong> <a href="./10-troubleshooting.html"><code>10-troubleshooting.md</code></a></li>
+<li><strong>Summary:</strong> Application failure scenarios, service selector troubleshooting, control plane diagnosis (static pods), worker node failure triage (kubelet, containerd, swap, cgroups), network troubleshooting (CoreDNS, kube-proxy, CNI), and advanced interactive debugging with kubectl debug (ephemeral containers, pod copies, node chroot).</li>
+</ul>
+<h2 id="diagrams-media">🖼 Diagrams &amp; Media</h2>
+<p>All 430+ visual diagrams and lab screenshots extracted from the original docx are preserved in the <a href="./images/"><code>images/</code></a> directory and linked directly inside each module.</p></main></body>
+</html>

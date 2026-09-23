@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kubernetes Apartment Complex</title>
+  <style>
+    :root { color-scheme: dark; }
+    body { max-width: 980px; margin: 0 auto; padding: 2rem 1.25rem 4rem; background: #090d16; color: #e2e8f0; font: 16px/1.65 system-ui, sans-serif; }
+    a { color: #fb7185; }
+    img { max-width: 100%; height: auto; }
+    pre { overflow-x: auto; padding: 1rem; background: #111827; border-radius: .5rem; }
+    code { background: #1e293b; padding: .1em .3em; border-radius: .25rem; }
+    pre code { background: transparent; padding: 0; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { border: 1px solid #334155; padding: .5rem; text-align: left; }
+    blockquote { border-left: 3px solid #fb7185; margin-left: 0; padding-left: 1rem; }
+  </style>
+</head>
+<body><main class="markdown-page"><h1 id="kubernetes-apartment-complex">Kubernetes Apartment Complex</h1>
+<p>An illustrated, hands-on guide to Kubernetes control-plane components, node
+runtime, networking, storage, RBAC, workload controllers, and autoscaling.</p>
+<h2 id="contents">Contents</h2>
+<ul>
+<li><a href="demos-complete.html">Complete demo guide</a> — 46 runnable topics with technical
+  explanations, zine illustrations, realtime observations, and kind demos.</li>
+<li><a href="kind-multinode.yaml"><code>kind-multinode.yaml</code></a> — one control-plane and two
+  worker nodes, with local Ingress mapped to ports 8080 and 8443.</li>
+<li><a href="scripts/kind-up.sh"><code>scripts/kind-up.sh</code></a> — create or reuse the lab cluster.</li>
+<li><a href="scripts/kind-doctor.sh"><code>scripts/kind-doctor.sh</code></a> — inspect nodes, components,
+  containerd, and kind node containers.</li>
+<li><a href="scripts/kind-down.sh"><code>scripts/kind-down.sh</code></a> — remove the disposable lab.</li>
+<li><a href="generated/kubernetes-apartment-complex/">Generated illustrations</a> — one
+  technical image and one apartment-complex zine image per topic.</li>
+<li><a href="kubernetes-full-controllers-zine-prompts.fixed.html">Zine prompt pack</a></li>
+<li><a href="CKA_Study_Notes/README.html">CKA Study Notes (10 Modules)</a> — comprehensive companion study modules with 430+ diagrams, architecture flows, command reference, and exam notes.</li>
+</ul>
+<h2 id="cka-study-notes-companion-modules">📚 CKA Study Notes (Companion Modules)</h2>
+<p>The companion modules in <a href="CKA_Study_Notes/README.html"><code>CKA_Study_Notes/</code></a> provide in-depth theory, diagrams, and CLI commands mapped to the 46 apartment complex topics:</p>
+<table>
+<thead>
+<tr>
+<th>Module</th>
+<th>Title</th>
+<th>Key Concepts &amp; Coverage</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="CKA_Study_Notes/01-core-concepts.html">01</a></td>
+<td><a href="CKA_Study_Notes/01-core-concepts.html">Core Concepts</a></td>
+<td>Cluster Architecture, etcd, API Server, Controller Manager, Scheduler, Kubelet, Kube-Proxy, Pods, ReplicaSets, Deployments, Services, Namespaces, Imperative Commands</td>
+</tr>
+<tr>
+<td><a href="CKA_Study_Notes/02-scheduling.html">02</a></td>
+<td><a href="CKA_Study_Notes/02-scheduling.html">Scheduling</a></td>
+<td>Manual Scheduling, Labels/Selectors, Taints/Tolerations, Node Affinity, Resource Requirements/Limits, DaemonSets, Static Pods, Custom Schedulers, Topology Spread Constraints, PriorityClass &amp; Pod Preemption, Pod Disruption Budgets (PDB)</td>
+</tr>
+<tr>
+<td><a href="CKA_Study_Notes/03-logging-and-monitoring.html">03</a></td>
+<td><a href="CKA_Study_Notes/03-logging-and-monitoring.html">Logging &amp; Monitoring</a></td>
+<td>Metrics Server, Cluster Monitoring (<code>top node</code>/<code>top pod</code>), Advanced <code>kubectl logs</code> streaming/timestamps/previous, JSONPath expressions, Custom Columns, Sorting, Cluster Events, <code>journalctl</code> Kubelet Logs</td>
+</tr>
+<tr>
+<td><a href="CKA_Study_Notes/04-application-lifecycle-management.html">04</a></td>
+<td><a href="CKA_Study_Notes/04-application-lifecycle-management.html">Application Lifecycle Management</a></td>
+<td>Rolling Updates, Rollbacks, Commands/Args, ConfigMaps, Secrets, Multi-Container Pods &amp; Native Sidecars, Init Containers</td>
+</tr>
+<tr>
+<td><a href="CKA_Study_Notes/05-cluster-maintenance.html">05</a></td>
+<td><a href="CKA_Study_Notes/05-cluster-maintenance.html">Cluster Maintenance</a></td>
+<td>OS Upgrades (<code>drain</code>/<code>cordon</code>/<code>uncordon</code>), Version Lifecycle, Step-by-Step Kubeadm Cluster Upgrade Playbook (Control Plane &amp; Worker Nodes), Kubeadm Certificate Expiry &amp; Renewal, etcd Backup &amp; Snapshot Restore</td>
+</tr>
+<tr>
+<td><a href="CKA_Study_Notes/06-security.html">06</a></td>
+<td><a href="CKA_Study_Notes/06-security.html">Security</a></td>
+<td>Security Primitives, TLS Bootstrapping &amp; Certificates API, KubeConfig, RBAC (Roles &amp; ClusterRoles), Projected ServiceAccount Tokens (<code>TokenRequest</code> API), Image Security, SecurityContexts, NetworkPolicies, Admission Controllers</td>
+</tr>
+<tr>
+<td><a href="CKA_Study_Notes/07-networking.html">07</a></td>
+<td><a href="CKA_Study_Notes/07-networking.html">Networking</a></td>
+<td>Linux Networking (netns, iptables, routing), CNI Plugins, ClusterIP &amp; NodePort Services, CoreDNS, Modern Ingress v1 Spec (TLS termination, path types), Gateway API, <code>kubectl port-forward</code> Debugging</td>
+</tr>
+<tr>
+<td><a href="CKA_Study_Notes/08-storage.html">08</a></td>
+<td><a href="CKA_Study_Notes/08-storage.html">Storage</a></td>
+<td>Docker Storage Drivers, CSI Architecture, PersistentVolumes (PV), PersistentVolumeClaims (PVC), StorageClasses, Live PVC Volume Expansion (<code>allowVolumeExpansion</code>), CSI Volume Snapshots &amp; VolumeSnapshotClasses</td>
+</tr>
+<tr>
+<td><a href="CKA_Study_Notes/09-cluster-design-and-installation.html">09</a></td>
+<td><a href="CKA_Study_Notes/09-cluster-design-and-installation.html">Design &amp; Install Cluster</a></td>
+<td>HA Topologies, Stacked vs External etcd, Automated Kubeadm Cluster Deployment</td>
+</tr>
+<tr>
+<td><a href="CKA_Study_Notes/10-troubleshooting.html">10</a></td>
+<td><a href="CKA_Study_Notes/10-troubleshooting.html">Troubleshooting</a></td>
+<td>Application Failures, Service Routing Diagnosis, Control Plane Static Pod Diagnosis, Worker Node NotReady Triage (cgroups, containerd, swap), Network Troubleshooting, Interactive <code>kubectl debug</code> (ephemeral containers, pod copies, node chroot)</td>
+</tr>
+</tbody>
+</table>
+<h2 id="runtime-model">Runtime model</h2>
+<p>The host provider is Docker: Docker Engine on Linux or Docker Desktop on macOS.
+kind creates three Linux node containers, and kubelet inside each node talks to
+containerd through CRI. Verify that boundary after startup:</p>
+<pre><code class="language-bash">kubectl get nodes -o custom-columns='NAME:.metadata.name,RUNTIME:.status.nodeInfo.containerRuntimeVersion'
+docker exec zine-worker crictl info
+</code></pre>
+<p>The output should show <code>containerd://...</code>. On macOS, Docker Desktop runs the
+Linux containers inside a VM, so the checked-in port mappings are the reliable
+way to reach Ingress from the host.</p>
+<h2 id="linux-setup">Linux setup</h2>
+<p>These commands target Ubuntu/Debian. For other Linux distributions, use the
+<a href="https://docs.docker.com/engine/install/">official Docker Engine instructions</a>,
+then continue with the kind and kubectl steps.</p>
+<ol>
+<li>Install Docker Engine and containerd:</li>
+</ol>
+<p><code>bash
+   sudo apt-get update
+   sudo apt-get install -y ca-certificates curl
+   sudo install -m 0755 -d /etc/apt/keyrings
+   sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+   sudo chmod a+r /etc/apt/keyrings/docker.asc
+   . /etc/os-release
+   echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu ${UBUNTU_CODENAME:-$VERSION_CODENAME} stable" | sudo tee /etc/apt/sources.list.d/docker.list &gt;/dev/null
+   sudo apt-get update
+   sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+   sudo systemctl enable --now docker</code></p>
+<ol start="2">
+<li>Let the current user run Docker, then open a new login session:</li>
+</ol>
+<p><code>bash
+   sudo usermod -aG docker "$USER"
+   newgrp docker
+   docker run --rm hello-world</code></p>
+<ol start="3">
+<li>Install <code>kubectl</code> and kind. The architecture mapping covers amd64 and arm64:</li>
+</ol>
+<p>```bash
+   KUBECTL_VERSION="$(curl -L -s https://dl.k8s.io/release/stable.txt)"
+   KUBECTL_ARCH="$(uname -m | sed 's/x86_64/amd64/; s/aarch64/arm64/')"
+   curl -LO "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/${KUBECTL_ARCH}/kubectl"
+   chmod +x kubectl &amp;&amp; sudo install -m 0755 kubectl /usr/local/bin/kubectl &amp;&amp; rm kubectl</p>
+<p>KIND_VERSION="v0.33.0"
+   curl -Lo kind "https://kind.sigs.k8s.io/dl/${KIND_VERSION}/kind-linux-${KUBECTL_ARCH}"
+   chmod +x kind &amp;&amp; sudo install -m 0755 kind /usr/local/bin/kind &amp;&amp; rm kind
+   ```</p>
+<ol start="4">
+<li>Check the installation:</li>
+</ol>
+<p><code>bash
+   docker version
+   kind version
+   kubectl version --client</code></p>
+<h2 id="macos-setup">macOS setup</h2>
+<ol>
+<li>
+<p>Install and start <a href="https://docs.docker.com/desktop/setup/install/mac-install/">Docker Desktop for Mac</a>.
+   Give Docker Desktop at least 6 GB of memory for this three-node lab.</p>
+</li>
+<li>
+<p>Install the CLI tools with Homebrew:</p>
+</li>
+</ol>
+<p><code>bash
+   brew install docker kubectl kind
+   docker version
+   kind version
+   kubectl version --client
+   docker run --rm hello-world</code></p>
+<p>Docker Desktop provides the Linux VM and Docker engine. The kind nodes
+   created inside it still use containerd through CRI.</p>
+<h2 id="start-and-verify-the-realtime-lab">Start and verify the realtime lab</h2>
+<p>From the repository root:</p>
+<pre><code class="language-bash">./scripts/kind-up.sh
+./scripts/kind-doctor.sh
+</code></pre>
+<p>In a second terminal, watch the cluster while running a demo:</p>
+<pre><code class="language-bash">kubectl get pods -A -o wide -w
+kubectl get events -A --sort-by=.lastTimestamp -w
+</code></pre>
+<p>Use Ctrl+C to stop a watch. For the Ingress demo, use:</p>
+<pre><code class="language-bash">curl -i -H 'Host: demo.local' http://localhost:8080/
+</code></pre>
+<p>For node-level runtime inspection, run commands inside a kind node:</p>
+<pre><code class="language-bash">docker exec -it zine-control-plane bash
+docker exec -it zine-worker bash
+docker exec zine-worker crictl ps
+</code></pre>
+<p>Read <a href="demos-complete.md">demos-complete.md</a> for the 41 exercises. Each demo
+has setup, live steps, expected observations, and cleanup. Optional add-ons
+include ingress-nginx, a policy-enforcing CNI, metrics-server, and VPA; the
+guide calls out the demos that require each one.</p>
+<h2 id="cleanup">Cleanup</h2>
+<pre><code class="language-bash">./scripts/kind-down.sh
+</code></pre>
+<p>This removes the kind node containers and local cluster state, but does not
+remove this repository or unrelated Docker images.</p></main></body>
+</html>

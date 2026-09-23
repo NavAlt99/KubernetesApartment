@@ -1,0 +1,8 @@
+# This repository is a static GitHub Pages site.  Markdown is published as
+# explicit HTML pages by scripts/build_pages.py so links work consistently
+# whether Pages is configured for the root or for a project subpath.
+exclude:
+  - scripts/
+  - Failure 1/
+  - .agents/
+  - .codex/

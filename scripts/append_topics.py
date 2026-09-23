@@ -74,7 +74,7 @@ spec:
 
 - [Configure Liveness, Readiness and Startup Probes](https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/)
 - [Pod Lifecycle and Container States](https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/)
-- [CKA Study Notes: Application Lifecycle Management](../CKA_Study_Notes/04-application-lifecycle-management.md)
+- [CKA Study Notes: Application Lifecycle Management](CKA_Study_Notes/04-application-lifecycle-management.md)
 
 ### Demo — Probes & Health Checks (Liveness, Readiness, Startup)
 
@@ -189,7 +189,7 @@ endpoints:
 
 - [EndpointSlices Documentation](https://kubernetes.io/docs/concepts/services-networking/endpoint-slices/)
 - [Headless Services](https://kubernetes.io/docs/concepts/services-networking/service/#headless-services)
-- [CKA Study Notes: Networking & Service Discovery](../CKA_Study_Notes/07-networking.md)
+- [CKA Study Notes: Networking & Service Discovery](CKA_Study_Notes/07-networking.md)
 
 ### Demo — EndpointSlices & Headless Services
 
@@ -322,7 +322,7 @@ spec:
 
 - [Pod Security Standards Documentation](https://kubernetes.io/docs/concepts/security/pod-security-standards/)
 - [Pod Security Admission](https://kubernetes.io/docs/concepts/security/pod-security-admission/)
-- [CKA Study Notes: Security Primitives & Hardening](../CKA_Study_Notes/06-security.md)
+- [CKA Study Notes: Security Primitives & Hardening](CKA_Study_Notes/06-security.md)
 
 ### Demo — Pod Security Standards (PSS) & Admission (PSA)
 
@@ -560,7 +560,7 @@ spec:
 
 - [Configure Default Memory and CPU Requests and Limits](https://kubernetes.io/docs/tasks/administer-cluster/manage-resources/memory-default-namespace/)
 - [Limit Ranges Resource Guide](https://kubernetes.io/docs/concepts/policy/limit-range/)
-- [CKA Study Notes: Scheduling & Resource Limits](../CKA_Study_Notes/02-scheduling.md)
+- [CKA Study Notes: Scheduling & Resource Limits](CKA_Study_Notes/02-scheduling.md)
 
 ### Demo — LimitRange
 

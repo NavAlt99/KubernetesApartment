@@ -958,42 +958,42 @@ def generate_index_html(topics):
         </button>
         <div class="dropdown-menu" id="markdownDropdownMenu">
           <div class="dropdown-header">Apartment Demos</div>
-          <a href="demos-complete.md" class="dropdown-item" onclick="openMarkdownViewer(event, 'demos-complete.md', 'Complete Apartment Demos ({total_topics} Topics)')">
+          <a href="demos-complete.html" class="dropdown-item" onclick="openMarkdownViewer(event, 'demos-complete.html', 'Complete Apartment Demos ({total_topics} Topics)')">
             <span class="icon">🏢</span> Complete Apartment Demos ({total_topics} Topics)
           </a>
           <div class="dropdown-divider"></div>
           <div class="dropdown-header">CKA Exam Study Notes</div>
-          <a href="CKA_Study_Notes/README.md" class="dropdown-item" onclick="openMarkdownViewer(event, 'CKA_Study_Notes/README.md', 'CKA Notes Overview &amp; Curriculum')">
+          <a href="CKA_Study_Notes/README.html" class="dropdown-item" onclick="openMarkdownViewer(event, 'CKA_Study_Notes/README.html', 'CKA Notes Overview &amp; Curriculum')">
             <span class="icon">📚</span> CKA Notes Overview &amp; Curriculum
           </a>
-          <a href="CKA_Study_Notes/01-core-concepts.md" class="dropdown-item" onclick="openMarkdownViewer(event, 'CKA_Study_Notes/01-core-concepts.md', '01 Core Concepts &amp; Architecture')">
+          <a href="CKA_Study_Notes/01-core-concepts.html" class="dropdown-item" onclick="openMarkdownViewer(event, 'CKA_Study_Notes/01-core-concepts.html', '01 Core Concepts &amp; Architecture')">
             <span class="icon">01</span> Core Concepts &amp; Architecture
           </a>
-          <a href="CKA_Study_Notes/02-scheduling.md" class="dropdown-item" onclick="openMarkdownViewer(event, 'CKA_Study_Notes/02-scheduling.md', '02 Scheduling, Topology Spread &amp; PDB')">
+          <a href="CKA_Study_Notes/02-scheduling.html" class="dropdown-item" onclick="openMarkdownViewer(event, 'CKA_Study_Notes/02-scheduling.html', '02 Scheduling, Topology Spread &amp; PDB')">
             <span class="icon">02</span> Scheduling, Topology Spread &amp; PDB
           </a>
-          <a href="CKA_Study_Notes/03-logging-and-monitoring.md" class="dropdown-item" onclick="openMarkdownViewer(event, 'CKA_Study_Notes/03-logging-and-monitoring.md', '03 Logging, Metrics &amp; JSONPath')">
+          <a href="CKA_Study_Notes/03-logging-and-monitoring.html" class="dropdown-item" onclick="openMarkdownViewer(event, 'CKA_Study_Notes/03-logging-and-monitoring.html', '03 Logging, Metrics &amp; JSONPath')">
             <span class="icon">03</span> Logging, Metrics &amp; JSONPath
           </a>
-          <a href="CKA_Study_Notes/04-application-lifecycle-management.md" class="dropdown-item" onclick="openMarkdownViewer(event, 'CKA_Study_Notes/04-application-lifecycle-management.md', '04 Application Lifecycle &amp; Config')">
+          <a href="CKA_Study_Notes/04-application-lifecycle-management.html" class="dropdown-item" onclick="openMarkdownViewer(event, 'CKA_Study_Notes/04-application-lifecycle-management.html', '04 Application Lifecycle &amp; Config')">
             <span class="icon">04</span> Application Lifecycle &amp; Config
           </a>
-          <a href="CKA_Study_Notes/05-cluster-maintenance.md" class="dropdown-item" onclick="openMarkdownViewer(event, 'CKA_Study_Notes/05-cluster-maintenance.md', '05 Cluster Upgrades &amp; Maintenance')">
+          <a href="CKA_Study_Notes/05-cluster-maintenance.html" class="dropdown-item" onclick="openMarkdownViewer(event, 'CKA_Study_Notes/05-cluster-maintenance.html', '05 Cluster Upgrades &amp; Maintenance')">
             <span class="icon">05</span> Cluster Upgrades &amp; Maintenance
           </a>
-          <a href="CKA_Study_Notes/06-security.md" class="dropdown-item" onclick="openMarkdownViewer(event, 'CKA_Study_Notes/06-security.md', '06 Security, Projected Tokens &amp; RBAC')">
+          <a href="CKA_Study_Notes/06-security.html" class="dropdown-item" onclick="openMarkdownViewer(event, 'CKA_Study_Notes/06-security.html', '06 Security, Projected Tokens &amp; RBAC')">
             <span class="icon">06</span> Security, Projected Tokens &amp; RBAC
           </a>
-          <a href="CKA_Study_Notes/07-networking.md" class="dropdown-item" onclick="openMarkdownViewer(event, 'CKA_Study_Notes/07-networking.md', '07 Networking, Ingress v1 &amp; Gateway')">
+          <a href="CKA_Study_Notes/07-networking.html" class="dropdown-item" onclick="openMarkdownViewer(event, 'CKA_Study_Notes/07-networking.html', '07 Networking, Ingress v1 &amp; Gateway')">
             <span class="icon">07</span> Networking, Ingress v1 &amp; Gateway
           </a>
-          <a href="CKA_Study_Notes/08-storage.md" class="dropdown-item" onclick="openMarkdownViewer(event, 'CKA_Study_Notes/08-storage.md', '08 Storage, PVC Expansion &amp; Snapshots')">
+          <a href="CKA_Study_Notes/08-storage.html" class="dropdown-item" onclick="openMarkdownViewer(event, 'CKA_Study_Notes/08-storage.html', '08 Storage, PVC Expansion &amp; Snapshots')">
             <span class="icon">08</span> Storage, PVC Expansion &amp; Snapshots
           </a>
-          <a href="CKA_Study_Notes/09-cluster-design-and-installation.md" class="dropdown-item" onclick="openMarkdownViewer(event, 'CKA_Study_Notes/09-cluster-design-and-installation.md', '09 Cluster Design &amp; Installation')">
+          <a href="CKA_Study_Notes/09-cluster-design-and-installation.html" class="dropdown-item" onclick="openMarkdownViewer(event, 'CKA_Study_Notes/09-cluster-design-and-installation.html', '09 Cluster Design &amp; Installation')">
             <span class="icon">09</span> Cluster Design &amp; Installation
           </a>
-          <a href="CKA_Study_Notes/10-troubleshooting.md" class="dropdown-item" onclick="openMarkdownViewer(event, 'CKA_Study_Notes/10-troubleshooting.md', '10 Troubleshooting &amp; kubectl debug')">
+          <a href="CKA_Study_Notes/10-troubleshooting.html" class="dropdown-item" onclick="openMarkdownViewer(event, 'CKA_Study_Notes/10-troubleshooting.html', '10 Troubleshooting &amp; kubectl debug')">
             <span class="icon">10</span> Troubleshooting &amp; kubectl debug
           </a>
         </div>
@@ -1932,8 +1932,10 @@ def generate_index_html(topics):
           if (!res.ok) throw new Error('HTTP ' + res.status);
           return res.text();
         }})
-        .then(mdText => {{
-          const rendered = renderMarkdownDocument(mdText);
+        .then(pageText => {{
+          const parsed = new DOMParser().parseFromString(pageText, 'text/html');
+          const page = parsed.querySelector('.markdown-page');
+          const rendered = page ? page.innerHTML : renderMarkdownDocument(pageText);
           modalBody.innerHTML = rendered;
           originalModalHtml = rendered;
         }})

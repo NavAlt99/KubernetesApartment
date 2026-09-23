@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>What Happens When You Create a Pod in Kubernetes</title>
+  <style>
+    :root { color-scheme: dark; }
+    body { max-width: 980px; margin: 0 auto; padding: 2rem 1.25rem 4rem; background: #090d16; color: #e2e8f0; font: 16px/1.65 system-ui, sans-serif; }
+    a { color: #fb7185; }
+    img { max-width: 100%; height: auto; }
+    pre { overflow-x: auto; padding: 1rem; background: #111827; border-radius: .5rem; }
+    code { background: #1e293b; padding: .1em .3em; border-radius: .25rem; }
+    pre code { background: transparent; padding: 0; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { border: 1px solid #334155; padding: .5rem; text-align: left; }
+    blockquote { border-left: 3px solid #fb7185; margin-left: 0; padding-left: 1rem; }
+  </style>
+</head>
+<body><main class="markdown-page"><h1 id="what-happens-when-you-create-a-pod-in-kubernetes">What Happens When You Create a Pod in Kubernetes</h1>
+<p>This sequence diagram traces the full lifecycle of a <code>kubectl apply -f pod.yaml</code> (or any resource creation) request — from the client, through the control plane, down to the container actually running on a worker node.</p>
+<pre><code class="language-mermaid">sequenceDiagram
+    autonumber
+    participant User as kubectl (Client)
+    participant API as API Server
+    participant Etcd as etcd
+    participant Auth as AuthN/AuthZ + Admission Controllers
+    participant Sched as Scheduler
+    participant Kubelet as Kubelet (Worker Node)
+    participant CRI as Container Runtime (CRI)
+    participant CNI as CNI Plugin
+    participant CSI as CSI Plugin (if volumes)
+
+    User-&gt;&gt;API: POST /api/v1/pods (Pod spec, YAML/JSON)
+    API-&gt;&gt;Auth: Authenticate request (certs, tokens, OIDC)
+    Auth--&gt;&gt;API: Authenticated
+
+    API-&gt;&gt;Auth: Authorize (RBAC check)
+    Auth--&gt;&gt;API: Authorized
+
+    API-&gt;&gt;Auth: Run Admission Controllers&lt;br/&gt;(Mutating: defaults, sidecar injection)
+    Auth--&gt;&gt;API: Mutated Pod spec
+
+    API-&gt;&gt;Auth: Run Admission Controllers&lt;br/&gt;(Validating: policies, quotas, PSP/PSA)
+    Auth--&gt;&gt;API: Validated
+
+    API-&gt;&gt;Etcd: Persist Pod object (nodeName: unassigned)
+    Etcd--&gt;&gt;API: Write ack
+    API--&gt;&gt;User: 201 Created (Pod status: Pending)
+
+    Note over API,Sched: Scheduler watches API Server for&lt;br/&gt;unscheduled Pods (nodeName == &quot;&quot;)
+
+    API-&gt;&gt;Sched: Notify: new unscheduled Pod
+    Sched-&gt;&gt;Sched: Filtering phase&lt;br/&gt;(resource fits? taints/tolerations?&lt;br/&gt;node selectors? affinity rules?)
+    Sched-&gt;&gt;Sched: Scoring phase&lt;br/&gt;(rank feasible nodes)
+    Sched-&gt;&gt;API: Bind Pod to chosen Node (PATCH nodeName)
+    API-&gt;&gt;Etcd: Persist binding
+    Etcd--&gt;&gt;API: Write ack
+
+    Note over API,Kubelet: Kubelet on the target node watches&lt;br/&gt;API Server for Pods bound to itself
+
+    API-&gt;&gt;Kubelet: Notify: Pod assigned to this node
+    Kubelet-&gt;&gt;Kubelet: Admit Pod locally&lt;br/&gt;(resource checks, PodAdmitHandlers)
+
+    opt Volumes required
+        Kubelet-&gt;&gt;CSI: Mount requested volumes
+        CSI--&gt;&gt;Kubelet: Volumes attached &amp; mounted
+    end
+
+    Kubelet-&gt;&gt;CRI: RunPodSandbox()&lt;br/&gt;(create pause/infra container)
+    CRI--&gt;&gt;Kubelet: Sandbox created (network namespace)
+
+    Kubelet-&gt;&gt;CNI: Set up pod networking&lt;br/&gt;(assign IP, configure interfaces)
+    CNI--&gt;&gt;Kubelet: Network ready
+
+    loop For each container in Pod spec
+        Kubelet-&gt;&gt;CRI: PullImage() if not cached
+        CRI--&gt;&gt;Kubelet: Image ready
+        Kubelet-&gt;&gt;CRI: CreateContainer() + StartContainer()
+        CRI--&gt;&gt;Kubelet: Container running
+    end
+
+    Kubelet-&gt;&gt;Kubelet: Run readiness/liveness probes
+    Kubelet-&gt;&gt;API: Update Pod status (Running, container statuses)
+    API-&gt;&gt;Etcd: Persist status update
+    Etcd--&gt;&gt;API: Write ack
+
+    Note over User,CSI: Pod is now Running.&lt;br/&gt;kubectl get pods reflects live status&lt;br/&gt;via watch on the API Server.
+</code></pre>
+<h2 id="key-stages-at-a-glance">Key stages at a glance</h2>
+<ol>
+<li><strong>Submission</strong> — <code>kubectl</code> sends the manifest to the API server as an authenticated HTTPS request.</li>
+<li><strong>Gatekeeping</strong> — AuthN, AuthZ (RBAC), then mutating and validating admission webhooks run before anything is written.</li>
+<li><strong>Persistence</strong> — The API server is the only component that talks to <code>etcd</code> directly; every other component reads/writes through it.</li>
+<li><strong>Scheduling</strong> — The scheduler doesn't get pushed pods; it <em>watches</em> for pods with no <code>nodeName</code> and binds one once filtering + scoring pick a node.</li>
+<li><strong>Kubelet takeover</strong> — Once bound, the kubelet on that node is now responsible for the pod's entire lifecycle.</li>
+<li><strong>Sandbox → Network → Containers</strong> — CRI creates the pause container first (holds the network namespace), CNI wires up networking, then real containers start inside that sandbox.</li>
+<li><strong>Status loop</strong> — The kubelet continuously reports status back through the API server, which is what <code>kubectl get pods -w</code> is watching.</li>
+</ol>
+<h2 id="notes-for-editing">Notes for editing</h2>
+<ul>
+<li>Rendered natively by GitHub, GitLab, VS Code (Markdown Preview Mermaid Support extension), Obsidian, and most static site generators (mkdocs-material, Docusaurus).</li>
+<li>To extend this for a specific resource (Deployment, StatefulSet, Job), add a preceding block showing the controller (Deployment controller, etc.) creating the Pod object it wraps — the pod-level flow from admission onward stays identical.</li>
+<li>If you want a <strong>flowchart</strong> (branching/decision-shape) version instead of this sequence-diagram (time-ordered) version, that's a quick variant — let me know.</li>
+</ul></main></body>
+</html>

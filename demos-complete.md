@@ -27,66 +27,66 @@ This separation is important: the control plane stores intent and makes decision
 
 ### Certified Kubernetes Administrator (CKA) Study Modules
 
-The comprehensive companion guide in [`../CKA_Study_Notes/`](../CKA_Study_Notes/README.md) contains deep-dive theory, CLI walk-throughs, and over 430 visual diagrams organized across 10 modules:
+The comprehensive companion guide in [`../CKA_Study_Notes/`](CKA_Study_Notes/README.md) contains deep-dive theory, CLI walk-throughs, and over 430 visual diagrams organized across 10 modules:
 
-- **[01. Core Concepts](../CKA_Study_Notes/01-core-concepts.md)**: Cluster architecture, etcd, API Server, Controller Manager, Scheduler, Kubelet, Kube-Proxy, Pods, ReplicaSets, Deployments, Services, Namespaces, Imperative Commands, and `kubectl apply`.
-- **[02. Scheduling](../CKA_Study_Notes/02-scheduling.md)**: Manual scheduling, Labels and Selectors, Taints and Tolerations, Node Affinity, Resource Requirements/Limits, DaemonSets, Static Pods, Multiple Schedulers, and scheduler tuning.
-- **[03. Logging & Monitoring](../CKA_Study_Notes/03-logging-and-monitoring.md)**: Metrics Server, cluster component monitoring (`top node`, `top pod`), and application logging with `kubectl logs`.
-- **[04. Application Lifecycle Management](../CKA_Study_Notes/04-application-lifecycle-management.md)**: Rolling updates, rollbacks, commands/args, ConfigMaps, Secrets, multi-container pods, native sidecars, and init containers.
-- **[05. Cluster Maintenance](../CKA_Study_Notes/05-cluster-maintenance.md)**: OS upgrades (`drain`, `cordon`, `uncordon`), Kubernetes version lifecycle, cluster upgrades with kubeadm, and etcd snapshot backup/restore.
-- **[06. Security](../CKA_Study_Notes/06-security.md)**: TLS bootstrapping, Certificates API, KubeConfig, API groups, RBAC (Roles, RoleBindings, ClusterRoles, ClusterRoleBindings), ServiceAccounts, SecurityContexts, and NetworkPolicies.
-- **[07. Networking](../CKA_Study_Notes/07-networking.md)**: Linux networking prerequisites (routing, iptables, netns, DNS), CNI plugins, Pod networking, Service networking (ClusterIP, NodePort), CoreDNS, and Ingress controllers.
-- **[08. Storage](../CKA_Study_Notes/08-storage.md)**: CSI architecture, PersistentVolumes (PV), PersistentVolumeClaims (PVC), StorageClasses, volume mounts, and dynamic provisioning.
-- **[09. Design & Install a Kubernetes Cluster](../CKA_Study_Notes/09-cluster-design-and-installation.md)**: Infrastructure planning, High Availability (HA) topology, stacked vs external etcd, and automated kubeadm deployment.
-- **[10. Troubleshooting](../CKA_Study_Notes/10-troubleshooting.md)**: Application failure diagnosis, service routing troubleshooting, control plane component diagnosis, worker node failure recovery, and network debugging.
+- **[01. Core Concepts](CKA_Study_Notes/01-core-concepts.md)**: Cluster architecture, etcd, API Server, Controller Manager, Scheduler, Kubelet, Kube-Proxy, Pods, ReplicaSets, Deployments, Services, Namespaces, Imperative Commands, and `kubectl apply`.
+- **[02. Scheduling](CKA_Study_Notes/02-scheduling.md)**: Manual scheduling, Labels and Selectors, Taints and Tolerations, Node Affinity, Resource Requirements/Limits, DaemonSets, Static Pods, Multiple Schedulers, and scheduler tuning.
+- **[03. Logging & Monitoring](CKA_Study_Notes/03-logging-and-monitoring.md)**: Metrics Server, cluster component monitoring (`top node`, `top pod`), and application logging with `kubectl logs`.
+- **[04. Application Lifecycle Management](CKA_Study_Notes/04-application-lifecycle-management.md)**: Rolling updates, rollbacks, commands/args, ConfigMaps, Secrets, multi-container pods, native sidecars, and init containers.
+- **[05. Cluster Maintenance](CKA_Study_Notes/05-cluster-maintenance.md)**: OS upgrades (`drain`, `cordon`, `uncordon`), Kubernetes version lifecycle, cluster upgrades with kubeadm, and etcd snapshot backup/restore.
+- **[06. Security](CKA_Study_Notes/06-security.md)**: TLS bootstrapping, Certificates API, KubeConfig, API groups, RBAC (Roles, RoleBindings, ClusterRoles, ClusterRoleBindings), ServiceAccounts, SecurityContexts, and NetworkPolicies.
+- **[07. Networking](CKA_Study_Notes/07-networking.md)**: Linux networking prerequisites (routing, iptables, netns, DNS), CNI plugins, Pod networking, Service networking (ClusterIP, NodePort), CoreDNS, and Ingress controllers.
+- **[08. Storage](CKA_Study_Notes/08-storage.md)**: CSI architecture, PersistentVolumes (PV), PersistentVolumeClaims (PVC), StorageClasses, volume mounts, and dynamic provisioning.
+- **[09. Design & Install a Kubernetes Cluster](CKA_Study_Notes/09-cluster-design-and-installation.md)**: Infrastructure planning, High Availability (HA) topology, stacked vs external etcd, and automated kubeadm deployment.
+- **[10. Troubleshooting](CKA_Study_Notes/10-troubleshooting.md)**: Application failure diagnosis, service routing troubleshooting, control plane component diagnosis, worker node failure recovery, and network debugging.
 
 ### Technical coverage map & CKA Study Module Alignment
 
-The topics build from cluster internals to application operations. Use this map to see the engineering concern and corresponding deep-dive study module in [`../CKA_Study_Notes/`](../CKA_Study_Notes/README.md):
+The topics build from cluster internals to application operations. Use this map to see the engineering concern and corresponding deep-dive study module in [`../CKA_Study_Notes/`](CKA_Study_Notes/README.md):
 
 | # | Topic | Engineering focus | CKA Study Module |
 | --- | --- | --- | --- |
-| 1 | Cluster | Declarative management, scheduling, reconciliation, and platform trade-offs | [01. Core Concepts](../CKA_Study_Notes/01-core-concepts.md) |
-| 2 | Control Plane vs. Worker Nodes | Failure boundaries, high availability, and workload continuity | [01. Core Concepts](../CKA_Study_Notes/01-core-concepts.md) · [09. Cluster Design](../CKA_Study_Notes/09-cluster-design-and-installation.md) |
-| 3 | kube-apiserver | Authentication, authorization, admission, validation, watches, and API consistency | [01. Core Concepts](../CKA_Study_Notes/01-core-concepts.md) · [06. Security](../CKA_Study_Notes/06-security.md) |
-| 4 | etcd | Strong consistency, quorum, encryption, backup, restore, and control-plane dependency | [01. Core Concepts](../CKA_Study_Notes/01-core-concepts.md) · [05. Cluster Maintenance](../CKA_Study_Notes/05-cluster-maintenance.md) |
-| 5 | kube-scheduler | Feasibility filtering, scoring, resource requests, placement constraints, and topology | [02. Scheduling](../CKA_Study_Notes/02-scheduling.md) |
-| 6 | kube-controller-manager | Reconciliation, ownership, idempotency, eventual convergence, and drift correction | [01. Core Concepts](../CKA_Study_Notes/01-core-concepts.md) |
-| 7 | cloud-controller-manager | Provider APIs, cloud identity, quotas, load balancers, routes, and volumes | [01. Core Concepts](../CKA_Study_Notes/01-core-concepts.md) · [09. Cluster Design](../CKA_Study_Notes/09-cluster-design-and-installation.md) |
-| 8 | Static Pods | Node-local bootstrapping, manifest drift, and control-plane initialization | [01. Core Concepts](../CKA_Study_Notes/01-core-concepts.md) · [02. Scheduling](../CKA_Study_Notes/02-scheduling.md) |
-| 9 | kube-proxy | Service datapath, virtual IPs, endpoint updates, and proxy implementation choices | [01. Core Concepts](../CKA_Study_Notes/01-core-concepts.md) · [07. Networking](../CKA_Study_Notes/07-networking.md) |
-| 10 | Container Runtime & CRI | Runtime abstraction, image pulling, sandboxes, cgroups, logging, and isolation | [01. Core Concepts](../CKA_Study_Notes/01-core-concepts.md) |
-| 11 | Pods & Pause Container | Shared namespaces and volumes, container coupling, lifecycle, and localhost routing | [01. Core Concepts](../CKA_Study_Notes/01-core-concepts.md) |
-| 12 | Sidecar Containers | Shared namespaces and volumes, lifecycle coupling, telemetry, and resource overhead | [04. Application Lifecycle](../CKA_Study_Notes/04-application-lifecycle-management.md) |
-| 13 | Init Containers | Ordered initialization, retries, migrations, dependency checks, and startup latency | [04. Application Lifecycle](../CKA_Study_Notes/04-application-lifecycle-management.md) |
-| 14 | CNI | Pod interfaces, IP allocation, routing, encryption, and policy-capable dataplanes | [07. Networking](../CKA_Study_Notes/07-networking.md) |
-| 15 | CoreDNS | Service discovery, search paths, caching, forwarding, readiness, and DNS capacity | [07. Networking](../CKA_Study_Notes/07-networking.md) |
-| 16 | Services & ClusterIP | Stable virtual endpoints, selectors, exposure types, and client decoupling | [01. Core Concepts](../CKA_Study_Notes/01-core-concepts.md) · [07. Networking](../CKA_Study_Notes/07-networking.md) |
-| 17 | NodePort & LoadBalancer | External port allocation, cloud provider integrations, and SNAT trade-offs | [07. Networking](../CKA_Study_Notes/07-networking.md) |
-| 18 | Ingress | Layer-7 routing, TLS termination, controller responsibility, and Gateway API direction | [07. Networking](../CKA_Study_Notes/07-networking.md) |
-| 19 | NetworkPolicy | Namespaced allow rules, ingress/egress isolation, CNI enforcement, and DNS dependencies | [06. Security](../CKA_Study_Notes/06-security.md) · [07. Networking](../CKA_Study_Notes/07-networking.md) |
-| 20 | PersistentVolume | Storage lifecycle, reclaim policy, access modes, topology, and backup limits | [08. Storage](../CKA_Study_Notes/08-storage.md) |
-| 21 | PersistentVolumeClaim | Workload storage requests, binding constraints, provisioning, and Pending diagnosis | [08. Storage](../CKA_Study_Notes/08-storage.md) |
-| 22 | StorageClass | Dynamic provisioning, parameters, binding mode, performance, cost, and retention | [08. Storage](../CKA_Study_Notes/08-storage.md) |
-| 23 | ConfigMap | Decoupled configuration, environment variables, volume projections, and update propagation | [04. Application Lifecycle](../CKA_Study_Notes/04-application-lifecycle-management.md) |
-| 24 | Secret | Sensitive data handling, base64 encoding vs. KMS encryption at rest, and volume projections | [04. Application Lifecycle](../CKA_Study_Notes/04-application-lifecycle-management.md) · [06. Security](../CKA_Study_Notes/06-security.md) |
-| 25 | Role & RoleBinding | Namespaced API permissions, verbs, resources, least privilege, and escalation risk | [06. Security](../CKA_Study_Notes/06-security.md) |
-| 26 | ClusterRole & ClusterRoleBinding | Reusable or cluster-scoped permissions, aggregation rules, and wide-impact review | [06. Security](../CKA_Study_Notes/06-security.md) |
-| 27 | ServiceAccount | Workload identity, projected tokens, RBAC binding, and credential hygiene | [06. Security](../CKA_Study_Notes/06-security.md) |
-| 28 | Node Controller & Eviction | Heartbeats, leases, failure detection, eviction timing, and redundancy | [05. Cluster Maintenance](../CKA_Study_Notes/05-cluster-maintenance.md) |
-| 29 | Namespace Controller | Resource scope, cleanup, finalizers, and deletion stuck in Terminating | [01. Core Concepts](../CKA_Study_Notes/01-core-concepts.md) |
-| 30 | ResourceQuota & LimitRange | Aggregate resource/object limits, admission behavior, and capacity governance | [02. Scheduling](../CKA_Study_Notes/02-scheduling.md) |
-| 31 | Garbage Collector | Owner references, cascading deletion, propagation policy, and orphan prevention | [01. Core Concepts](../CKA_Study_Notes/01-core-concepts.md) |
-| 32 | ReplicaSet | Replica-count reconciliation, label selection, and why Deployments are preferred | [01. Core Concepts](../CKA_Study_Notes/01-core-concepts.md) |
-| 33 | Deployment | Rolling updates, readiness, revision history, rollback, and state migration concerns | [01. Core Concepts](../CKA_Study_Notes/01-core-concepts.md) · [04. Application Lifecycle](../CKA_Study_Notes/04-application-lifecycle-management.md) |
-| 34 | StatefulSet | Stable identity, ordered operations, storage association, quorum, and recovery semantics | [04. Application Lifecycle](../CKA_Study_Notes/04-application-lifecycle-management.md) · [08. Storage](../CKA_Study_Notes/08-storage.md) |
-| 35 | DaemonSet | Per-node coverage, selectors, tolerations, agent resources, and node lifecycle | [02. Scheduling](../CKA_Study_Notes/02-scheduling.md) |
-| 36 | Job | Finite work, completion tracking, retries, parallelism, and cleanup policy | [04. Application Lifecycle](../CKA_Study_Notes/04-application-lifecycle-management.md) |
-| 37 | CronJob | Scheduling, missed runs, concurrency, deadlines, history, and idempotency | [04. Application Lifecycle](../CKA_Study_Notes/04-application-lifecycle-management.md) |
-| 38 | ReplicationController | Legacy replica management, selector limitations, and migration to Deployments | [01. Core Concepts](../CKA_Study_Notes/01-core-concepts.md) |
-| 39 | HorizontalPodAutoscaler | Metric-driven replica scaling, requests, startup behavior, and traffic distribution | [03. Logging & Monitoring](../CKA_Study_Notes/03-logging-and-monitoring.md) |
-| 40 | VerticalPodAutoscaler | Resource recommendations, evictions, update modes, and interaction with HPA | [03. Logging & Monitoring](../CKA_Study_Notes/03-logging-and-monitoring.md) |
-| 41 | Pod Disruption Budget | Voluntary eviction limits, maintenance progress, replica count, and capacity | [05. Cluster Maintenance](../CKA_Study_Notes/05-cluster-maintenance.md) |
+| 1 | Cluster | Declarative management, scheduling, reconciliation, and platform trade-offs | [01. Core Concepts](CKA_Study_Notes/01-core-concepts.md) |
+| 2 | Control Plane vs. Worker Nodes | Failure boundaries, high availability, and workload continuity | [01. Core Concepts](CKA_Study_Notes/01-core-concepts.md) · [09. Cluster Design](CKA_Study_Notes/09-cluster-design-and-installation.md) |
+| 3 | kube-apiserver | Authentication, authorization, admission, validation, watches, and API consistency | [01. Core Concepts](CKA_Study_Notes/01-core-concepts.md) · [06. Security](CKA_Study_Notes/06-security.md) |
+| 4 | etcd | Strong consistency, quorum, encryption, backup, restore, and control-plane dependency | [01. Core Concepts](CKA_Study_Notes/01-core-concepts.md) · [05. Cluster Maintenance](CKA_Study_Notes/05-cluster-maintenance.md) |
+| 5 | kube-scheduler | Feasibility filtering, scoring, resource requests, placement constraints, and topology | [02. Scheduling](CKA_Study_Notes/02-scheduling.md) |
+| 6 | kube-controller-manager | Reconciliation, ownership, idempotency, eventual convergence, and drift correction | [01. Core Concepts](CKA_Study_Notes/01-core-concepts.md) |
+| 7 | cloud-controller-manager | Provider APIs, cloud identity, quotas, load balancers, routes, and volumes | [01. Core Concepts](CKA_Study_Notes/01-core-concepts.md) · [09. Cluster Design](CKA_Study_Notes/09-cluster-design-and-installation.md) |
+| 8 | Static Pods | Node-local bootstrapping, manifest drift, and control-plane initialization | [01. Core Concepts](CKA_Study_Notes/01-core-concepts.md) · [02. Scheduling](CKA_Study_Notes/02-scheduling.md) |
+| 9 | kube-proxy | Service datapath, virtual IPs, endpoint updates, and proxy implementation choices | [01. Core Concepts](CKA_Study_Notes/01-core-concepts.md) · [07. Networking](CKA_Study_Notes/07-networking.md) |
+| 10 | Container Runtime & CRI | Runtime abstraction, image pulling, sandboxes, cgroups, logging, and isolation | [01. Core Concepts](CKA_Study_Notes/01-core-concepts.md) |
+| 11 | Pods & Pause Container | Shared namespaces and volumes, container coupling, lifecycle, and localhost routing | [01. Core Concepts](CKA_Study_Notes/01-core-concepts.md) |
+| 12 | Sidecar Containers | Shared namespaces and volumes, lifecycle coupling, telemetry, and resource overhead | [04. Application Lifecycle](CKA_Study_Notes/04-application-lifecycle-management.md) |
+| 13 | Init Containers | Ordered initialization, retries, migrations, dependency checks, and startup latency | [04. Application Lifecycle](CKA_Study_Notes/04-application-lifecycle-management.md) |
+| 14 | CNI | Pod interfaces, IP allocation, routing, encryption, and policy-capable dataplanes | [07. Networking](CKA_Study_Notes/07-networking.md) |
+| 15 | CoreDNS | Service discovery, search paths, caching, forwarding, readiness, and DNS capacity | [07. Networking](CKA_Study_Notes/07-networking.md) |
+| 16 | Services & ClusterIP | Stable virtual endpoints, selectors, exposure types, and client decoupling | [01. Core Concepts](CKA_Study_Notes/01-core-concepts.md) · [07. Networking](CKA_Study_Notes/07-networking.md) |
+| 17 | NodePort & LoadBalancer | External port allocation, cloud provider integrations, and SNAT trade-offs | [07. Networking](CKA_Study_Notes/07-networking.md) |
+| 18 | Ingress | Layer-7 routing, TLS termination, controller responsibility, and Gateway API direction | [07. Networking](CKA_Study_Notes/07-networking.md) |
+| 19 | NetworkPolicy | Namespaced allow rules, ingress/egress isolation, CNI enforcement, and DNS dependencies | [06. Security](CKA_Study_Notes/06-security.md) · [07. Networking](CKA_Study_Notes/07-networking.md) |
+| 20 | PersistentVolume | Storage lifecycle, reclaim policy, access modes, topology, and backup limits | [08. Storage](CKA_Study_Notes/08-storage.md) |
+| 21 | PersistentVolumeClaim | Workload storage requests, binding constraints, provisioning, and Pending diagnosis | [08. Storage](CKA_Study_Notes/08-storage.md) |
+| 22 | StorageClass | Dynamic provisioning, parameters, binding mode, performance, cost, and retention | [08. Storage](CKA_Study_Notes/08-storage.md) |
+| 23 | ConfigMap | Decoupled configuration, environment variables, volume projections, and update propagation | [04. Application Lifecycle](CKA_Study_Notes/04-application-lifecycle-management.md) |
+| 24 | Secret | Sensitive data handling, base64 encoding vs. KMS encryption at rest, and volume projections | [04. Application Lifecycle](CKA_Study_Notes/04-application-lifecycle-management.md) · [06. Security](CKA_Study_Notes/06-security.md) |
+| 25 | Role & RoleBinding | Namespaced API permissions, verbs, resources, least privilege, and escalation risk | [06. Security](CKA_Study_Notes/06-security.md) |
+| 26 | ClusterRole & ClusterRoleBinding | Reusable or cluster-scoped permissions, aggregation rules, and wide-impact review | [06. Security](CKA_Study_Notes/06-security.md) |
+| 27 | ServiceAccount | Workload identity, projected tokens, RBAC binding, and credential hygiene | [06. Security](CKA_Study_Notes/06-security.md) |
+| 28 | Node Controller & Eviction | Heartbeats, leases, failure detection, eviction timing, and redundancy | [05. Cluster Maintenance](CKA_Study_Notes/05-cluster-maintenance.md) |
+| 29 | Namespace Controller | Resource scope, cleanup, finalizers, and deletion stuck in Terminating | [01. Core Concepts](CKA_Study_Notes/01-core-concepts.md) |
+| 30 | ResourceQuota & LimitRange | Aggregate resource/object limits, admission behavior, and capacity governance | [02. Scheduling](CKA_Study_Notes/02-scheduling.md) |
+| 31 | Garbage Collector | Owner references, cascading deletion, propagation policy, and orphan prevention | [01. Core Concepts](CKA_Study_Notes/01-core-concepts.md) |
+| 32 | ReplicaSet | Replica-count reconciliation, label selection, and why Deployments are preferred | [01. Core Concepts](CKA_Study_Notes/01-core-concepts.md) |
+| 33 | Deployment | Rolling updates, readiness, revision history, rollback, and state migration concerns | [01. Core Concepts](CKA_Study_Notes/01-core-concepts.md) · [04. Application Lifecycle](CKA_Study_Notes/04-application-lifecycle-management.md) |
+| 34 | StatefulSet | Stable identity, ordered operations, storage association, quorum, and recovery semantics | [04. Application Lifecycle](CKA_Study_Notes/04-application-lifecycle-management.md) · [08. Storage](CKA_Study_Notes/08-storage.md) |
+| 35 | DaemonSet | Per-node coverage, selectors, tolerations, agent resources, and node lifecycle | [02. Scheduling](CKA_Study_Notes/02-scheduling.md) |
+| 36 | Job | Finite work, completion tracking, retries, parallelism, and cleanup policy | [04. Application Lifecycle](CKA_Study_Notes/04-application-lifecycle-management.md) |
+| 37 | CronJob | Scheduling, missed runs, concurrency, deadlines, history, and idempotency | [04. Application Lifecycle](CKA_Study_Notes/04-application-lifecycle-management.md) |
+| 38 | ReplicationController | Legacy replica management, selector limitations, and migration to Deployments | [01. Core Concepts](CKA_Study_Notes/01-core-concepts.md) |
+| 39 | HorizontalPodAutoscaler | Metric-driven replica scaling, requests, startup behavior, and traffic distribution | [03. Logging & Monitoring](CKA_Study_Notes/03-logging-and-monitoring.md) |
+| 40 | VerticalPodAutoscaler | Resource recommendations, evictions, update modes, and interaction with HPA | [03. Logging & Monitoring](CKA_Study_Notes/03-logging-and-monitoring.md) |
+| 41 | Pod Disruption Budget | Voluntary eviction limits, maintenance progress, replica count, and capacity | [05. Cluster Maintenance](CKA_Study_Notes/05-cluster-maintenance.md) |
 
 ## Before you start
 
@@ -211,7 +211,7 @@ spec:
 **Further reading**
 
 - [Kubernetes concepts](https://kubernetes.io/docs/concepts/)
-- [CKA Study Notes: Core Concepts](../CKA_Study_Notes/01-core-concepts.md)
+- [CKA Study Notes: Core Concepts](CKA_Study_Notes/01-core-concepts.md)
 
 ### Demo — The Cluster (Why Kubernetes?)
 
@@ -393,7 +393,7 @@ spec:
 **Further reading**
 
 - [Cluster architecture](https://kubernetes.io/docs/concepts/architecture/)
-- [CKA Study Notes: Core Concepts](../CKA_Study_Notes/01-core-concepts.md) & [Cluster Design](../CKA_Study_Notes/09-cluster-design-and-installation.md)
+- [CKA Study Notes: Core Concepts](CKA_Study_Notes/01-core-concepts.md) & [Cluster Design](CKA_Study_Notes/09-cluster-design-and-installation.md)
 
 ### Demo — Control Plane vs. Worker Nodes
 
@@ -581,7 +581,7 @@ spec:
 
 - [API server reference](https://kubernetes.io/docs/reference/command-line-tools-reference/kube-apiserver/)
 - [Kubernetes API concepts](https://kubernetes.io/docs/concepts/overview/kubernetes-api/)
-- [CKA Study Notes: Core Concepts (API Server)](../CKA_Study_Notes/01-core-concepts.md) & [Security](../CKA_Study_Notes/06-security.md)
+- [CKA Study Notes: Core Concepts (API Server)](CKA_Study_Notes/01-core-concepts.md) & [Security](CKA_Study_Notes/06-security.md)
 
 ### Demo — kube-apiserver
 
@@ -773,7 +773,7 @@ spec:
 
 - [etcd: why etcd](https://etcd.io/docs/v3.5/learning/why/)
 - [Kubernetes etcd guidance](https://kubernetes.io/docs/tasks/administer-cluster/configure-upgrade-etcd/)
-- [CKA Study Notes: Core Concepts (etcd)](../CKA_Study_Notes/01-core-concepts.md) & [Cluster Maintenance (etcd Backup/Restore)](../CKA_Study_Notes/05-cluster-maintenance.md)
+- [CKA Study Notes: Core Concepts (etcd)](CKA_Study_Notes/01-core-concepts.md) & [Cluster Maintenance (etcd Backup/Restore)](CKA_Study_Notes/05-cluster-maintenance.md)
 
 ### Demo — etcd
 
@@ -972,7 +972,7 @@ spec:
 
 - [Kubernetes scheduler](https://kubernetes.io/docs/concepts/scheduling-eviction/kube-scheduler/)
 - [Scheduling framework](https://kubernetes.io/docs/concepts/scheduling-eviction/scheduling-framework/)
-- [CKA Study Notes: Scheduling](../CKA_Study_Notes/02-scheduling.md)
+- [CKA Study Notes: Scheduling](CKA_Study_Notes/02-scheduling.md)
 
 ### Demo — kube-scheduler
 
@@ -1158,7 +1158,7 @@ spec:
 **Further reading**
 
 - [Controllers](https://kubernetes.io/docs/concepts/architecture/controller/)
-- [CKA Study Notes: Core Concepts (Controller Manager)](../CKA_Study_Notes/01-core-concepts.md)
+- [CKA Study Notes: Core Concepts (Controller Manager)](CKA_Study_Notes/01-core-concepts.md)
 
 ### Demo — kube-controller-manager
 
@@ -1341,7 +1341,7 @@ spec:
 **Further reading**
 
 - [Cloud controller manager](https://kubernetes.io/docs/concepts/architecture/cloud-controller/)
-- [CKA Study Notes: Core Concepts & Cloud Controller](../CKA_Study_Notes/01-core-concepts.md)
+- [CKA Study Notes: Core Concepts & Cloud Controller](CKA_Study_Notes/01-core-concepts.md)
 
 ### Demo — cloud-controller-manager
 
@@ -1527,7 +1527,7 @@ spec:
 **Further reading**
 
 - [Static Pods](https://kubernetes.io/docs/tasks/configure-pod-container/static-pod/)
-- [CKA Study Notes: Scheduling (Static Pods & Kubelet)](../CKA_Study_Notes/02-scheduling.md)
+- [CKA Study Notes: Scheduling (Static Pods & Kubelet)](CKA_Study_Notes/02-scheduling.md)
 
 ### Demo — Static Pods
 
@@ -1723,7 +1723,7 @@ spec:
 **Further reading**
 
 - [Nodes and kubelet](https://kubernetes.io/docs/concepts/architecture/nodes/)
-- [CKA Study Notes: Networking (Kube-Proxy & iptables)](../CKA_Study_Notes/07-networking.md)
+- [CKA Study Notes: Networking (Kube-Proxy & iptables)](CKA_Study_Notes/07-networking.md)
 
 ### Demo — kubelet
 
@@ -1910,7 +1910,7 @@ spec:
 
 - [kube-proxy](https://kubernetes.io/docs/reference/command-line-tools-reference/kube-proxy/)
 - [Service proxying](https://kubernetes.io/docs/concepts/services-networking/service-traffic-policies/)
-- [CKA Study Notes: Core Concepts (Container Runtime & CRI)](../CKA_Study_Notes/01-core-concepts.md)
+- [CKA Study Notes: Core Concepts (Container Runtime & CRI)](CKA_Study_Notes/01-core-concepts.md)
 
 ### Demo — kube-proxy
 
@@ -2098,7 +2098,7 @@ spec:
 
 - [Container runtimes](https://kubernetes.io/docs/setup/production-environment/container-runtimes/)
 - [CRI specification](https://github.com/kubernetes/cri-api)
-- [CKA Study Notes: Core Concepts (Pods)](../CKA_Study_Notes/01-core-concepts.md)
+- [CKA Study Notes: Core Concepts (Pods)](CKA_Study_Notes/01-core-concepts.md)
 
 ### Demo — Container Runtime & CRI
 
@@ -2283,7 +2283,7 @@ spec:
 **Further reading**
 
 - [Sidecar containers](https://kubernetes.io/docs/concepts/workloads/pods/sidecar-containers/)
-- [CKA Study Notes: Application Lifecycle (Multi-Container Pods)](../CKA_Study_Notes/04-application-lifecycle-management.md)
+- [CKA Study Notes: Application Lifecycle (Multi-Container Pods)](CKA_Study_Notes/04-application-lifecycle-management.md)
 
 ### Demo — Sidecar Containers
 
@@ -2488,7 +2488,7 @@ spec:
 **Further reading**
 
 - [Init containers](https://kubernetes.io/docs/concepts/workloads/pods/init-containers/)
-- [CKA Study Notes: Application Lifecycle (Init Containers)](../CKA_Study_Notes/04-application-lifecycle-management.md)
+- [CKA Study Notes: Application Lifecycle (Init Containers)](CKA_Study_Notes/04-application-lifecycle-management.md)
 
 ### Demo — Init Containers
 
@@ -2683,7 +2683,7 @@ spec:
 
 - [Network plugins and CNI](https://kubernetes.io/docs/concepts/extend-kubernetes/compute-storage-net/network-plugins/)
 - [CNI project](https://github.com/containernetworking/cni)
-- [CKA Study Notes: Networking (CNI & Pod Networking)](../CKA_Study_Notes/07-networking.md)
+- [CKA Study Notes: Networking (CNI & Pod Networking)](CKA_Study_Notes/07-networking.md)
 
 ### Demo — CNI (Container Network Interface)
 
@@ -2881,7 +2881,7 @@ data:
 
 - [DNS for Services and Pods](https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/)
 - [CoreDNS project](https://coredns.io/)
-- [CKA Study Notes: Networking (CoreDNS)](../CKA_Study_Notes/07-networking.md)
+- [CKA Study Notes: Networking (CoreDNS)](CKA_Study_Notes/07-networking.md)
 
 ### Demo — CoreDNS
 
@@ -3068,7 +3068,7 @@ spec:
 **Further reading**
 
 - [Service networking](https://kubernetes.io/docs/concepts/services-networking/service/)
-- [CKA Study Notes: Networking (Services & ClusterIP)](../CKA_Study_Notes/07-networking.md)
+- [CKA Study Notes: Networking (Services & ClusterIP)](CKA_Study_Notes/07-networking.md)
 
 ### Demo — Services
 
@@ -3260,7 +3260,7 @@ endpoints:
 **Further reading**
 
 - [EndpointSlices](https://kubernetes.io/docs/concepts/services-networking/endpoint-slices/)
-- [CKA Study Notes: Networking (NodePort & LoadBalancer)](../CKA_Study_Notes/07-networking.md)
+- [CKA Study Notes: Networking (NodePort & LoadBalancer)](CKA_Study_Notes/07-networking.md)
 
 ### Demo — Endpoints
 
@@ -3453,7 +3453,7 @@ spec:
 **Further reading**
 
 - [Ingress](https://kubernetes.io/docs/concepts/services-networking/ingress/)
-- [CKA Study Notes: Networking (Ingress)](../CKA_Study_Notes/07-networking.md)
+- [CKA Study Notes: Networking (Ingress)](CKA_Study_Notes/07-networking.md)
 
 ### Demo — Ingress
 
@@ -3673,7 +3673,7 @@ spec:
 **Further reading**
 
 - [Network Policies](https://kubernetes.io/docs/concepts/services-networking/network-policies/)
-- [CKA Study Notes: Security (NetworkPolicies)](../CKA_Study_Notes/06-security.md)
+- [CKA Study Notes: Security (NetworkPolicies)](CKA_Study_Notes/06-security.md)
 
 ### Demo — NetworkPolicy
 
@@ -3875,7 +3875,7 @@ spec:
 **Further reading**
 
 - [Persistent Volumes](https://kubernetes.io/docs/concepts/storage/persistent-volumes/)
-- [CKA Study Notes: Storage (Persistent Volumes)](../CKA_Study_Notes/08-storage.md)
+- [CKA Study Notes: Storage (Persistent Volumes)](CKA_Study_Notes/08-storage.md)
 
 ### Demo — PersistentVolume (PV)
 
@@ -4105,7 +4105,7 @@ spec:
 **Further reading**
 
 - [PersistentVolumeClaims](https://kubernetes.io/docs/concepts/storage/persistent-volumes/#persistentvolumeclaims)
-- [CKA Study Notes: Storage (Persistent Volume Claims)](../CKA_Study_Notes/08-storage.md)
+- [CKA Study Notes: Storage (Persistent Volume Claims)](CKA_Study_Notes/08-storage.md)
 
 ### Demo — PersistentVolumeClaim (PVC)
 
@@ -4313,7 +4313,7 @@ parameters:
 **Further reading**
 
 - [StorageClasses](https://kubernetes.io/docs/concepts/storage/storage-classes/)
-- [CKA Study Notes: Storage (StorageClasses & Dynamic Provisioning)](../CKA_Study_Notes/08-storage.md)
+- [CKA Study Notes: Storage (StorageClasses & Dynamic Provisioning)](CKA_Study_Notes/08-storage.md)
 
 ### Demo — StorageClass
 
@@ -4491,7 +4491,7 @@ rules:
 **Further reading**
 
 - [RBAC roles and permissions](https://kubernetes.io/docs/reference/access-authn-authz/rbac/#role-and-clusterrole)
-- [CKA Study Notes: Application Lifecycle (ConfigMaps)](../CKA_Study_Notes/04-application-lifecycle-management.md)
+- [CKA Study Notes: Application Lifecycle (ConfigMaps)](CKA_Study_Notes/04-application-lifecycle-management.md)
 
 ### Demo — Role
 
@@ -4676,7 +4676,7 @@ roleRef:
 **Further reading**
 
 - [RoleBindings](https://kubernetes.io/docs/reference/access-authn-authz/rbac/#rolebinding-and-clusterrolebinding)
-- [CKA Study Notes: Security (Secrets & Encryption at Rest)](../CKA_Study_Notes/06-security.md)
+- [CKA Study Notes: Security (Secrets & Encryption at Rest)](CKA_Study_Notes/06-security.md)
 
 ### Demo — RoleBinding
 
@@ -4853,7 +4853,7 @@ rules:
 **Further reading**
 
 - [RBAC roles and permissions](https://kubernetes.io/docs/reference/access-authn-authz/rbac/#role-and-clusterrole)
-- [CKA Study Notes: Security (Roles & RoleBindings)](../CKA_Study_Notes/06-security.md)
+- [CKA Study Notes: Security (Roles & RoleBindings)](CKA_Study_Notes/06-security.md)
 
 ### Demo — ClusterRole
 
@@ -5031,7 +5031,7 @@ roleRef:
 **Further reading**
 
 - [RoleBindings](https://kubernetes.io/docs/reference/access-authn-authz/rbac/#rolebinding-and-clusterrolebinding)
-- [CKA Study Notes: Security (ClusterRoles & ClusterRoleBindings)](../CKA_Study_Notes/06-security.md)
+- [CKA Study Notes: Security (ClusterRoles & ClusterRoleBindings)](CKA_Study_Notes/06-security.md)
 
 ### Demo — ClusterRoleBinding
 
@@ -5218,7 +5218,7 @@ spec:
 
 - [ServiceAccounts](https://kubernetes.io/docs/concepts/security/service-accounts/)
 - [RBAC authorization](https://kubernetes.io/docs/reference/access-authn-authz/rbac/)
-- [CKA Study Notes: Security (ServiceAccounts)](../CKA_Study_Notes/06-security.md)
+- [CKA Study Notes: Security (ServiceAccounts)](CKA_Study_Notes/06-security.md)
 
 ### Demo — ServiceAccount
 
@@ -5400,7 +5400,7 @@ spec:
 
 - [Node lifecycle](https://kubernetes.io/docs/concepts/architecture/nodes/#node-lifecycle)
 - [Node controller](https://kubernetes.io/docs/concepts/architecture/nodes/)
-- [CKA Study Notes: Cluster Maintenance (Node Drain & Eviction)](../CKA_Study_Notes/05-cluster-maintenance.md)
+- [CKA Study Notes: Cluster Maintenance (Node Drain & Eviction)](CKA_Study_Notes/05-cluster-maintenance.md)
 
 ### Demo — Node (controller)
 
@@ -5578,7 +5578,7 @@ metadata:
 **Further reading**
 
 - [Namespaces](https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/)
-- [CKA Study Notes: Core Concepts (Namespaces)](../CKA_Study_Notes/01-core-concepts.md)
+- [CKA Study Notes: Core Concepts (Namespaces)](CKA_Study_Notes/01-core-concepts.md)
 
 ### Demo — Namespace (controller)
 
@@ -5779,7 +5779,7 @@ spec:
 **Further reading**
 
 - [Resource quotas](https://kubernetes.io/docs/concepts/policy/resource-quotas/)
-- [CKA Study Notes: Scheduling (Resource Limits & Quotas)](../CKA_Study_Notes/02-scheduling.md)
+- [CKA Study Notes: Scheduling (Resource Limits & Quotas)](CKA_Study_Notes/02-scheduling.md)
 
 ### Demo — ResourceQuota
 
@@ -5975,7 +5975,7 @@ spec:
 **Further reading**
 
 - [Owners and dependents](https://kubernetes.io/docs/concepts/architecture/garbage-collection/)
-- [CKA Study Notes: Core Concepts (Garbage Collection)](../CKA_Study_Notes/01-core-concepts.md)
+- [CKA Study Notes: Core Concepts (Garbage Collection)](CKA_Study_Notes/01-core-concepts.md)
 
 ### Demo — Garbage Collector
 
@@ -6166,7 +6166,7 @@ spec:
 **Further reading**
 
 - [ReplicaSets](https://kubernetes.io/docs/concepts/workloads/controllers/replicaset/)
-- [CKA Study Notes: Core Concepts (ReplicaSets)](../CKA_Study_Notes/01-core-concepts.md)
+- [CKA Study Notes: Core Concepts (ReplicaSets)](CKA_Study_Notes/01-core-concepts.md)
 
 ### Demo — ReplicaSet
 
@@ -6369,7 +6369,7 @@ spec:
 **Further reading**
 
 - [Deployments](https://kubernetes.io/docs/concepts/workloads/controllers/deployment/)
-- [CKA Study Notes: Application Lifecycle (Rolling Updates)](../CKA_Study_Notes/04-application-lifecycle-management.md)
+- [CKA Study Notes: Application Lifecycle (Rolling Updates)](CKA_Study_Notes/04-application-lifecycle-management.md)
 
 ### Demo — Deployment
 
@@ -6579,7 +6579,7 @@ spec:
 **Further reading**
 
 - [StatefulSets](https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/)
-- [CKA Study Notes: Storage & StatefulSets](../CKA_Study_Notes/08-storage.md)
+- [CKA Study Notes: Storage & StatefulSets](CKA_Study_Notes/08-storage.md)
 
 ### Demo — StatefulSet
 
@@ -6810,7 +6810,7 @@ spec:
 **Further reading**
 
 - [DaemonSets](https://kubernetes.io/docs/concepts/workloads/controllers/daemonset/)
-- [CKA Study Notes: Scheduling (DaemonSets)](../CKA_Study_Notes/02-scheduling.md)
+- [CKA Study Notes: Scheduling (DaemonSets)](CKA_Study_Notes/02-scheduling.md)
 
 ### Demo — DaemonSet
 
@@ -7012,7 +7012,7 @@ spec:
 **Further reading**
 
 - [Jobs](https://kubernetes.io/docs/concepts/workloads/controllers/job/)
-- [CKA Study Notes: Application Lifecycle (Jobs)](../CKA_Study_Notes/04-application-lifecycle-management.md)
+- [CKA Study Notes: Application Lifecycle (Jobs)](CKA_Study_Notes/04-application-lifecycle-management.md)
 
 ### Demo — Job
 
@@ -7211,7 +7211,7 @@ spec:
 **Further reading**
 
 - [CronJobs](https://kubernetes.io/docs/concepts/workloads/controllers/cron-jobs/)
-- [CKA Study Notes: Application Lifecycle (CronJobs)](../CKA_Study_Notes/04-application-lifecycle-management.md)
+- [CKA Study Notes: Application Lifecycle (CronJobs)](CKA_Study_Notes/04-application-lifecycle-management.md)
 
 ### Demo — CronJob
 
@@ -7412,7 +7412,7 @@ spec:
 **Further reading**
 
 - [ReplicationController](https://kubernetes.io/docs/concepts/workloads/controllers/replicationcontroller/)
-- [CKA Study Notes: Core Concepts (ReplicationControllers)](../CKA_Study_Notes/01-core-concepts.md)
+- [CKA Study Notes: Core Concepts (ReplicationControllers)](CKA_Study_Notes/01-core-concepts.md)
 
 ### Demo — ReplicationController (legacy)
 
@@ -7627,7 +7627,7 @@ spec:
 
 - [Horizontal Pod Autoscaling](https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/)
 - [Autoscaling concepts](https://kubernetes.io/docs/concepts/workloads/autoscaling/)
-- [CKA Study Notes: Logging & Monitoring (Metrics Server & HPA)](../CKA_Study_Notes/03-logging-and-monitoring.md)
+- [CKA Study Notes: Logging & Monitoring (Metrics Server & HPA)](CKA_Study_Notes/03-logging-and-monitoring.md)
 
 ### Demo — HorizontalPodAutoscaler (HPA)
 
@@ -7822,7 +7822,7 @@ spec:
 
 - [Vertical Pod Autoscaling](https://github.com/kubernetes/autoscaler/tree/master/vertical-pod-autoscaler)
 - [Autoscaling concepts](https://kubernetes.io/docs/concepts/workloads/autoscaling/)
-- [CKA Study Notes: Logging & Monitoring (Resource Optimization & VPA)](../CKA_Study_Notes/03-logging-and-monitoring.md)
+- [CKA Study Notes: Logging & Monitoring (Resource Optimization & VPA)](CKA_Study_Notes/03-logging-and-monitoring.md)
 
 ### Demo — VerticalPodAutoscaler (VPA)
 
@@ -8020,7 +8020,7 @@ spec:
 
 - [Pod disruption budgets](https://kubernetes.io/docs/concepts/workloads/pods/disruptions/)
 - [Eviction API](https://kubernetes.io/docs/concepts/scheduling-eviction/api-eviction/)
-- [CKA Study Notes: Cluster Maintenance (Pod Disruption Budgets)](../CKA_Study_Notes/05-cluster-maintenance.md)
+- [CKA Study Notes: Cluster Maintenance (Pod Disruption Budgets)](CKA_Study_Notes/05-cluster-maintenance.md)
 
 ### Demo — Pod Disruption Budget (PDB)
 
@@ -8236,7 +8236,7 @@ spec:
 
 - [Configure Liveness, Readiness and Startup Probes](https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/)
 - [Pod Lifecycle and Container States](https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/)
-- [CKA Study Notes: Application Lifecycle Management](../CKA_Study_Notes/04-application-lifecycle-management.md)
+- [CKA Study Notes: Application Lifecycle Management](CKA_Study_Notes/04-application-lifecycle-management.md)
 
 ### Demo — Probes & Health Checks (Liveness, Readiness, Startup)
 
@@ -8457,7 +8457,7 @@ endpoints:
 
 - [EndpointSlices Documentation](https://kubernetes.io/docs/concepts/services-networking/endpoint-slices/)
 - [Headless Services](https://kubernetes.io/docs/concepts/services-networking/service/#headless-services)
-- [CKA Study Notes: Networking & Service Discovery](../CKA_Study_Notes/07-networking.md)
+- [CKA Study Notes: Networking & Service Discovery](CKA_Study_Notes/07-networking.md)
 
 ### Demo — EndpointSlices & Headless Services
 
@@ -8696,7 +8696,7 @@ spec:
 
 - [Pod Security Standards Documentation](https://kubernetes.io/docs/concepts/security/pod-security-standards/)
 - [Pod Security Admission](https://kubernetes.io/docs/concepts/security/pod-security-admission/)
-- [CKA Study Notes: Security Primitives & Hardening](../CKA_Study_Notes/06-security.md)
+- [CKA Study Notes: Security Primitives & Hardening](CKA_Study_Notes/06-security.md)
 
 ### Demo — Pod Security Standards (PSS) & Admission (PSA)
 
@@ -9146,7 +9146,7 @@ spec:
 
 - [Configure Default Memory and CPU Requests and Limits](https://kubernetes.io/docs/tasks/administer-cluster/manage-resources/memory-default-namespace/)
 - [Limit Ranges Resource Guide](https://kubernetes.io/docs/concepts/policy/limit-range/)
-- [CKA Study Notes: Scheduling & Resource Limits](../CKA_Study_Notes/02-scheduling.md)
+- [CKA Study Notes: Scheduling & Resource Limits](CKA_Study_Notes/02-scheduling.md)
 
 ### Demo — LimitRange
 

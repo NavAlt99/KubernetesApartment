@@ -138,8 +138,11 @@ HTML_TEMPLATE = """<!DOCTYPE html>
   <p class="stage-label" id="stageLabel">Press play to trace the flow</p>
 
   <div class="controls">
-    <button id="playBtn" onclick="play()">▶ Play</button>
+    <button id="playBtn" onclick="togglePlay()">▶ Play</button>
+    <button id="prevBtn" onclick="prevStep()" title="Previous step">← Prev</button>
+    <button id="nextBtn" onclick="nextStep()" title="Next step">Next →</button>
     <button onclick="reset()">↺ Reset</button>
+    <span id="stepIndicator" class="step-indicator">Step 0 / {{stages.length}}</span>
   </div>
 
   <svg viewBox="0 0 {width} {height}" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="{ariaLabel}">
@@ -147,15 +150,29 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     <circle class="packet" id="packet" cx="{startPacketX}" cy="{startPacketY}" r="6"/>
   </svg>
 
-  <footer>animated · dependency-free HTML/CSS/JS · Dan Koe style minimalist system design</footer>
+  <footer>animated · dependency-free HTML/CSS/JS · Minimalist system design</footer>
 </div>
 
 <script>
 const stages = {stagesJson};
 const allNodeIds = {allNodeIdsJson};
 const allConnIds = {allConnIdsJson};
+let currentStep = -1;
 let playing = false;
 let timer = null;
+const totalStages = stages.length;
+const completionMessage = '{completionLabel} ✓';
+
+function updateControls() {{
+  const playBtn = document.getElementById('playBtn');
+  const ind = document.getElementById('stepIndicator');
+  if (playBtn) {{
+    playBtn.textContent = playing ? '⏸ Pause' : (currentStep >= 0 && currentStep < totalStages - 1 ? '▶ Resume' : '▶ Play');
+  }}
+  if (ind) {{
+    ind.textContent = currentStep >= 0 ? `Step ${{currentStep + 1}} / ${{totalStages}}` : `Step 0 / ${{totalStages}}`;
+  }}
+}}
 
 function clearAll() {{
   allNodeIds.forEach(id => {{
@@ -172,55 +189,99 @@ function clearAll() {{
   }});
 }}
 
+function showStep(idx) {{
+  if (idx < 0 || idx >= totalStages) return;
+  currentStep = idx;
+  clearAll();
+
+  const s = stages[idx];
+  if (s.conns) {{
+    s.conns.forEach(cid => {{
+      const c = document.getElementById(cid);
+      const d = document.getElementById(cid + 'd');
+      if (c) c.classList.add('active');
+      if (d) d.classList.add('on');
+    }});
+  }}
+  const box = document.querySelector('#' + s.id + ' .node-box');
+  const title = document.querySelector('#' + s.id + ' .node-title');
+  if (box) box.classList.add('active');
+  if (title) title.classList.add('active');
+
+  const packet = document.getElementById('packet');
+  if (packet) {{
+    packet.classList.add('on');
+    packet.setAttribute('cx', s.dot.x);
+    packet.setAttribute('cy', s.dot.y);
+  }}
+
+  document.getElementById('stageLabel').textContent = s.label;
+  updateControls();
+}}
+
+function pauseFlow() {{
+  playing = false;
+  clearTimeout(timer);
+  updateControls();
+}}
+
+function nextStep() {{
+  pauseFlow();
+  const nextIdx = (currentStep + 1) % totalStages;
+  showStep(nextIdx);
+}}
+
+function prevStep() {{
+  pauseFlow();
+  const prevIdx = currentStep > 0 ? currentStep - 1 : totalStages - 1;
+  showStep(prevIdx);
+}}
+
 function reset() {{
   playing = false;
   clearTimeout(timer);
+  currentStep = -1;
   clearAll();
-  document.getElementById('packet').classList.remove('on');
-  document.getElementById('stageLabel').textContent = 'Press play to trace the flow';
-  document.getElementById('playBtn').textContent = '▶ Play';
+  const packet = document.getElementById('packet');
+  if (packet) packet.classList.remove('on');
+  document.getElementById('stageLabel').textContent = 'Press play or Next → to trace the flow';
+  updateControls();
+}}
+
+function togglePlay() {{
+  if (playing) {{
+    pauseFlow();
+  }} else {{
+    playing = true;
+    updateControls();
+    if (currentStep >= totalStages - 1 || currentStep < 0) {{
+      showStep(0);
+    }}
+    function autoStep() {{
+      if (!playing) return;
+      if (currentStep >= totalStages - 1) {{
+        playing = false;
+        document.getElementById('stageLabel').textContent = completionMessage;
+        updateControls();
+        return;
+      }}
+      showStep(currentStep + 1);
+      timer = setTimeout(autoStep, 1400);
+    }}
+    timer = setTimeout(autoStep, 1400);
+  }}
 }}
 
 function play() {{
-  if (playing) return;
-  reset();
-  playing = true;
-  document.getElementById('packet').classList.add('on');
-  document.getElementById('playBtn').textContent = '⏸ Running...';
-
-  let i = 0;
-  function step() {{
-    clearAll();
-    if (i >= stages.length) {{
-      playing = false;
-      document.getElementById('stageLabel').textContent = '{completionLabel} ✓';
-      document.getElementById('playBtn').textContent = '▶ Play';
-      return;
-    }}
-    const s = stages[i];
-    if (s.conns) {{
-      s.conns.forEach(cid => {{
-        const c = document.getElementById(cid);
-        const d = document.getElementById(cid + 'd');
-        if (c) c.classList.add('active');
-        if (d) d.classList.add('on');
-      }});
-    }}
-    const box = document.querySelector('#' + s.id + ' .node-box');
-    const title = document.querySelector('#' + s.id + ' .node-title');
-    if (box) box.classList.add('active');
-    if (title) title.classList.add('active');
-
-    const packet = document.getElementById('packet');
-    packet.setAttribute('cx', s.dot.x);
-    packet.setAttribute('cy', s.dot.y);
-
-    document.getElementById('stageLabel').textContent = s.label;
-    i++;
-    timer = setTimeout(step, 1350);
-  }}
-  step();
+  togglePlay();
 }}
+
+window.addEventListener('keydown', (e) => {{
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+  if (e.key === 'ArrowRight') {{ nextStep(); }}
+  else if (e.key === 'ArrowLeft') {{ prevStep(); }}
+  else if (e.key === ' ') {{ e.preventDefault(); togglePlay(); }}
+}});
 </script>
 </body>
 </html>

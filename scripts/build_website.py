@@ -413,12 +413,43 @@ def generate_index_html(topics):
   .inline-code {{ background: rgba(244, 63, 94, 0.12); border: 1px solid rgba(244, 63, 94, 0.28); color: #fda4af; padding: 1px 5px; border-radius: 4px; font-size: 11px; }}
 
   .code-block-wrapper {{ margin: 14px 0 18px; border-radius: 8px; border: 1px solid #3d1b32; overflow: hidden; background: #080c16; box-shadow: 0 4px 16px rgba(0,0,0,0.4); }}
-  .code-block-header {{ background: #150e1d; padding: 7px 12px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid #291427; font-size: 10.5px; font-weight: 700; color: #fb7185; letter-spacing: 0.08em; }}
+  .code-block-header {{ background: #150e1d; padding: 7px 12px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #291427; font-size: 10.5px; font-weight: 700; color: #fb7185; letter-spacing: 0.08em; }}
+  .code-header-left {{ display: flex; align-items: center; gap: 8px; }}
   .code-dot {{ width: 8px; height: 8px; border-radius: 50%; display: inline-block; }}
   .code-dot.red {{ background: #ef4444; }}
   .code-dot.yellow {{ background: #f59e0b; }}
   .code-dot.green {{ background: #10b981; }}
+  .code-filename {{ background: rgba(255,255,255,0.08); color: #cbd5e1; padding: 2px 7px; border-radius: 4px; font-size: 10px; font-family: inherit; font-weight: 500; letter-spacing: 0.02em; border: 1px solid rgba(255,255,255,0.12); }}
   .code-box {{ background: transparent; padding: 12px 16px; overflow-x: auto; margin: 0; font-family: inherit; font-size: 11.5px; line-height: 1.55; color: #f1f5f9; white-space: pre; }}
+
+  /* Copy Button */
+  .code-copy-btn {{
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: rgba(255, 255, 255, 0.07);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    color: #e2e8f0;
+    padding: 3px 9px;
+    border-radius: 4px;
+    font-size: 10.5px;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    transition: all 0.18s ease;
+    user-select: none;
+  }}
+  .code-copy-btn:hover {{
+    background: rgba(244, 63, 94, 0.22);
+    border-color: #f43f5e;
+    color: #fff;
+    transform: translateY(-1px);
+  }}
+  .code-copy-btn.copied {{
+    background: rgba(16, 185, 129, 0.2);
+    border-color: #10b981;
+    color: #10b981;
+  }}
 
   /* Topics Directory */
   .section-title {{
@@ -633,24 +664,198 @@ def generate_index_html(topics):
     border: none;
     display: block;
   }}
-  .demo-block {{
-    background: #000 !important;
-    color: #fff !important;
+  .demo-card {{
+    background: #050811;
+    border: 1px solid #1f293d;
     border-radius: 8px;
-    padding: 1.2rem;
-    overflow: auto;
+    overflow: hidden;
     box-shadow: 0 4px 16px rgba(0,0,0,0.5);
-    font-size: 12px;
-    line-height: 1.55;
-    border: 1px solid #222;
   }}
-  .demo-block pre {{
-    background: transparent;
-    color: #fff;
-    margin: 0;
+  .demo-card-header {{
+    background: #0f172a;
+    padding: 8px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid #1e293b;
+    font-size: 11px;
+    font-weight: 700;
+    color: #38bdf8;
+    letter-spacing: 0.06em;
+  }}
+  .demo-card-meta {{
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }}
+  .demo-card-title {{
+    color: #38bdf8;
+  }}
+  .demo-card-actions {{
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }}
+  .demo-content-area {{
+    padding: 14px 16px;
+    font-size: 12px;
+    line-height: 1.6;
+    color: #f8fafc;
+    overflow-x: auto;
     white-space: pre-wrap;
     font-family: inherit;
+    background: #050811;
   }}
+  .demo-section-label {{
+    color: #f43f5e;
+    font-weight: 700;
+    font-size: 11.5px;
+    letter-spacing: 0.05em;
+    margin-top: 14px;
+    margin-bottom: 4px;
+    display: block;
+  }}
+  .demo-section-label:first-child {{
+    margin-top: 0;
+  }}
+  .demo-yaml-subcard {{
+    margin: 10px 0 14px;
+    border: 1px solid #3d1b32;
+    background: #080c16;
+    border-radius: 6px;
+    overflow: hidden;
+  }}
+  .demo-yaml-subcard-header {{
+    background: #181122;
+    padding: 6px 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 10.5px;
+    font-weight: 700;
+    color: #fb7185;
+    border-bottom: 1px solid #291427;
+  }}
+  .demo-yaml-pre {{
+    margin: 0;
+    padding: 12px 14px;
+    color: #f1f5f9;
+    font-size: 11.5px;
+    line-height: 1.55;
+    overflow-x: auto;
+    font-family: inherit;
+    white-space: pre;
+    background: transparent;
+  }}
+
+  /* Markdown Reader Modal */
+  .md-modal-backdrop {{
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.82);
+    backdrop-filter: blur(5px);
+    z-index: 1000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }}
+  .md-modal-backdrop.show {{
+    display: flex;
+  }}
+  .md-modal-container {{
+    background: var(--bg);
+    border: 1px solid var(--panel-border);
+    border-radius: 12px;
+    width: 100%;
+    max-width: 1020px;
+    height: 88vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.85);
+    overflow: hidden;
+  }}
+  .md-modal-header {{
+    background: var(--panel);
+    padding: 12px 18px;
+    border-bottom: 1px solid var(--panel-border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    flex-shrink: 0;
+  }}
+  .md-modal-title-wrap {{
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    overflow: hidden;
+  }}
+  .md-modal-title {{
+    font-size: 13.5px;
+    font-weight: 700;
+    color: var(--accent);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }}
+  .md-modal-actions {{
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+  }}
+  .md-modal-search {{
+    background: rgba(0, 0, 0, 0.35);
+    border: 1px solid var(--panel-border);
+    color: var(--text-main);
+    padding: 4px 10px;
+    border-radius: 5px;
+    font-size: 11px;
+    font-family: inherit;
+    width: 180px;
+    outline: none;
+  }}
+  .md-modal-search:focus {{
+    border-color: var(--accent);
+  }}
+  .md-modal-close {{
+    background: transparent;
+    border: none;
+    color: var(--text-dim);
+    font-size: 18px;
+    cursor: pointer;
+    padding: 2px 6px;
+    line-height: 1;
+    border-radius: 4px;
+    transition: all 0.15s ease;
+  }}
+  .md-modal-close:hover {{
+    color: #fff;
+    background: rgba(244, 63, 94, 0.25);
+  }}
+  .md-modal-body {{
+    padding: 28px 32px;
+    overflow-y: auto;
+    flex: 1;
+    font-size: 13px;
+    line-height: 1.7;
+    color: #e2e8f0;
+  }}
+  .md-modal-body h1 {{ font-size: 20px; color: #fb7185; margin: 0 0 16px; border-bottom: 1px solid var(--panel-border); padding-bottom: 8px; }}
+  .md-modal-body h2 {{ font-size: 16px; color: #f97316; margin: 26px 0 12px; border-bottom: 1px solid #291427; padding-bottom: 4px; }}
+  .md-modal-body h3 {{ font-size: 14px; color: #fdba74; margin: 20px 0 8px; }}
+  .md-modal-body h4 {{ font-size: 12.5px; color: #f43f5e; margin: 14px 0 6px; }}
+  .md-modal-body p {{ margin-bottom: 12px; }}
+  .md-modal-body table {{ border-collapse: collapse; width: 100%; margin: 16px 0; font-size: 11.5px; }}
+  .md-modal-body th, .md-modal-body td {{ border: 1px solid var(--panel-border); padding: 7px 10px; text-align: left; }}
+  .md-modal-body th {{ background: var(--panel); color: var(--accent); font-weight: 700; }}
+  .md-modal-body tr:nth-child(even) {{ background: rgba(255, 255, 255, 0.02); }}
+  .md-modal-body img {{ max-width: 100%; border-radius: 6px; margin: 12px 0; border: 1px solid var(--panel-border); }}
+  .md-modal-body blockquote {{ border-left: 3px solid var(--accent); padding: 6px 14px; background: rgba(244, 63, 94, 0.06); margin: 14px 0; color: #cbd5e1; border-radius: 0 4px 4px 0; }}
 
   /* Interactive Quiz Styles */
   .quiz-card {{
@@ -753,42 +958,42 @@ def generate_index_html(topics):
         </button>
         <div class="dropdown-menu" id="markdownDropdownMenu">
           <div class="dropdown-header">Apartment Demos</div>
-          <a href="demos-complete.md" class="dropdown-item" target="_blank">
+          <a href="demos-complete.md" class="dropdown-item" onclick="openMarkdownViewer(event, 'demos-complete.md', 'Complete Apartment Demos ({total_topics} Topics)')">
             <span class="icon">🏢</span> Complete Apartment Demos ({total_topics} Topics)
           </a>
           <div class="dropdown-divider"></div>
           <div class="dropdown-header">CKA Exam Study Notes</div>
-          <a href="CKA_Study_Notes/README.md" class="dropdown-item" target="_blank">
+          <a href="CKA_Study_Notes/README.md" class="dropdown-item" onclick="openMarkdownViewer(event, 'CKA_Study_Notes/README.md', 'CKA Notes Overview &amp; Curriculum')">
             <span class="icon">📚</span> CKA Notes Overview &amp; Curriculum
           </a>
-          <a href="CKA_Study_Notes/01-core-concepts.md" class="dropdown-item" target="_blank">
+          <a href="CKA_Study_Notes/01-core-concepts.md" class="dropdown-item" onclick="openMarkdownViewer(event, 'CKA_Study_Notes/01-core-concepts.md', '01 Core Concepts &amp; Architecture')">
             <span class="icon">01</span> Core Concepts &amp; Architecture
           </a>
-          <a href="CKA_Study_Notes/02-scheduling.md" class="dropdown-item" target="_blank">
+          <a href="CKA_Study_Notes/02-scheduling.md" class="dropdown-item" onclick="openMarkdownViewer(event, 'CKA_Study_Notes/02-scheduling.md', '02 Scheduling, Topology Spread &amp; PDB')">
             <span class="icon">02</span> Scheduling, Topology Spread &amp; PDB
           </a>
-          <a href="CKA_Study_Notes/03-logging-and-monitoring.md" class="dropdown-item" target="_blank">
+          <a href="CKA_Study_Notes/03-logging-and-monitoring.md" class="dropdown-item" onclick="openMarkdownViewer(event, 'CKA_Study_Notes/03-logging-and-monitoring.md', '03 Logging, Metrics &amp; JSONPath')">
             <span class="icon">03</span> Logging, Metrics &amp; JSONPath
           </a>
-          <a href="CKA_Study_Notes/04-application-lifecycle-management.md" class="dropdown-item" target="_blank">
+          <a href="CKA_Study_Notes/04-application-lifecycle-management.md" class="dropdown-item" onclick="openMarkdownViewer(event, 'CKA_Study_Notes/04-application-lifecycle-management.md', '04 Application Lifecycle &amp; Config')">
             <span class="icon">04</span> Application Lifecycle &amp; Config
           </a>
-          <a href="CKA_Study_Notes/05-cluster-maintenance.md" class="dropdown-item" target="_blank">
+          <a href="CKA_Study_Notes/05-cluster-maintenance.md" class="dropdown-item" onclick="openMarkdownViewer(event, 'CKA_Study_Notes/05-cluster-maintenance.md', '05 Cluster Upgrades &amp; Maintenance')">
             <span class="icon">05</span> Cluster Upgrades &amp; Maintenance
           </a>
-          <a href="CKA_Study_Notes/06-security.md" class="dropdown-item" target="_blank">
+          <a href="CKA_Study_Notes/06-security.md" class="dropdown-item" onclick="openMarkdownViewer(event, 'CKA_Study_Notes/06-security.md', '06 Security, Projected Tokens &amp; RBAC')">
             <span class="icon">06</span> Security, Projected Tokens &amp; RBAC
           </a>
-          <a href="CKA_Study_Notes/07-networking.md" class="dropdown-item" target="_blank">
+          <a href="CKA_Study_Notes/07-networking.md" class="dropdown-item" onclick="openMarkdownViewer(event, 'CKA_Study_Notes/07-networking.md', '07 Networking, Ingress v1 &amp; Gateway')">
             <span class="icon">07</span> Networking, Ingress v1 &amp; Gateway
           </a>
-          <a href="CKA_Study_Notes/08-storage.md" class="dropdown-item" target="_blank">
+          <a href="CKA_Study_Notes/08-storage.md" class="dropdown-item" onclick="openMarkdownViewer(event, 'CKA_Study_Notes/08-storage.md', '08 Storage, PVC Expansion &amp; Snapshots')">
             <span class="icon">08</span> Storage, PVC Expansion &amp; Snapshots
           </a>
-          <a href="CKA_Study_Notes/09-cluster-design-and-installation.md" class="dropdown-item" target="_blank">
+          <a href="CKA_Study_Notes/09-cluster-design-and-installation.md" class="dropdown-item" onclick="openMarkdownViewer(event, 'CKA_Study_Notes/09-cluster-design-and-installation.md', '09 Cluster Design &amp; Installation')">
             <span class="icon">09</span> Cluster Design &amp; Installation
           </a>
-          <a href="CKA_Study_Notes/10-troubleshooting.md" class="dropdown-item" target="_blank">
+          <a href="CKA_Study_Notes/10-troubleshooting.md" class="dropdown-item" onclick="openMarkdownViewer(event, 'CKA_Study_Notes/10-troubleshooting.md', '10 Troubleshooting &amp; kubectl debug')">
             <span class="icon">10</span> Troubleshooting &amp; kubectl debug
           </a>
         </div>
@@ -802,7 +1007,7 @@ def generate_index_html(topics):
     <div id="homeView">
       <div class="hero-heading">
         <h1>Kubernetes Architecture Overview</h1>
-        <p>Dan Koe style minimalist system design · Click any component box to explore the topic</p>
+        <p>Minimalist system design · Click any component box to explore the topic</p>
       </div>
 
       <!-- Master Architecture SVG Diagram -->
@@ -810,8 +1015,11 @@ def generate_index_html(topics):
         <div class="stage-label-bar" id="masterStageLabel">Click any component below to jump to its topic, or press Play to trace cluster request flow</div>
         
         <div class="controls-bar">
-          <button class="btn btn-primary" id="masterPlayBtn" onclick="playMasterFlow()">▶ Play End-to-End Flow</button>
+          <button class="btn btn-primary" id="masterPlayBtn" onclick="toggleMasterPlay()">▶ Play End-to-End Flow</button>
+          <button class="btn" id="masterPrevBtn" onclick="masterPrevStep()" title="Previous Stage">← Prev</button>
+          <button class="btn" id="masterNextBtn" onclick="masterNextStep()" title="Next Stage">Next →</button>
           <button class="btn" onclick="resetMasterFlow()">↺ Reset</button>
+          <span id="masterStepIndicator" style="font-family:var(--font-mono);font-size:12px;color:var(--text-dim);margin-left:6px;font-weight:600;min-width:85px;text-align:center;">Step 0 / 17</span>
         </div>
 
         <svg viewBox="0 0 1000 680" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Kubernetes full architecture diagram">
@@ -961,6 +1169,33 @@ def generate_index_html(topics):
           <path class="connector" id="mc6" d="M745 330 L745 530 L500 530 L500 560" fill="none"/>
           <path class="connector connector-dash" id="mc6d" d="M745 330 L745 530 L500 530 L500 560" fill="none"/>
 
+          <line class="connector" id="mc_rbac" x1="255" y1="174" x2="255" y2="426"/>
+          <line class="connector connector-dash" id="mc_rbacd" x1="255" y1="174" x2="255" y2="426"/>
+
+          <line class="connector" id="mc_ctrl" x1="147" y1="252" x2="147" y2="274"/>
+          <line class="connector connector-dash" id="mc_ctrld" x1="147" y1="252" x2="147" y2="274"/>
+
+          <line class="connector" id="mc_workload" x1="147" y1="330" x2="255" y2="352"/>
+          <line class="connector connector-dash" id="mc_workloadd" x1="147" y1="330" x2="255" y2="352"/>
+
+          <line class="connector" id="mc_cni" x1="852" y1="174" x2="852" y2="196"/>
+          <line class="connector connector-dash" id="mc_cnid" x1="852" y1="174" x2="852" y2="196"/>
+
+          <path class="connector" id="mc_storage" d="M852 252 L852 352 L745 352" fill="none"/>
+          <path class="connector connector-dash" id="mc_storaged" d="M852 252 L852 352 L745 352" fill="none"/>
+
+          <line class="connector" id="mc_proxy" x1="637" y1="274" x2="637" y2="252"/>
+          <line class="connector connector-dash" id="mc_proxyd" x1="637" y1="274" x2="637" y2="252"/>
+
+          <line class="connector" id="mc_dns" x1="640" y1="592" x2="670" y2="592"/>
+          <line class="connector connector-dash" id="mc_dnsd" x1="640" y1="592" x2="670" y2="592"/>
+
+          <line class="connector" id="mc_ing" x1="360" y1="592" x2="330" y2="592"/>
+          <line class="connector connector-dash" id="mc_ingd" x1="360" y1="592" x2="330" y2="592"/>
+
+          <line class="connector" id="mc_auto" x1="745" y1="330" x2="745" y2="426"/>
+          <line class="connector connector-dash" id="mc_autod" x1="745" y1="330" x2="745" y2="426"/>
+
           <circle class="packet" id="masterPacket" cx="500" cy="39" r="7"/>
         </svg>
       </div>
@@ -1013,13 +1248,10 @@ def generate_index_html(topics):
       <section class="part-section">
         <div class="part-header">Part 2 — Interactive Component Flow Diagram</div>
         <p class="part-text" style="color: var(--text-dim); font-size: 11.5px; margin-bottom: 12px;">
-          Dan Koe style system-design animation · Play to trace request packet hops across component boundaries
+          Interactive component flow simulation · Play to trace request packet hops across component boundaries · <a id="topicDiagramLink" href="" target="_blank" style="color: var(--accent);">Open in standalone tab ↗</a>
         </p>
         <div class="diagram-iframe-wrap">
           <iframe id="topicDiagramIframe" class="diagram-iframe" src="" title="Component Diagram"></iframe>
-        </div>
-        <div style="margin-top: 10px; text-align: right;">
-          <a id="topicDiagramLink" href="" target="_blank" style="font-size: 11px;">▶ Open diagram in standalone full window</a>
         </div>
       </section>
 
@@ -1042,8 +1274,27 @@ def generate_index_html(topics):
       <!-- PART 5: Runnable Demo -->
       <section class="part-section">
         <div class="part-header">Part 5 — Runnable Demo (Terminal Experiment)</div>
-        <div class="demo-block">
-          <pre id="topicDemo">SETUP ... STEPS ... WHAT YOU SHOULD SEE ... CLEANUP</pre>
+        <div class="demo-card">
+          <div class="demo-card-header">
+            <div class="demo-card-meta">
+              <span class="code-dot red"></span>
+              <span class="code-dot yellow"></span>
+              <span class="code-dot green"></span>
+              <span class="demo-card-title">TERMINAL EXPERIMENT &amp; MANIFESTS</span>
+            </div>
+            <div class="demo-card-actions">
+              <button class="code-copy-btn" id="copyDemoYamlBtn" style="display:none;" onclick="copyDemoYaml(this)" title="Copy YAML Manifest only">
+                <svg class="copy-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                <span class="copy-text" id="copyDemoYamlText">Copy YAML</span>
+              </button>
+              <button class="code-copy-btn" id="copyDemoAllBtn" onclick="copyDemoAll(this)" title="Copy complete runnable demo script">
+                <svg class="copy-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                <span class="copy-text">Copy All Demo</span>
+              </button>
+            </div>
+          </div>
+          <div id="topicDemoParsed" class="demo-content-area"></div>
+          <pre id="topicDemo" style="display:none;"></pre>
         </div>
       </section>
 
@@ -1065,31 +1316,59 @@ def generate_index_html(topics):
     Kubernetes Apartment Complex · Minimalist Tech / System Design Architecture Guide · Local Edition
   </footer>
 
+  <!-- Interactive Markdown Viewer Modal -->
+  <div id="markdownModal" class="md-modal-backdrop" onclick="handleModalBackdropClick(event)">
+    <div class="md-modal-container" onclick="event.stopPropagation()">
+      <div class="md-modal-header">
+        <div class="md-modal-title-wrap">
+          <span style="font-size:16px;">📄</span>
+          <span class="md-modal-title" id="mdModalTitle">Markdown Document</span>
+        </div>
+        <div class="md-modal-actions">
+          <input type="text" id="mdModalSearch" class="md-modal-search" placeholder="Search in document..." oninput="filterModalContent(this.value)" />
+          <a id="mdRawLink" href="" target="_blank" class="code-copy-btn" style="text-decoration:none;">Open Raw .md ↗</a>
+          <button class="md-modal-close" onclick="closeMarkdownModal()" title="Close (Esc)">✕</button>
+        </div>
+      </div>
+      <div class="md-modal-body" id="mdModalBody">
+        <!-- Dynamically rendered markdown with copy buttons -->
+      </div>
+    </div>
+  </div>
+
   <script>
     const TOPICS = {topics_json};
     let currentCategory = 'All';
     let currentTopicNum = 1;
 
-    // Master Diagram Flow Stages
+    // Master Diagram Flow Stages (17-stop complete cluster lifecycle)
     const masterStages = [
-      {{ id: 'mClient', dot: {{x: 500, y: 39}}, label: 'Client submits application declaration to the cluster', conns: [] }},
-      {{ id: 'mApi',    dot: {{x: 255, y: 147}}, label: 'API server authenticates, validates, and admits request', conns: ['mc0'] }},
-      {{ id: 'mEtcd',   dot: {{x: 147, y: 224}}, label: 'etcd commits desired cluster state to Raft log', conns: ['mc1'] }},
-      {{ id: 'mSched',  dot: {{x: 362, y: 224}}, label: 'Scheduler filters and scores candidate worker nodes', conns: ['mc2'] }},
-      {{ id: 'mKubelet',dot: {{x: 637, y: 147}}, label: 'Kubelet on selected worker node picks up assigned pod', conns: ['mc3'] }},
-      {{ id: 'mCri',    dot: {{x: 852, y: 147}}, label: 'Container runtime (CRI) pulls image and starts container', conns: ['mc4'] }},
-      {{ id: 'mPods',   dot: {{x: 745, y: 302}}, label: 'Pod running healthy with IP and storage mounts', conns: ['mc5'] }},
-      {{ id: 'mServices',dot: {{x: 500, y: 592}}, label: 'Service & Ingress register ready endpoint for live traffic', conns: ['mc6'] }}
+      {{ id: 'mClient',    dot: {{x: 500, y: 39}},  label: 'Step 1/17: Client / kubectl submits declarative manifest to cluster', conns: [] }},
+      {{ id: 'mApi',       dot: {{x: 255, y: 147}}, label: 'Step 2/17: kube-apiserver authenticates identity and validates OpenAPI schema', conns: ['mc0'] }},
+      {{ id: 'mRbac',      dot: {{x: 255, y: 453}}, label: 'Step 3/17: Security & Admission pipeline enforces RBAC roles, LimitRanges & PSA quotas', conns: ['mc_rbac'] }},
+      {{ id: 'mEtcd',      dot: {{x: 147, y: 224}}, label: 'Step 4/17: etcd commits declared target state to distributed Raft consensus log', conns: ['mc1'] }},
+      {{ id: 'mCtrl',      dot: {{x: 147, y: 302}}, label: 'Step 5/17: kube-controller-manager detects spec divergence and begins reconciliation loop', conns: ['mc_ctrl'] }},
+      {{ id: 'mWorkload',  dot: {{x: 255, y: 379}}, label: 'Step 6/17: Deployment / ReplicaSet controller generates unassigned Pod specifications', conns: ['mc_workload'] }},
+      {{ id: 'mSched',     dot: {{x: 362, y: 224}}, label: 'Step 7/17: kube-scheduler filters candidate worker nodes and scores optimal placement', conns: ['mc2'] }},
+      {{ id: 'mKubelet',   dot: {{x: 637, y: 147}}, label: 'Step 8/17: kubelet on selected worker node picks up assigned Pod via API watch', conns: ['mc3'] }},
+      {{ id: 'mCri',       dot: {{x: 852, y: 147}}, label: 'Step 9/17: Container runtime (CRI) pulls image layers and creates container sandbox', conns: ['mc4'] }},
+      {{ id: 'mCni',       dot: {{x: 852, y: 224}}, label: 'Step 10/17: CNI network plugin allocates unique Pod IP and configures veth pair', conns: ['mc_cni'] }},
+      {{ id: 'mStorage',   dot: {{x: 745, y: 379}}, label: 'Step 11/17: CSI storage driver binds PVC and attaches PersistentVolume mount to Pod', conns: ['mc_storage'] }},
+      {{ id: 'mPods',      dot: {{x: 745, y: 302}}, label: 'Step 12/17: Pod starts, passes startup/readiness health probes, and transitions to Running', conns: ['mc5'] }},
+      {{ id: 'mProxy',     dot: {{x: 637, y: 224}}, label: 'Step 13/17: kube-proxy syncs endpoint addresses and programs kernel iptables / IPVS NAT', conns: ['mc_proxy'] }},
+      {{ id: 'mServices',  dot: {{x: 500, y: 592}}, label: 'Step 14/17: EndpointSlice controller adds healthy Pod IP to ClusterIP Service endpoints', conns: ['mc6'] }},
+      {{ id: 'mCoreDns',   dot: {{x: 810, y: 592}}, label: 'Step 15/17: CoreDNS dynamically registers cluster-internal service discovery A/SRV records', conns: ['mc_dns'] }},
+      {{ id: 'mIngress',   dot: {{x: 190, y: 592}}, label: 'Step 16/17: Ingress Controller / Gateway routes external HTTP/TLS requests to Service', conns: ['mc_ing'] }},
+      {{ id: 'mAutoscale', dot: {{x: 745, y: 453}}, label: 'Step 17/17: Horizontal Pod Autoscaler (HPA) monitors traffic metrics to adjust replicas', conns: ['mc_auto'] }}
     ];
 
     const masterNodeIds = ['mClient','mApi','mEtcd','mSched','mCtrl','mCcm','mWorkload','mRbac','mKubelet','mCri','mProxy','mCni','mPods','mStorage','mAutoscale','mIngress','mServices','mCoreDns'];
-    const masterConnIds = ['mc0','mc1','mc2','mc3','mc4','mc5','mc6'];
+    const masterConnIds = ['mc0','mc1','mc2','mc3','mc4','mc5','mc6','mc_rbac','mc_ctrl','mc_workload','mc_cni','mc_storage','mc_proxy','mc_dns','mc_ing','mc_auto'];
+    let masterCurrentStep = -1;
     let masterPlaying = false;
     let masterTimer = null;
 
-    function resetMasterFlow() {{
-      masterPlaying = false;
-      clearTimeout(masterTimer);
+    function masterClearHighlights() {{
       masterNodeIds.forEach(id => {{
         const el = document.getElementById(id);
         if (el) {{
@@ -1105,69 +1384,107 @@ def generate_index_html(topics):
         if (c) c.classList.remove('active');
         if (d) d.classList.remove('on');
       }});
-      document.getElementById('masterPacket').classList.remove('on');
-      document.getElementById('masterStageLabel').textContent = 'Click any component below to jump to its topic, or press Play to trace cluster request flow';
-      document.getElementById('masterPlayBtn').textContent = '▶ Play End-to-End Flow';
+    }}
+
+    function masterUpdateControls() {{
+      const playBtn = document.getElementById('masterPlayBtn');
+      const ind = document.getElementById('masterStepIndicator');
+      if (playBtn) {{
+        playBtn.textContent = masterPlaying ? '⏸ Pause' : (masterCurrentStep >= 0 && masterCurrentStep < masterStages.length - 1 ? '▶ Resume' : '▶ Play End-to-End Flow');
+      }}
+      if (ind) {{
+        ind.textContent = masterCurrentStep >= 0 ? `Step ${{masterCurrentStep + 1}} / ${{masterStages.length}}` : `Step 0 / ${{masterStages.length}}`;
+      }}
+    }}
+
+    function masterShowStep(idx) {{
+      if (idx < 0 || idx >= masterStages.length) return;
+      masterCurrentStep = idx;
+      masterClearHighlights();
+
+      const s = masterStages[idx];
+      if (s.conns) {{
+        s.conns.forEach(cid => {{
+          const c = document.getElementById(cid);
+          const d = document.getElementById(cid + 'd');
+          if (c) c.classList.add('active');
+          if (d) d.classList.add('on');
+        }});
+      }}
+      const el = document.getElementById(s.id);
+      if (el) {{
+        const box = el.querySelector('.node-box');
+        const title = el.querySelector('.node-title');
+        if (box) box.classList.add('active');
+        if (title) title.classList.add('active');
+      }}
+
+      const pkt = document.getElementById('masterPacket');
+      if (pkt) {{
+        pkt.classList.add('on');
+        pkt.setAttribute('cx', s.dot.x);
+        pkt.setAttribute('cy', s.dot.y);
+      }}
+
+      document.getElementById('masterStageLabel').textContent = s.label;
+      masterUpdateControls();
+    }}
+
+    function masterPause() {{
+      masterPlaying = false;
+      clearTimeout(masterTimer);
+      masterUpdateControls();
+    }}
+
+    function masterNextStep() {{
+      masterPause();
+      const nextIdx = (masterCurrentStep + 1) % masterStages.length;
+      masterShowStep(nextIdx);
+    }}
+
+    function masterPrevStep() {{
+      masterPause();
+      const prevIdx = masterCurrentStep > 0 ? masterCurrentStep - 1 : masterStages.length - 1;
+      masterShowStep(prevIdx);
+    }}
+
+    function resetMasterFlow() {{
+      masterPlaying = false;
+      clearTimeout(masterTimer);
+      masterCurrentStep = -1;
+      masterClearHighlights();
+      const pkt = document.getElementById('masterPacket');
+      if (pkt) pkt.classList.remove('on');
+      document.getElementById('masterStageLabel').textContent = 'Click any component below to jump to its topic, or use Next → / Play to trace cluster request flow';
+      masterUpdateControls();
+    }}
+
+    function toggleMasterPlay() {{
+      if (masterPlaying) {{
+        masterPause();
+      }} else {{
+        masterPlaying = true;
+        masterUpdateControls();
+        if (masterCurrentStep >= masterStages.length - 1 || masterCurrentStep < 0) {{
+          masterShowStep(0);
+        }}
+        function autoStep() {{
+          if (!masterPlaying) return;
+          if (masterCurrentStep >= masterStages.length - 1) {{
+            masterPlaying = false;
+            document.getElementById('masterStageLabel').textContent = 'End-to-End Cluster Request Flow Complete ✓ (Click any box to inspect deep-dive)';
+            masterUpdateControls();
+            return;
+          }}
+          masterShowStep(masterCurrentStep + 1);
+          masterTimer = setTimeout(autoStep, 1500);
+        }}
+        masterTimer = setTimeout(autoStep, 1500);
+      }}
     }}
 
     function playMasterFlow() {{
-      if (masterPlaying) return;
-      resetMasterFlow();
-      masterPlaying = true;
-      document.getElementById('masterPacket').classList.add('on');
-      document.getElementById('masterPlayBtn').textContent = '⏸ Running...';
-
-      let i = 0;
-      function step() {{
-        masterNodeIds.forEach(id => {{
-          const el = document.getElementById(id);
-          if (el) {{
-            const box = el.querySelector('.node-box');
-            const title = el.querySelector('.node-title');
-            if (box) box.classList.remove('active');
-            if (title) title.classList.remove('active');
-          }}
-        }});
-        masterConnIds.forEach(cid => {{
-          const c = document.getElementById(cid);
-          const d = document.getElementById(cid + 'd');
-          if (c) c.classList.remove('active');
-          if (d) d.classList.remove('on');
-        }});
-
-        if (i >= masterStages.length) {{
-          masterPlaying = false;
-          document.getElementById('masterStageLabel').textContent = 'End-to-End Cluster Request Flow Complete ✓ (Click any box to inspect deep-dive)';
-          document.getElementById('masterPlayBtn').textContent = '▶ Play End-to-End Flow';
-          return;
-        }}
-
-        const s = masterStages[i];
-        if (s.conns) {{
-          s.conns.forEach(cid => {{
-            const c = document.getElementById(cid);
-            const d = document.getElementById(cid + 'd');
-            if (c) c.classList.add('active');
-            if (d) d.classList.add('on');
-          }});
-        }}
-        const el = document.getElementById(s.id);
-        if (el) {{
-          const box = el.querySelector('.node-box');
-          const title = el.querySelector('.node-title');
-          if (box) box.classList.add('active');
-          if (title) title.classList.add('active');
-        }}
-
-        const pkt = document.getElementById('masterPacket');
-        pkt.setAttribute('cx', s.dot.x);
-        pkt.setAttribute('cy', s.dot.y);
-
-        document.getElementById('masterStageLabel').textContent = s.label;
-        i++;
-        masterTimer = setTimeout(step, 1400);
-      }}
-      step();
+      toggleMasterPlay();
     }}
 
     // Navigation and Routing
@@ -1206,7 +1523,7 @@ def generate_index_html(topics):
       document.getElementById('topicZineExp').textContent = topic.zine_exp;
 
       document.getElementById('topicReading').innerHTML = formatMarkdownLinks(topic.reading);
-      document.getElementById('topicDemo').textContent = topic.demo;
+      renderDemoBlock(topic.demo);
 
       // Render Quiz
       renderQuiz(topic.quiz || []);
@@ -1310,15 +1627,170 @@ def generate_index_html(topics):
         .replace(/>/g, "&gt;");
     }}
 
+    // Clipboard Utility
+    function copyTextToClipboard(text, btn, successLabel) {{
+      const originalHtml = btn.innerHTML;
+      function showSuccess() {{
+        btn.classList.add('copied');
+        btn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg> <span style="color:#10b981; font-weight:700;">${{successLabel || 'Copied!'}}</span>`;
+        setTimeout(() => {{
+          btn.classList.remove('copied');
+          btn.innerHTML = originalHtml;
+        }}, 2000);
+      }}
+
+      if (navigator.clipboard && window.isSecureContext) {{
+        navigator.clipboard.writeText(text).then(showSuccess).catch(err => {{
+          fallbackCopyText(text, showSuccess);
+        }});
+      }} else {{
+        fallbackCopyText(text, showSuccess);
+      }}
+    }}
+
+    function fallbackCopyText(text, callback) {{
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.left = '-9999px';
+      ta.style.top = '0';
+      document.body.appendChild(ta);
+      ta.focus();
+      ta.select();
+      try {{
+        document.execCommand('copy');
+        if (callback) callback();
+      }} catch (e) {{
+        console.error('Fallback copy failed', e);
+      }}
+      document.body.removeChild(ta);
+    }}
+
+    function copySnippet(btn) {{
+      const wrapper = btn.closest('.code-block-wrapper') || btn.closest('.demo-yaml-subcard');
+      if (!wrapper) return;
+      const codeEl = wrapper.querySelector('code') || wrapper.querySelector('pre');
+      if (!codeEl) return;
+      copyTextToClipboard(codeEl.innerText || codeEl.textContent, btn, 'Copied!');
+    }}
+
+    function copyDemoAll(btn) {{
+      const rawPre = document.getElementById('topicDemo');
+      if (!rawPre) return;
+      copyTextToClipboard(rawPre.textContent, btn, 'Copied Demo!');
+    }}
+
+    let currentDemoYamlContent = null;
+    function copyDemoYaml(btn) {{
+      if (currentDemoYamlContent) {{
+        copyTextToClipboard(currentDemoYamlContent, btn, 'Copied YAML!');
+      }}
+    }}
+
+    function copyDemoYamlDirect(btn) {{
+      const subcard = btn.closest('.demo-yaml-subcard');
+      if (!subcard) return;
+      const codeEl = subcard.querySelector('code');
+      if (codeEl) {{
+        copyTextToClipboard(codeEl.innerText || codeEl.textContent, btn, 'Copied YAML!');
+      }}
+    }}
+
+    function renderDemoBlock(demoText) {{
+      const container = document.getElementById('topicDemoParsed');
+      const rawPre = document.getElementById('topicDemo');
+      rawPre.textContent = demoText || '';
+      
+      if (!demoText) {{
+        container.innerHTML = '<span style="color:var(--text-dim)">No demo experiment available.</span>';
+        document.getElementById('copyDemoYamlBtn').style.display = 'none';
+        currentDemoYamlContent = null;
+        return;
+      }}
+
+      // Look for YAML (filename.yaml) block inside demoText
+      const yamlMatch = demoText.match(/YAML\\s+\\(([^)]+)\\)\\n((?:  .*\\n?)+)/);
+      if (yamlMatch) {{
+        const filename = yamlMatch[1].trim();
+        const rawYamlLines = yamlMatch[2].split('\\n');
+        const unindentedYaml = rawYamlLines.map(l => l.startsWith('  ') ? l.slice(2) : l).join('\\n').trim();
+        currentDemoYamlContent = unindentedYaml;
+        
+        const yamlBtn = document.getElementById('copyDemoYamlBtn');
+        document.getElementById('copyDemoYamlText').textContent = 'Copy YAML (' + filename + ')';
+        yamlBtn.style.display = 'inline-flex';
+
+        const before = demoText.substring(0, yamlMatch.index);
+        const after = demoText.substring(yamlMatch.index + yamlMatch[0].length);
+
+        container.innerHTML = formatDemoSectionText(before) +
+          `<div class="demo-yaml-subcard">` +
+            `<div class="demo-yaml-subcard-header">` +
+              `<div style="display:flex; align-items:center; gap:8px;">` +
+                `<span class="code-dot yellow"></span>` +
+                `<span style="color:#fdba74; font-weight:700;">YAML MANIFEST</span>` +
+                `<span class="code-filename">${{escapeHtml(filename)}}</span>` +
+              `</div>` +
+              `<button class="code-copy-btn" onclick="copyDemoYamlDirect(this)" title="Copy ${{escapeHtml(filename)}}">` +
+                `<svg class="copy-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>` +
+                `<span class="copy-text">Copy YAML</span>` +
+              `</button>` +
+            `</div>` +
+            `<pre class="demo-yaml-pre"><code>${{escapeHtml(unindentedYaml)}}</code></pre>` +
+          `</div>` +
+          formatDemoSectionText(after);
+      }} else {{
+        currentDemoYamlContent = null;
+        document.getElementById('copyDemoYamlBtn').style.display = 'none';
+        container.innerHTML = formatDemoSectionText(demoText);
+      }}
+    }}
+
+    function formatDemoSectionText(text) {{
+      if (!text) return '';
+      return text.split('\\n').map(line => {{
+        const trimmed = line.trim();
+        if (['SETUP', 'STEPS', 'WHAT YOU SHOULD SEE', 'CLEANUP', 'NOTE'].includes(trimmed)) {{
+          return `<div class="demo-section-label">▸ ${{escapeHtml(trimmed)}}</div>`;
+        }}
+        return escapeHtml(line);
+      }}).join('\\n');
+    }}
+
     function formatRichMarkdown(text) {{
       if (!text) return "";
 
       const codeBlocks = [];
       let working = text.replace(/```([a-zA-Z0-9_\\-]+)?[\\r\\n]([\\s\\S]*?)```/g, function(match, lang, code) {{
-        const displayLang = lang ? lang.toUpperCase() : "YAML / CONFIG";
+        let trimmed = code.trim();
+        let displayLang = lang ? lang.toUpperCase() : "YAML / CONFIG";
+        if (!lang) {{
+          if (trimmed.includes("apiVersion:") || trimmed.includes("kind:")) displayLang = "YAML";
+          else if (trimmed.includes("kubectl ") || trimmed.includes("curl ")) displayLang = "BASH";
+        }}
+        let filenameBadge = "";
+        const lines = trimmed.split("\\n");
+        if (lines[0] && lines[0].startsWith("# ") && lines[0].includes(".")) {{
+          const fn = lines[0].replace(/^#\\s*/, "").trim();
+          filenameBadge = `<span class="code-filename">${{escapeHtml(fn)}}</span>`;
+        }}
+
         const placeholder = `__CODE_BLOCK_${{codeBlocks.length}}__`;
         codeBlocks.push(
-          `<div class="code-block-wrapper"><div class="code-block-header"><span class="code-dot red"></span><span class="code-dot yellow"></span><span class="code-dot green"></span><span class="code-lang">${{displayLang}}</span></div><pre class="code-box"><code>${{escapeHtml(code.trim())}}</code></pre></div>`
+          `<div class="code-block-wrapper">` +
+            `<div class="code-block-header">` +
+              `<div class="code-header-left">` +
+                `<span class="code-dot red"></span><span class="code-dot yellow"></span><span class="code-dot green"></span>` +
+                `<span class="code-lang">${{displayLang}}</span>` +
+                filenameBadge +
+              `</div>` +
+              `<button class="code-copy-btn" onclick="copySnippet(this)" title="Copy snippet to clipboard">` +
+                `<svg class="copy-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>` +
+                `<span class="copy-text">Copy</span>` +
+              `</button>` +
+            `</div>` +
+            `<pre class="code-box"><code>${{escapeHtml(trimmed)}}</code></pre>` +
+          `</div>`
         );
         return `\\n\\n${{placeholder}}\\n\\n`;
       }});
@@ -1379,7 +1851,7 @@ def generate_index_html(topics):
 
     function formatMarkdownLinks(text) {{
       if (!text) return '<span style="color: var(--text-dim)">Refer to official Kubernetes documentation.</span>';
-      return text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1 ↗</a>');
+      return text.replace(/\\[([^\\]]+)\\]\\(([^)]+)\\)/g, '<a href="$2" target="_blank" rel="noopener">$1 ↗</a>');
     }}
 
     // Directory Filtering
@@ -1427,13 +1899,179 @@ def generate_index_html(topics):
     // Hash change handler for routing
     window.addEventListener('hashchange', () => {{
       const hash = window.location.hash;
-      const match = hash.match(/^#\/topic\/(\\d+)$/);
+      const match = hash.match(/^#\\/topic\\/(\\d+)$/);
       if (match) {{
         renderTopicView(parseInt(match[1], 10));
       }} else {{
         showHome();
       }}
     }});
+
+    // Markdown Reader Modal Logic
+    let originalModalHtml = '';
+    function openMarkdownViewer(event, fileUrl, title) {{
+      if (event) event.preventDefault();
+      const menu = document.getElementById('markdownDropdownMenu');
+      if (menu) menu.classList.remove('show');
+
+      const modal = document.getElementById('markdownModal');
+      const modalTitle = document.getElementById('mdModalTitle');
+      const modalBody = document.getElementById('mdModalBody');
+      const rawLink = document.getElementById('mdRawLink');
+      const searchInput = document.getElementById('mdModalSearch');
+
+      if (searchInput) searchInput.value = '';
+      modalTitle.textContent = title || fileUrl;
+      rawLink.href = fileUrl;
+      modalBody.innerHTML = '<div style="padding:40px; text-align:center; color:var(--text-dim);"><div style="font-size:24px; margin-bottom:12px;">⏳</div>Loading document...</div>';
+      modal.classList.add('show');
+      document.body.style.overflow = 'hidden';
+
+      fetch(fileUrl)
+        .then(res => {{
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          return res.text();
+        }})
+        .then(mdText => {{
+          const rendered = renderMarkdownDocument(mdText);
+          modalBody.innerHTML = rendered;
+          originalModalHtml = rendered;
+        }})
+        .catch(err => {{
+          console.warn('Could not load markdown via fetch:', err);
+          modalBody.innerHTML = `<div style="padding:30px; text-align:center;">
+            <p style="color:#ef4444; margin-bottom:16px;">Direct browser fetch restricted in this environment.</p>
+            <a href="${{fileUrl}}" target="_blank" class="btn btn-primary" style="display:inline-block;">Open ${{fileUrl}} directly ↗</a>
+          </div>`;
+        }});
+    }}
+
+    function closeMarkdownModal() {{
+      const modal = document.getElementById('markdownModal');
+      if (modal) modal.classList.remove('show');
+      document.body.style.overflow = '';
+    }}
+
+    function handleModalBackdropClick(event) {{
+      if (event.target === document.getElementById('markdownModal')) {{
+        closeMarkdownModal();
+      }}
+    }}
+
+    document.addEventListener('keydown', (e) => {{
+      if (e.key === 'Escape') {{
+        closeMarkdownModal();
+      }}
+    }});
+
+    function filterModalContent(query) {{
+      const modalBody = document.getElementById('mdModalBody');
+      if (!modalBody || !originalModalHtml) return;
+      const q = (query || '').toLowerCase().trim();
+      if (!q) {{
+        modalBody.innerHTML = originalModalHtml;
+        return;
+      }}
+      const tempDiv = document.createElement('div');
+      tempDiv.innerHTML = originalModalHtml;
+      const elements = tempDiv.querySelectorAll('h1, h2, h3, h4, p, li, .code-block-wrapper');
+      elements.forEach(el => {{
+        if (el.textContent.toLowerCase().includes(q)) {{
+          el.style.display = '';
+        }} else {{
+          el.style.display = 'none';
+        }}
+      }});
+      modalBody.innerHTML = tempDiv.innerHTML;
+    }}
+
+    function renderMarkdownDocument(md) {{
+      if (!md) return '';
+      const codeBlocks = [];
+      let doc = md.replace(/```([a-zA-Z0-9_\\-]+)?[\\r\\n]([\\s\\S]*?)```/g, function(m, lang, code) {{
+        let trimmed = code.trim();
+        let displayLang = lang ? lang.toUpperCase() : "YAML / CONFIG";
+        if (!lang) {{
+          if (trimmed.includes("apiVersion:") || trimmed.includes("kind:")) displayLang = "YAML";
+          else if (trimmed.includes("kubectl ") || trimmed.includes("curl ")) displayLang = "BASH";
+        }}
+        let filenameBadge = "";
+        const lines = trimmed.split("\\n");
+        if (lines[0] && lines[0].startsWith("# ") && lines[0].includes(".")) {{
+          const fn = lines[0].replace(/^#\\s*/, "").trim();
+          filenameBadge = `<span class="code-filename">${{escapeHtml(fn)}}</span>`;
+        }}
+        const idx = codeBlocks.length;
+        codeBlocks.push(
+          `<div class="code-block-wrapper">` +
+            `<div class="code-block-header">` +
+              `<div class="code-header-left">` +
+                `<span class="code-dot red"></span><span class="code-dot yellow"></span><span class="code-dot green"></span>` +
+                `<span class="code-lang">${{displayLang}}</span>` +
+                filenameBadge +
+              `</div>` +
+              `<button class="code-copy-btn" onclick="copySnippet(this)" title="Copy code snippet">` +
+                `<svg class="copy-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>` +
+                `<span class="copy-text">Copy</span>` +
+              `</button>` +
+            `</div>` +
+            `<pre class="code-box"><code>${{escapeHtml(trimmed)}}</code></pre>` +
+          `</div>`
+        );
+        return `\\n\\n__MD_CODE_${{idx}}__\\n\\n`;
+      }});
+
+      let html = escapeHtml(doc);
+      html = html.replace(/^# (.*?)$/gm, '<h1>$1</h1>');
+      html = html.replace(/^## (.*?)$/gm, '<h2>$1</h2>');
+      html = html.replace(/^### (.*?)$/gm, '<h3>$1</h3>');
+      html = html.replace(/^#### (.*?)$/gm, '<h4>$1</h4>');
+      html = html.replace(/`([^`]+)`/g, '<code class="inline-code">$1</code>');
+      html = html.replace(/\\*\\*([^*]+)\\*\\*/g, '<strong>$1</strong>');
+      html = html.replace(/\\[([^\\]]+)\\]\\(([^)]+)\\)/g, '<a href="$2" target="_blank" rel="noopener">$1 ↗</a>');
+
+      const lines = html.split(/[\\r\\n]+/);
+      let inList = false;
+      let out = [];
+
+      for (let i = 0; i < lines.length; i++) {{
+        let line = lines[i].trim();
+        if (!line) continue;
+
+        const blockMatch = line.match(/^__MD_CODE_(\\d+)__$/);
+        if (blockMatch) {{
+          if (inList) {{
+            out.push("</ul>");
+            inList = false;
+          }}
+          out.push(codeBlocks[parseInt(blockMatch[1], 10)]);
+          continue;
+        }}
+
+        if (/^[-*][\\s]+(.*)$/.test(line)) {{
+          let content = line.replace(/^[-*][\\s]+/, "");
+          if (!inList) {{
+            out.push('<ul class="content-list">');
+            inList = true;
+          }}
+          out.push(`<li>${{content}}</li>`);
+        }} else {{
+          if (inList) {{
+            out.push("</ul>");
+            inList = false;
+          }}
+          if (line.startsWith("<h") || line.startsWith("<div") || line.startsWith("<pre")) {{
+            out.push(line);
+          }} else {{
+            out.push(`<p>${{line}}</p>`);
+          }}
+        }}
+      }}
+      if (inList) {{
+        out.push("</ul>");
+      }}
+      return out.join('\\n');
+    }}
 
     // Markdown Dropdown Toggle
     function toggleMarkdownMenu(event) {{
@@ -1456,7 +2094,7 @@ def generate_index_html(topics):
     window.addEventListener('DOMContentLoaded', () => {{
       renderTopicsGrid(TOPICS);
       const hash = window.location.hash;
-      const match = hash.match(/^#\/topic\/(\\d+)$/);
+      const match = hash.match(/^#\\/topic\\/(\\d+)$/);
       if (match) {{
         renderTopicView(parseInt(match[1], 10));
       }} else {{

@@ -189,6 +189,7 @@ spec:
 - **Kernel & Driver Compatibility:** Worker nodes depend on consistent Linux kernel configurations (`sysctl` network forwarding, overlayfs modules, and container runtime socket stability).
 - **Control Plane Sizing:** As cluster object count grows, etcd memory footprint and kube-apiserver serialization latency scale non-linearly, requiring strict resource quotas and API rate limiting.
 
+
 ### Component architecture flow
 
 <iframe src="diagrams/topic-01.html" width="100%" height="560" style="border:none;"></iframe>
@@ -369,6 +370,7 @@ spec:
 **Technical perspective:** The primary operational boundary in cluster design is preventing control plane starvation from noisy worker node tenants:
 - **Control Plane Taints:** Control plane nodes are tainted with `node-role.kubernetes.io/control-plane:NoSchedule` by default so business workloads never consume control plane CPU or memory.
 - **Split-Brain Scenarios:** If network partitions sever worker nodes from the control plane, local workloads continue running under kubelet supervision, but after the controller-manager `node-monitor-grace-period` (default 40s), the node is marked `NotReady`, and pod eviction scheduling begins after `pod-eviction-timeout` (default 5m).
+
 
 ### Component architecture flow
 
@@ -556,6 +558,7 @@ spec:
 **Technical perspective:** The API server is stateless and horizontally scalable behind a TCP Layer-4 Load Balancer (HAProxy, Envoy, or AWS NLB). 
 - **Production Vulnerabilities:** Unbounded watch queries (`kubectl get pods -A --watch`) from high numbers of controllers or CI/CD pipelines can exhaust API server memory.
 - **Priority and Fairness (APF):** Modern clusters employ API Priority and Fairness to classify traffic into distinct priority queues (`workload-high`, `workload-low`, `system`), guaranteeing administrative access even during DDoS surges.
+
 
 ### Component architecture flow
 
@@ -747,6 +750,7 @@ spec:
 **Technical perspective:** etcd is the most critical failure point in Kubernetes. If etcd loses quorum, the entire control plane enters read-only failure: no pods can be created, updated, or scheduled, and controllers stall.
 - **CKA Disaster Recovery Drill:** Administrators must master taking snapshots with `ETCDCTL_API=3 etcdctl snapshot save <file>` and restoring via `etcdctl snapshot restore <file> --data-dir=/var/lib/etcd-from-backup`.
 - **Space Quotas:** etcd enforces a default 2GB storage quota (expandable to 8GB). Exceeding this quota triggers an `NOSPACE` alarm that locks the cluster into read-only mode until compaction and defragmentation are completed.
+
 
 ### Component architecture flow
 
@@ -946,6 +950,7 @@ spec:
 - **Custom Schedulers:** Multiple schedulers can run concurrently. A pod declares a specific scheduler via `spec.schedulerName: custom-scheduler`.
 - **Pending Pod Diagnosis:** If all nodes fail the filtering stage, the Pod remains stuck in `Pending`. Engineers troubleshoot this via `kubectl describe pod <name>` to view scheduler predicate events (e.g., `0/3 nodes available: 3 Insufficient memory`).
 
+
 ### Component architecture flow
 
 <iframe src="diagrams/topic-05.html" width="100%" height="560" style="border:none;"></iframe>
@@ -1132,6 +1137,7 @@ spec:
 - **Rate-Limiting & Backoff:** If a controller repeatedly fails an operation (such as failing to create a Pod due to quota exhaustion), it applies exponential backoff to protect the API server from request flooding.
 - **Cascading Deletions:** The Garbage Collector controller tracks parent-child hierarchies via `ownerReferences` on objects, ensuring that deleting a Deployment automatically cascades down to delete its managed ReplicaSets and Pods.
 
+
 ### Component architecture flow
 
 <iframe src="diagrams/topic-06.html" width="100%" height="560" style="border:none;"></iframe>
@@ -1313,6 +1319,7 @@ spec:
 **Technical perspective:** Running out-of-tree CCM decouples Kubernetes releases from cloud provider bugfixes:
 - **Cloud IAM Identity:** The CCM requires explicit cloud IAM roles and credentials (or Workload Identity/IRSA) with permissions to provision network interfaces, load balancers, and route tables.
 - **Orphaned Cloud Costs:** If a namespace containing a LoadBalancer Service is deleted forcefully while CCM is malfunctioning, the external cloud load balancer may remain active in the cloud account, incurring silent billing costs.
+
 
 ### Component architecture flow
 
@@ -1498,6 +1505,7 @@ spec:
 **Technical perspective:** Static pods are the backbone of Kubernetes cluster bootstrapping and node-level operational recovery:
 - **CKA Troubleshooting Pattern:** If `kubectl get nodes` fails because the API server is down, check `/etc/kubernetes/manifests/` on the control plane node. Inspect the manifest files and review container logs via `crictl ps` and `crictl logs <container-id>` or `/var/log/pods/`.
 - **Name Appending:** The kubelet automatically appends the node hostname as a suffix to the static pod name (e.g., `kube-apiserver-control-plane-01`).
+
 
 ### Component architecture flow
 
@@ -1694,6 +1702,7 @@ spec:
 - **Systemd Service Troubleshooting:** Kubelet runs as a native systemd unit (`systemctl status kubelet`, `journalctl -u kubelet -f`). Misconfigured cgroup drivers (`cgroupfs` vs `systemd`) are the #1 cause of kubelet boot failure.
 - **Port 10250 Security:** Kubelet exposes an HTTPS API on port 10250 for `kubectl logs` and `kubectl exec`. This endpoint must be secured with `--anonymous-auth=false` and `--authorization-mode=Webhook` to prevent unauthenticated remote code execution.
 
+
 ### Component architecture flow
 
 <iframe src="diagrams/topic-09.html" width="100%" height="560" style="border:none;"></iframe>
@@ -1878,6 +1887,7 @@ spec:
 **Technical perspective:** Understanding kube-proxy is essential for debugging service connectivity:
 - **Virtual IP Non-Routability:** ClusterIPs are virtual synthetic IPs that do not belong to any physical or virtual network interface (`ip addr show` will never display a ClusterIP). Ping (`ICMP`) to a ClusterIP will fail by design unless explicitly answered by iptables.
 - **Conntrack Table Exhaustion:** High-volume UDP workloads (such as DNS floods) can fill `/proc/sys/net/netfilter/nf_conntrack_max`, leading to dropped connections across the entire node.
+
 
 ### Component architecture flow
 
@@ -2066,6 +2076,7 @@ spec:
 - **cgroup Driver Alignment:** Both containerd (`SystemdCgroup = true` in `/etc/containerd/config.toml`) and kubelet (`cgroupDriver: systemd`) must match systemd. Mismatched drivers cause node instability and crash loops.
 - **Image Garbage Collection:** Kubelet instructs CRI to clean up unused image layers when disk utilization passes `imageGCHighThresholdPercent` (default 85%).
 
+
 ### Component architecture flow
 
 <iframe src="diagrams/topic-11.html" width="100%" height="560" style="border:none;"></iframe>
@@ -2250,6 +2261,7 @@ spec:
 **Technical perspective:** Sidecars introduce operational trade-offs in resource footprint and lifecycle management:
 - **Resource Summation:** Pod resource requests and limits equal the sum of all primary containers plus sidecar containers. Excessive sidecars reduce node scheduling density.
 - **Shutdown Race Conditions:** With legacy sidecars, if the application container finishes but the sidecar keeps running, the Pod never terminates, causing Job failures. Native sidecars (`restartPolicy: Always`) solve this problem natively.
+
 
 ### Component architecture flow
 
@@ -2455,6 +2467,7 @@ spec:
 - **Resource Computation:** The effective resource request of a Pod is `max(max(init_containers), sum(app_containers))`. An init container requesting 4 CPU cores will cause the entire Pod to require 4 cores during scheduling, even if it runs for only 5 seconds.
 - **Debugging Blocked Pods:** When a Pod is stuck in `Init:0/1`, run `kubectl logs <pod-name> -c <init-container-name>` to inspect why the preflight check is stalling.
 
+
 ### Component architecture flow
 
 <iframe src="diagrams/topic-13.html" width="100%" height="560" style="border:none;"></iframe>
@@ -2647,6 +2660,7 @@ spec:
 **Technical perspective:** Selecting and operating a CNI determines cluster security and performance:
 - **MTU Sizing:** VXLAN encapsulation adds a 50-byte outer header. If host MTU is 1500, CNI interface MTU must be configured to 1450. MTU mismatches result in silent packet dropping for packets larger than the threshold.
 - **eBPF Acceleration:** Modern CNIs (Cilium, Calico eBPF) bypass iptables entirely, programming eBPF programs directly into Linux kernel socket filters (`tc` / `xdp`), cutting network latency by up to 40%.
+
 
 ### Component architecture flow
 
@@ -2845,6 +2859,7 @@ data:
 - **NodeLocal DNSCache:** In high-concurrency clusters, deploying `NodeLocal DNSCache` (a DaemonSet running CoreDNS on `169.254.20.10`) avoids conntrack UDP race conditions and eliminates DNS latency.
 - **CoreDNS Autoscaling:** CoreDNS must be scaled proportionally using `cluster-proportional-autoscaler` based on the number of nodes and cores in the cluster.
 
+
 ### Component architecture flow
 
 <iframe src="diagrams/topic-15.html" width="100%" height="560" style="border:none;"></iframe>
@@ -3031,6 +3046,7 @@ spec:
 - **`externalTrafficPolicy: Local` vs `Cluster`:**
   - `Cluster` (default): Routes traffic to any node, potentially forwarding across nodes with SNAT (hiding client real IP).
   - `Local`: Only routes to pods on the node receiving the packet. Preserves the real client IP and avoids extra network hops, but risks uneven load distribution if nodes have unequal pod replicas.
+
 
 ### Component architecture flow
 
@@ -3223,6 +3239,7 @@ endpoints:
 **Technical perspective:** Endpoint management is the heartbeat of zero-downtime rolling deployments:
 - **Graceful Termination Drain:** When a pod is deleted, the EndpointSlice controller asynchronously removes it from endpoints while the kubelet sends `SIGTERM` to the container. If the application terminates immediately without waiting for endpoint propagation, in-flight TCP requests receive connection resets (`RST`). Always implement a `preStop` hook (`sleep 5`) in the container spec to allow endpoint propagation before stopping server listeners.
 
+
 ### Component architecture flow
 
 <iframe src="diagrams/topic-17.html" width="100%" height="560" style="border:none;"></iframe>
@@ -3414,6 +3431,7 @@ spec:
 **Technical perspective:** Ingress controllers operate as the public-facing edge of the cluster:
 - **TLS Secret Management:** TLS certificates are stored in `kubernetes.io/tls` Secrets containing `tls.crt` and `tls.key`. Automatic certificate issuance and renewal are standardly delegated to `cert-manager` via ACME/Let's Encrypt.
 - **Controller Reload Penalties:** Older ingress-nginx setups reloaded the NGINX master process upon any backend endpoint change, causing transient client latency spikes. Modern controllers use dynamic Lua shared-memory routing to update backends without process reloads.
+
 
 ### Component architecture flow
 
@@ -3634,6 +3652,7 @@ spec:
 - **Flannel Gotcha:** Flannel does NOT enforce NetworkPolicies! Clusters using pure Flannel will silently ignore NetworkPolicy manifests, leaving workloads completely unisolated. Canal (Flannel + Calico policy engine) or Calico must be used.
 - **DNS Egress Lockdown:** When configuring an Egress default-deny policy, workloads immediately lose the ability to resolve names because port 53 UDP/TCP to CoreDNS is blocked. Always include an explicit egress rule permitting DNS traffic.
 
+
 ### Component architecture flow
 
 <iframe src="diagrams/topic-19.html" width="100%" height="560" style="border:none;"></iframe>
@@ -3834,6 +3853,7 @@ spec:
 **Technical perspective:** PVs decouple storage provisioning from application deployment:
 - **Multi-Attach Errors:** When a node crashes, cloud block storage (AWS EBS, GCP PD) attached to that node remains locked in the cloud hypervisor. When the pod is rescheduled to another node, it becomes stuck in `ContainerCreating` with `VolumeAttachment` timeout errors until the detachment completes.
 - **Backup Limitations:** PV objects represent storage handles, not backup systems. Snapshots must be scheduled using `VolumeSnapshot` objects and CSI snapshot controllers.
+
 
 ### Component architecture flow
 
@@ -4064,6 +4084,7 @@ spec:
 - **Pending PVC Diagnosis:** Run `kubectl describe pvc <name>` to inspect events. Common root causes include no available PVs matching the criteria, StorageClass misconfiguration, or quota exhaustion.
 - **In-Use Protection:** Kubernetes applies the `kubernetes.io/pvc-protection` finalizer. If an operator attempts to delete an active PVC currently mounted by a running Pod, the deletion is deferred until the Pod terminates, preventing sudden filesystem corruption.
 
+
 ### Component architecture flow
 
 <iframe src="diagrams/topic-21.html" width="100%" height="560" style="border:none;"></iframe>
@@ -4271,6 +4292,7 @@ parameters:
 - **AZ Placement Conflicts:** Using `volumeBindingMode: Immediate` with cloud block storage often results in `volume node affinity conflict` errors if the cloud disk is created in `us-east-1a` while the scheduler attempts to place the Pod in `us-east-1b`. Always use `WaitForFirstConsumer` in multi-zone clusters.
 - **Default StorageClass:** Marking a class with annotation `storageclass.kubernetes.io/is-default-class: "true"` automatically assigns it to any PVC submitted without an explicit `storageClassName`.
 
+
 ### Component architecture flow
 
 <iframe src="diagrams/topic-22.html" width="100%" height="560" style="border:none;"></iframe>
@@ -4447,6 +4469,7 @@ rules:
 **Technical perspective:** RBAC Role definition is the cornerstone of multi-tenant namespace security:
 - **Principle of Least Privilege:** Avoid granting wildcard (`"*"`) verbs or resources.
 - **Privilege Escalation Risks:** Granting `create` or `patch` on `pods/exec` grants arbitrary command execution inside containers, effectively yielding the privileges of the container process. Similarly, access to `secrets` allows token theft.
+
 
 ### Component architecture flow
 
@@ -4632,6 +4655,7 @@ roleRef:
   ```
 - **Namespace Boundary Leaks:** Accidental assignment of an administrative ClusterRole via a ClusterRoleBinding instead of a RoleBinding grants cluster-wide superuser access across all namespaces.
 
+
 ### Component architecture flow
 
 <iframe src="diagrams/topic-24.html" width="100%" height="560" style="border:none;"></iframe>
@@ -4807,6 +4831,7 @@ rules:
 **Technical perspective:** ClusterRoles represent the highest administrative security tier:
 - **Built-in Superuser Roles:** Kubernetes ships with built-in ClusterRoles: `cluster-admin` (complete superuser access), `admin`, `edit`, and `view`. Modifying built-in ClusterRoles is discouraged because cluster upgrades will reconcile and overwrite changes.
 - **Node Restriction:** The `Node` authorizer and `NodeRestriction` admission plugin restrict kubelet identities from modifying objects outside their own node, mitigating worker node compromise.
+
 
 ### Component architecture flow
 
@@ -4984,6 +5009,7 @@ roleRef:
 "}{end}'
   ```
 - **Default ServiceAccount Hardening:** Never bind a ClusterRole to `system:serviceaccount:<namespace>:default`, as any unprivileged pod created in that namespace inherits cluster-level authority.
+
 
 ### Component architecture flow
 
@@ -5170,6 +5196,7 @@ spec:
 - **`automountServiceAccountToken: false`:** Workloads that do not need to call the Kubernetes API should always set `automountServiceAccountToken: false` on either the ServiceAccount or PodSpec, eliminating credentials that attackers could steal via container breakout.
 - **Cloud Workload Identity:** Modern cloud architectures (AWS IRSA, GCP Workload Identity, Azure Workload ID) federate the ServiceAccount OIDC token directly with cloud IAM, eliminating static hardcoded cloud API keys.
 
+
 ### Component architecture flow
 
 <iframe src="diagrams/topic-27.html" width="100%" height="560" style="border:none;"></iframe>
@@ -5351,6 +5378,7 @@ spec:
 - **`tolerationSeconds` Tuning:** Stateful workloads (databases) often reduce `tolerationSeconds` from 300s down to 30s to initiate faster failover upon node hardware crashes.
 - **Zone Disruption / Eviction Rate Limiting:** To prevent mass eviction storms during large-scale network partitions, the Node Controller monitors the percentage of unhealthy nodes in each zone. If more than 55% of nodes are unhealthy, it throttles eviction rates down to `0.1` nodes/second.
 
+
 ### Component architecture flow
 
 <iframe src="diagrams/topic-28.html" width="100%" height="560" style="border:none;"></iframe>
@@ -5528,6 +5556,7 @@ metadata:
   kubectl api-resources --verbs=list --namespaced -o name | xargs -n 1 kubectl get --show-kind --ignore-not-found -n <namespace>
   ```
 - **Custom Resource Finalizer Deadlocks:** Often, an uninstalled Custom Resource Definition (CRD) leaves custom objects with dangling finalizers that block the namespace controller indefinitely.
+
 
 ### Component architecture flow
 
@@ -5729,6 +5758,7 @@ spec:
   ```
 - **Deployment Rollout Deadlocks:** During a rolling update, a Deployment temporarily runs old replicas plus new replicas (`maxSurge`). If the namespace quota has zero headroom remaining, new pods cannot be created, completely stalling the rollout.
 
+
 ### Component architecture flow
 
 <iframe src="diagrams/topic-30.html" width="100%" height="560" style="border:none;"></iframe>
@@ -5924,6 +5954,7 @@ spec:
 - **CLI Propagation Options:** `kubectl delete deployment <name> --cascade=orphan` deletes the Deployment object while leaving the underlying Pods running without disruption.
 - **Dangling Resources:** If an operator manually edits a Pod and deletes its `ownerReferences`, higher-level workload rollouts and autoscalers lose track of the Pod, causing silent replica drift and orphaned resource consumption.
 
+
 ### Component architecture flow
 
 <iframe src="diagrams/topic-31.html" width="100%" height="560" style="border:none;"></iframe>
@@ -6113,6 +6144,7 @@ spec:
 **Technical perspective:** ReplicaSets are rarely deployed directly in production; instead, they are managed via higher-level Deployments:
 - **Label Selector Overlap Hazards:** If two different ReplicaSets define overlapping label selectors, they will enter a violent reconciliation loop, continuously creating and terminating each other's Pods in an infinite fight for target count.
 - **CKA Deployment Rollback Internals:** Every Deployment revision creates a new underlying ReplicaSet. Rolling back a Deployment (`kubectl rollout undo`) simply scales the target historical ReplicaSet back up and the current ReplicaSet down to 0.
+
 
 ### Component architecture flow
 
@@ -6315,6 +6347,7 @@ spec:
 **Technical perspective:** Deployments require proper readiness probes to safely execute rolling updates:
 - **The Broken Image Trap:** If a new container image is pushed with a fatal startup bug and no `readinessProbe` is configured, Kubernetes considers the container "Ready" as soon as the process starts, immediately terminating all healthy old replicas and causing a complete outage!
 - **`maxUnavailable: 0` Requirement:** For critical services, pairing `maxUnavailable: 0` with thorough readiness probes guarantees that an unhealthy rollout stalls automatically without killing a single active serving pod.
+
 
 ### Component architecture flow
 
@@ -6524,6 +6557,7 @@ spec:
 **Technical perspective:** StatefulSets protect against split-brain scenarios:
 - **Volume Retention on Scale-Down:** When a StatefulSet is scaled down (e.g., from 3 to 2), the associated PVC (`data-db-cluster-2`) is **not deleted**. This prevents catastrophic accidental data loss.
 - **At-Most-One-Pod Guarantee:** In network partitions, Kubernetes will never create a replacement stateful pod until the previous pod is confirmed terminated. Deleting a partitioned stateful pod with `--force --grace-period=0` can cause dual writes and data corruption if the old node is still alive!
+
 
 ### Component architecture flow
 
@@ -6755,6 +6789,7 @@ spec:
 - **Node Sizing Footprint:** Because DaemonSets run on every node, their resource requests multiply linearly across the entire cluster. 10 DaemonSets requesting 200m CPU each will consume 2 full CPU cores on every single node before any application workload is scheduled.
 - **Rolling Update Strategy:** Configured via `updateStrategy.type: RollingUpdate` (with optional `maxUnavailable`) or `OnDelete` (updates only when the old pod is manually killed).
 
+
 ### Component architecture flow
 
 <iframe src="diagrams/topic-35.html" width="100%" height="560" style="border:none;"></iframe>
@@ -6956,6 +6991,7 @@ spec:
 - **Completed Pod Garbage Collection:** Completed Job pods remain in the cluster in phase `Completed` so operators can inspect logs (`kubectl logs`). Use `ttlSecondsAfterFinished: 300` to automatically delete completed Job records and prevent etcd object accumulation.
 - **Pod Cleanup on Failure:** If a Job fails and uses `restartPolicy: Never`, multiple failed Pod objects will clutter the namespace until the Job is deleted.
 
+
 ### Component architecture flow
 
 <iframe src="diagrams/topic-36.html" width="100%" height="560" style="border:none;"></iframe>
@@ -7153,6 +7189,7 @@ spec:
 **Technical perspective:** CronJob time scheduling depends on control plane timezone configuration:
 - **Timezone Awareness:** In Kubernetes 1.27+, CronJobs support explicit timezone specifications (`spec.timeZone: "America/New_York"`). By default, all CronJobs evaluate against the UTC system clock of `kube-controller-manager`.
 - **`concurrencyPolicy: Forbid` Sizing:** Long-running cron tasks with short schedules (e.g., every 5 minutes) must use `concurrencyPolicy: Forbid` to prevent runaway compute resource exhaustion if an execution experiences transient delays.
+
 
 ### Component architecture flow
 
@@ -7353,6 +7390,7 @@ spec:
 **Technical perspective:** CKA Exam & Migration Insight:
 - Modern Kubernetes best practices strictly mandate using **Deployments** for all stateless workloads. Never author new ReplicationController manifests in modern environments.
 - Migrating from ReplicationController to Deployment requires deleting the ReplicationController with `--cascade=orphan` and creating a Deployment matching the existing pod labels to adopt the running pods without downtime.
+
 
 ### Component architecture flow
 
@@ -7567,6 +7605,7 @@ spec:
 - **The Missing Requests Pitfall:** If a container does not declare `resources.requests.cpu`, HPA cannot compute percentage utilization! The HPA status will show `unknown / 60%`, and autoscaling will fail to trigger.
 - **Metrics Server Dependency:** HPA requires `metrics-server` running in `kube-system`. Verify with `kubectl top pods` and `kubectl top nodes` before enabling HPA.
 
+
 ### Component architecture flow
 
 <iframe src="diagrams/topic-39.html" width="100%" height="560" style="border:none;"></iframe>
@@ -7760,6 +7799,7 @@ spec:
 **Technical perspective:** VPA and HPA must be coordinated carefully:
 - **VPA + HPA Conflict Hazard:** Do NOT use VPA and HPA simultaneously on the same metric (e.g., both targeting CPU utilization). HPA will add pods to lower CPU usage, while VPA will downscale pod CPU requests, creating destructive feedback loops.
 - **Disruption Planning:** In `Auto` mode, VPA evicts running pods to resize them. Always combine VPA with `PodDisruptionBudgets` and multi-replica Deployments to prevent downtime during vertical resizing.
+
 
 ### Component architecture flow
 
@@ -7957,6 +7997,7 @@ spec:
 **Technical perspective:** PDBs safeguard high availability during automated platform maintenance:
 - **Voluntary vs. Involuntary Disruptions:** PDBs protect ONLY against **voluntary** disruptions (`kubectl drain`, node scale-down). They CANNOT prevent **involuntary** disruptions (hardware crashes, kernel panics, OOMKilled events, network cuts).
 - **Drain Deadlocks:** A PDB requiring `minAvailable: 100%` or `maxUnavailable: 0` will permanently block `kubectl drain`, preventing cluster upgrades until an administrator intervenes.
+
 
 ### Component architecture flow
 

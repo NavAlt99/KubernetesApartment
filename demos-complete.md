@@ -25,53 +25,68 @@ This separation is important: the control plane stores intent and makes decision
 > [!TIP]
 > If your Markdown viewer restricts embedded iframes or inline scripts, open [k8s-pod-flow-bytemonk.html](k8s-pod-flow-bytemonk.html) directly in any browser.
 
-### Technical coverage map
+### Certified Kubernetes Administrator (CKA) Study Modules
 
-The topics build from cluster internals to application operations. Use this map to see the engineering concern emphasized by each entry:
+The comprehensive companion guide in [`../CKA_Study_Notes/`](../CKA_Study_Notes/README.md) contains deep-dive theory, CLI walk-throughs, and over 430 visual diagrams organized across 10 modules:
 
-| Topic | Engineering focus |
-| --- | --- |
-| Cluster | Declarative management, scheduling, reconciliation, and platform trade-offs |
-| Control Plane vs. Worker Nodes | Failure boundaries, high availability, and workload continuity |
-| kube-apiserver | Authentication, authorization, admission, validation, watches, and API consistency |
-| etcd | Strong consistency, quorum, encryption, backup, restore, and control-plane dependency |
-| kube-scheduler | Feasibility filtering, scoring, resource requests, placement constraints, and topology |
-| kube-controller-manager | Reconciliation, ownership, idempotency, eventual convergence, and drift correction |
-| cloud-controller-manager | Provider APIs, cloud identity, quotas, load balancers, routes, and volumes |
-| Static Pods | Node-local bootstrapping, manifest drift, and control-plane initialization |
-| kubelet | Pod lifecycle enforcement, probes, volumes, status reporting, and node health |
-| kube-proxy | Service datapath, virtual IPs, endpoint updates, and proxy implementation choices |
-| Container Runtime & CRI | Runtime abstraction, image pulling, sandboxes, cgroups, logging, and isolation |
-| Sidecar Containers | Shared namespaces and volumes, lifecycle coupling, telemetry, and resource overhead |
-| Init Containers | Ordered initialization, retries, migrations, dependency checks, and startup latency |
-| CNI | Pod interfaces, IP allocation, routing, encryption, and policy-capable dataplanes |
-| CoreDNS | Service discovery, search paths, caching, forwarding, readiness, and DNS capacity |
-| Services | Stable virtual endpoints, selectors, exposure types, and client decoupling |
-| Endpoints | EndpointSlice scalability, readiness, serving state, topology, and backend convergence |
-| Ingress | Layer-7 routing, TLS termination, controller responsibility, and Gateway API direction |
-| NetworkPolicy | Namespaced allow rules, ingress/egress isolation, CNI enforcement, and DNS dependencies |
-| PersistentVolume | Storage lifecycle, reclaim policy, access modes, topology, and backup limits |
-| PersistentVolumeClaim | Workload storage requests, binding constraints, provisioning, and Pending diagnosis |
-| StorageClass | Dynamic provisioning, parameters, binding mode, performance, cost, and retention |
-| Role | Namespaced API permissions, verbs, resources, least privilege, and escalation risk |
-| RoleBinding | Attaching permissions to identities and auditing effective namespace access |
-| ClusterRole | Reusable or cluster-scoped permissions and the impact of broad rules |
-| ClusterRoleBinding | Cluster-wide grants, platform automation, and high-impact access review |
-| ServiceAccount | Workload identity, projected tokens, RBAC, and API credential hygiene |
-| Node controller | Heartbeats, leases, failure detection, eviction timing, and redundancy |
-| Namespace controller | Resource scope, cleanup, finalizers, and deletion stuck in Terminating |
-| ResourceQuota | Aggregate resource/object limits, admission behavior, and capacity governance |
-| Garbage Collector | Owner references, cascading deletion, propagation policy, and orphan prevention |
-| ReplicaSet | Replica-count reconciliation, label selection, and why Deployments are preferred |
-| Deployment | Rolling updates, readiness, revision history, rollback, and state migration concerns |
-| StatefulSet | Stable identity, ordered operations, storage association, quorum, and recovery semantics |
-| DaemonSet | Per-node coverage, selectors, tolerations, agent resources, and node lifecycle |
-| Job | Finite work, completion tracking, retries, parallelism, and cleanup policy |
-| CronJob | Scheduling, missed runs, concurrency, deadlines, history, and idempotency |
-| ReplicationController | Legacy replica management, selector limitations, and migration to Deployments |
-| HorizontalPodAutoscaler | Metric-driven replica scaling, requests, startup behavior, and traffic distribution |
-| VerticalPodAutoscaler | Resource recommendations, evictions, update modes, and interaction with HPA |
-| Pod Disruption Budget | Voluntary eviction limits, maintenance progress, replica count, and capacity |
+- **[01. Core Concepts](../CKA_Study_Notes/01-core-concepts.md)**: Cluster architecture, etcd, API Server, Controller Manager, Scheduler, Kubelet, Kube-Proxy, Pods, ReplicaSets, Deployments, Services, Namespaces, Imperative Commands, and `kubectl apply`.
+- **[02. Scheduling](../CKA_Study_Notes/02-scheduling.md)**: Manual scheduling, Labels and Selectors, Taints and Tolerations, Node Affinity, Resource Requirements/Limits, DaemonSets, Static Pods, Multiple Schedulers, and scheduler tuning.
+- **[03. Logging & Monitoring](../CKA_Study_Notes/03-logging-and-monitoring.md)**: Metrics Server, cluster component monitoring (`top node`, `top pod`), and application logging with `kubectl logs`.
+- **[04. Application Lifecycle Management](../CKA_Study_Notes/04-application-lifecycle-management.md)**: Rolling updates, rollbacks, commands/args, ConfigMaps, Secrets, multi-container pods, native sidecars, and init containers.
+- **[05. Cluster Maintenance](../CKA_Study_Notes/05-cluster-maintenance.md)**: OS upgrades (`drain`, `cordon`, `uncordon`), Kubernetes version lifecycle, cluster upgrades with kubeadm, and etcd snapshot backup/restore.
+- **[06. Security](../CKA_Study_Notes/06-security.md)**: TLS bootstrapping, Certificates API, KubeConfig, API groups, RBAC (Roles, RoleBindings, ClusterRoles, ClusterRoleBindings), ServiceAccounts, SecurityContexts, and NetworkPolicies.
+- **[07. Networking](../CKA_Study_Notes/07-networking.md)**: Linux networking prerequisites (routing, iptables, netns, DNS), CNI plugins, Pod networking, Service networking (ClusterIP, NodePort), CoreDNS, and Ingress controllers.
+- **[08. Storage](../CKA_Study_Notes/08-storage.md)**: CSI architecture, PersistentVolumes (PV), PersistentVolumeClaims (PVC), StorageClasses, volume mounts, and dynamic provisioning.
+- **[09. Design & Install a Kubernetes Cluster](../CKA_Study_Notes/09-cluster-design-and-installation.md)**: Infrastructure planning, High Availability (HA) topology, stacked vs external etcd, and automated kubeadm deployment.
+- **[10. Troubleshooting](../CKA_Study_Notes/10-troubleshooting.md)**: Application failure diagnosis, service routing troubleshooting, control plane component diagnosis, worker node failure recovery, and network debugging.
+
+### Technical coverage map & CKA Study Module Alignment
+
+The topics build from cluster internals to application operations. Use this map to see the engineering concern and corresponding deep-dive study module in [`../CKA_Study_Notes/`](../CKA_Study_Notes/README.md):
+
+| # | Topic | Engineering focus | CKA Study Module |
+| --- | --- | --- | --- |
+| 1 | Cluster | Declarative management, scheduling, reconciliation, and platform trade-offs | [01. Core Concepts](../CKA_Study_Notes/01-core-concepts.md) |
+| 2 | Control Plane vs. Worker Nodes | Failure boundaries, high availability, and workload continuity | [01. Core Concepts](../CKA_Study_Notes/01-core-concepts.md) · [09. Cluster Design](../CKA_Study_Notes/09-cluster-design-and-installation.md) |
+| 3 | kube-apiserver | Authentication, authorization, admission, validation, watches, and API consistency | [01. Core Concepts](../CKA_Study_Notes/01-core-concepts.md) · [06. Security](../CKA_Study_Notes/06-security.md) |
+| 4 | etcd | Strong consistency, quorum, encryption, backup, restore, and control-plane dependency | [01. Core Concepts](../CKA_Study_Notes/01-core-concepts.md) · [05. Cluster Maintenance](../CKA_Study_Notes/05-cluster-maintenance.md) |
+| 5 | kube-scheduler | Feasibility filtering, scoring, resource requests, placement constraints, and topology | [02. Scheduling](../CKA_Study_Notes/02-scheduling.md) |
+| 6 | kube-controller-manager | Reconciliation, ownership, idempotency, eventual convergence, and drift correction | [01. Core Concepts](../CKA_Study_Notes/01-core-concepts.md) |
+| 7 | cloud-controller-manager | Provider APIs, cloud identity, quotas, load balancers, routes, and volumes | [01. Core Concepts](../CKA_Study_Notes/01-core-concepts.md) · [09. Cluster Design](../CKA_Study_Notes/09-cluster-design-and-installation.md) |
+| 8 | Static Pods | Node-local bootstrapping, manifest drift, and control-plane initialization | [01. Core Concepts](../CKA_Study_Notes/01-core-concepts.md) · [02. Scheduling](../CKA_Study_Notes/02-scheduling.md) |
+| 9 | kube-proxy | Service datapath, virtual IPs, endpoint updates, and proxy implementation choices | [01. Core Concepts](../CKA_Study_Notes/01-core-concepts.md) · [07. Networking](../CKA_Study_Notes/07-networking.md) |
+| 10 | Container Runtime & CRI | Runtime abstraction, image pulling, sandboxes, cgroups, logging, and isolation | [01. Core Concepts](../CKA_Study_Notes/01-core-concepts.md) |
+| 11 | Pods & Pause Container | Shared namespaces and volumes, container coupling, lifecycle, and localhost routing | [01. Core Concepts](../CKA_Study_Notes/01-core-concepts.md) |
+| 12 | Sidecar Containers | Shared namespaces and volumes, lifecycle coupling, telemetry, and resource overhead | [04. Application Lifecycle](../CKA_Study_Notes/04-application-lifecycle-management.md) |
+| 13 | Init Containers | Ordered initialization, retries, migrations, dependency checks, and startup latency | [04. Application Lifecycle](../CKA_Study_Notes/04-application-lifecycle-management.md) |
+| 14 | CNI | Pod interfaces, IP allocation, routing, encryption, and policy-capable dataplanes | [07. Networking](../CKA_Study_Notes/07-networking.md) |
+| 15 | CoreDNS | Service discovery, search paths, caching, forwarding, readiness, and DNS capacity | [07. Networking](../CKA_Study_Notes/07-networking.md) |
+| 16 | Services & ClusterIP | Stable virtual endpoints, selectors, exposure types, and client decoupling | [01. Core Concepts](../CKA_Study_Notes/01-core-concepts.md) · [07. Networking](../CKA_Study_Notes/07-networking.md) |
+| 17 | NodePort & LoadBalancer | External port allocation, cloud provider integrations, and SNAT trade-offs | [07. Networking](../CKA_Study_Notes/07-networking.md) |
+| 18 | Ingress | Layer-7 routing, TLS termination, controller responsibility, and Gateway API direction | [07. Networking](../CKA_Study_Notes/07-networking.md) |
+| 19 | NetworkPolicy | Namespaced allow rules, ingress/egress isolation, CNI enforcement, and DNS dependencies | [06. Security](../CKA_Study_Notes/06-security.md) · [07. Networking](../CKA_Study_Notes/07-networking.md) |
+| 20 | PersistentVolume | Storage lifecycle, reclaim policy, access modes, topology, and backup limits | [08. Storage](../CKA_Study_Notes/08-storage.md) |
+| 21 | PersistentVolumeClaim | Workload storage requests, binding constraints, provisioning, and Pending diagnosis | [08. Storage](../CKA_Study_Notes/08-storage.md) |
+| 22 | StorageClass | Dynamic provisioning, parameters, binding mode, performance, cost, and retention | [08. Storage](../CKA_Study_Notes/08-storage.md) |
+| 23 | ConfigMap | Decoupled configuration, environment variables, volume projections, and update propagation | [04. Application Lifecycle](../CKA_Study_Notes/04-application-lifecycle-management.md) |
+| 24 | Secret | Sensitive data handling, base64 encoding vs. KMS encryption at rest, and volume projections | [04. Application Lifecycle](../CKA_Study_Notes/04-application-lifecycle-management.md) · [06. Security](../CKA_Study_Notes/06-security.md) |
+| 25 | Role & RoleBinding | Namespaced API permissions, verbs, resources, least privilege, and escalation risk | [06. Security](../CKA_Study_Notes/06-security.md) |
+| 26 | ClusterRole & ClusterRoleBinding | Reusable or cluster-scoped permissions, aggregation rules, and wide-impact review | [06. Security](../CKA_Study_Notes/06-security.md) |
+| 27 | ServiceAccount | Workload identity, projected tokens, RBAC binding, and credential hygiene | [06. Security](../CKA_Study_Notes/06-security.md) |
+| 28 | Node Controller & Eviction | Heartbeats, leases, failure detection, eviction timing, and redundancy | [05. Cluster Maintenance](../CKA_Study_Notes/05-cluster-maintenance.md) |
+| 29 | Namespace Controller | Resource scope, cleanup, finalizers, and deletion stuck in Terminating | [01. Core Concepts](../CKA_Study_Notes/01-core-concepts.md) |
+| 30 | ResourceQuota & LimitRange | Aggregate resource/object limits, admission behavior, and capacity governance | [02. Scheduling](../CKA_Study_Notes/02-scheduling.md) |
+| 31 | Garbage Collector | Owner references, cascading deletion, propagation policy, and orphan prevention | [01. Core Concepts](../CKA_Study_Notes/01-core-concepts.md) |
+| 32 | ReplicaSet | Replica-count reconciliation, label selection, and why Deployments are preferred | [01. Core Concepts](../CKA_Study_Notes/01-core-concepts.md) |
+| 33 | Deployment | Rolling updates, readiness, revision history, rollback, and state migration concerns | [01. Core Concepts](../CKA_Study_Notes/01-core-concepts.md) · [04. Application Lifecycle](../CKA_Study_Notes/04-application-lifecycle-management.md) |
+| 34 | StatefulSet | Stable identity, ordered operations, storage association, quorum, and recovery semantics | [04. Application Lifecycle](../CKA_Study_Notes/04-application-lifecycle-management.md) · [08. Storage](../CKA_Study_Notes/08-storage.md) |
+| 35 | DaemonSet | Per-node coverage, selectors, tolerations, agent resources, and node lifecycle | [02. Scheduling](../CKA_Study_Notes/02-scheduling.md) |
+| 36 | Job | Finite work, completion tracking, retries, parallelism, and cleanup policy | [04. Application Lifecycle](../CKA_Study_Notes/04-application-lifecycle-management.md) |
+| 37 | CronJob | Scheduling, missed runs, concurrency, deadlines, history, and idempotency | [04. Application Lifecycle](../CKA_Study_Notes/04-application-lifecycle-management.md) |
+| 38 | ReplicationController | Legacy replica management, selector limitations, and migration to Deployments | [01. Core Concepts](../CKA_Study_Notes/01-core-concepts.md) |
+| 39 | HorizontalPodAutoscaler | Metric-driven replica scaling, requests, startup behavior, and traffic distribution | [03. Logging & Monitoring](../CKA_Study_Notes/03-logging-and-monitoring.md) |
+| 40 | VerticalPodAutoscaler | Resource recommendations, evictions, update modes, and interaction with HPA | [03. Logging & Monitoring](../CKA_Study_Notes/03-logging-and-monitoring.md) |
+| 41 | Pod Disruption Budget | Voluntary eviction limits, maintenance progress, replica count, and capacity | [05. Cluster Maintenance](../CKA_Study_Notes/05-cluster-maintenance.md) |
 
 ## Before you start
 
@@ -195,6 +210,7 @@ spec:
 **Further reading**
 
 - [Kubernetes concepts](https://kubernetes.io/docs/concepts/)
+- [CKA Study Notes: Core Concepts](../CKA_Study_Notes/01-core-concepts.md)
 
 ### Demo — The Cluster (Why Kubernetes?)
 
@@ -248,6 +264,70 @@ NOTE
 **Correct Answer:** B) Declarative desired state reconciliation via continuous control loops.
 
 **Explanation:** Kubernetes operates on declarative intent: you define the desired state in the API server, and independent controllers continuously reconcile actual state to match it.
+
+</details>
+
+**Q3: Which Linux kernel feature is responsible for isolating container process trees, network interfaces, and mount tables, as opposed to limiting compute consumption?**
+
+- [ ] A) Control Groups (cgroups)
+- [ ] B) Linux Namespaces (pid, net, mnt, ipc, uts, user)
+- [ ] C) Seccomp system call profiles
+- [ ] D) eBPF packet filters
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) Linux Namespaces (pid, net, mnt, ipc, uts, user)
+
+**Explanation:** Linux namespaces partition kernel resources so containers operate in isolated process spaces on shared Linux kernels, whereas cgroups enforce resource bandwidth constraints (CPU/RAM limits).
+
+</details>
+
+**Q4: When managing resources using `kubectl apply`, how does Kubernetes calculate which fields to update, delete, or retain?**
+
+- [ ] A) It performs a direct overwrite of all fields from the local file without reading the live object.
+- [ ] B) It computes a three-way diff between the local configuration manifest, the live cluster state, and the `kubectl.kubernetes.io/last-applied-configuration` annotation.
+- [ ] C) It sends an SSH payload to all worker nodes to rewrite local systemd unit files.
+- [ ] D) It hashes the manifest and rejects the update if any live field has diverged.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) It computes a three-way diff between the local configuration manifest, the live cluster state, and the `kubectl.kubernetes.io/last-applied-configuration` annotation.
+
+**Explanation:** Three-way merge apply compares the local file, the live API object in etcd, and the recorded last-applied annotation to merge changes without wiping out fields managed by other controllers (e.g., status or autoscalers).
+
+</details>
+
+**Q5: Which Linux kernel sysctl parameter is strictly required on worker nodes to allow packet forwarding between Pod network interfaces and physical network interfaces?**
+
+- [ ] A) net.ipv4.ip_forward = 1
+- [ ] B) kernel.pid_max = 1000
+- [ ] C) vm.swappiness = 100
+- [ ] D) fs.file-max = 65536
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** A) net.ipv4.ip_forward = 1
+
+**Explanation:** Linux kernel packet routing requires `net.ipv4.ip_forward = 1` so the host kernel forwards transit packets between virtual ethernet (veth) pairs and the host physical network adapter.
+
+</details>
+
+**Q6: From an operational reliability perspective, why can a misconfigured Validating Admission Webhook with `failurePolicy: Fail` cause a cluster-wide outage?**
+
+- [ ] A) It permanently corrupts the Raft database file on disk.
+- [ ] B) If the webhook endpoint becomes unreachable, the API server rejects all matching resource requests (such as Pod creation and lease renewals) cluster-wide.
+- [ ] C) It forces the kubelet to restart every running container on worker nodes.
+- [ ] D) It revokes all worker node TLS bootstrap certificates.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) If the webhook endpoint becomes unreachable, the API server rejects all matching resource requests (such as Pod creation and lease renewals) cluster-wide.
+
+**Explanation:** When `failurePolicy: Fail` is configured, if the webhook service crashes or network connectivity is lost, the API server must fail-closed and reject all matching admission requests, potentially freezing cluster deployments and controller operations.
 
 </details>
 
@@ -311,6 +391,7 @@ spec:
 **Further reading**
 
 - [Cluster architecture](https://kubernetes.io/docs/concepts/architecture/)
+- [CKA Study Notes: Core Concepts](../CKA_Study_Notes/01-core-concepts.md) & [Cluster Design](../CKA_Study_Notes/09-cluster-design-and-installation.md)
 
 ### Demo — Control Plane vs. Worker Nodes
 
@@ -364,6 +445,70 @@ NOTE
 **Correct Answer:** B) Executing pod sandboxes, container processes, and local network/storage enforcement via kubelet and runtime.
 
 **Explanation:** Worker nodes represent the execution layer ('muscle') managed by kubelet, containerd, and kube-proxy, while the control plane ('brain') makes decisions and stores intent.
+
+</details>
+
+**Q3: What is the primary operational trade-off of a 'Stacked etcd' control plane topology compared to an 'External etcd' topology?**
+
+- [ ] A) Stacked topology requires more physical machines than external topology.
+- [ ] B) Stacked topology co-locates etcd with API servers on the same nodes, reducing machine count but increasing risk of resource contention between API server compute and etcd disk I/O.
+- [ ] C) Stacked topology does not support High Availability failover.
+- [ ] D) Stacked topology cannot run containerized workloads.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) Stacked topology co-locates etcd with API servers on the same nodes, reducing machine count but increasing risk of resource contention between API server compute and etcd disk I/O.
+
+**Explanation:** In a stacked topology, etcd members run on the control plane nodes alongside kube-apiserver and controllers. This uses fewer machines but creates shared CPU, RAM, and disk I/O contention between API processing and etcd consensus.
+
+</details>
+
+**Q4: How do worker nodes report health and liveliness to the control plane in modern Kubernetes to avoid heavy etcd write loads?**
+
+- [ ] A) By opening an SSH tunnel directly into the active etcd leader every 5 seconds.
+- [ ] B) By updating a lightweight `Lease` object in the `kube-node-lease` namespace at regular intervals (default every 10s).
+- [ ] C) By writing full Node status specifications into etcd every second.
+- [ ] D) By broadcasting ICMP ping packets across all master node physical interfaces.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) By updating a lightweight `Lease` object in the `kube-node-lease` namespace at regular intervals (default every 10s).
+
+**Explanation:** The NodeLease feature replaces heavy Node status heartbeats with lightweight micro-updates to `Lease` objects in `kube-node-lease`, drastically reducing etcd write amplification in large clusters.
+
+</details>
+
+**Q5: What is the standard mechanism used to prevent general application Pods from being scheduled onto control plane nodes?**
+
+- [ ] A) A hardcoded kernel firewall rule blocking TCP traffic to control plane host IPs.
+- [ ] B) A node taint such as `node-role.kubernetes.io/control-plane:NoSchedule`, which normal Pods do not tolerate.
+- [ ] C) Completely disabling the kubelet service on control plane hosts.
+- [ ] D) Creating a ResourceQuota with `pods: 0` in every user namespace.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) A node taint such as `node-role.kubernetes.io/control-plane:NoSchedule`, which normal Pods do not tolerate.
+
+**Explanation:** Control plane nodes are marked with taints (traditionally `node-role.kubernetes.io/control-plane:NoSchedule` or `node-role.kubernetes.io/master:NoSchedule`). Only platform pods with matching tolerations can run there.
+
+</details>
+
+**Q6: What is the key difference between running `kubectl cordon <node>` and `kubectl drain <node>`?**
+
+- [ ] A) Cordon deletes the node object from the cluster; drain reboots the operating system.
+- [ ] B) Cordon only marks the node unschedulable for new Pods; drain marks it unschedulable AND evicts existing running Pods.
+- [ ] C) Cordon kills all containers immediately with SIGKILL; drain gives a 30-minute grace period.
+- [ ] D) Cordon applies only to worker nodes; drain applies only to control plane nodes.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) Cordon only marks the node unschedulable for new Pods; drain marks it unschedulable AND evicts existing running Pods.
+
+**Explanation:** `kubectl cordon` sets `spec.unschedulable: true` so no new pods are placed on the node. `kubectl drain` cordons the node and then calls the Eviction API to gracefully evict existing pods.
 
 </details>
 
@@ -433,6 +578,7 @@ spec:
 
 - [API server reference](https://kubernetes.io/docs/reference/command-line-tools-reference/kube-apiserver/)
 - [Kubernetes API concepts](https://kubernetes.io/docs/concepts/overview/kubernetes-api/)
+- [CKA Study Notes: Core Concepts (API Server)](../CKA_Study_Notes/01-core-concepts.md) & [Security](../CKA_Study_Notes/06-security.md)
 
 ### Demo — kube-apiserver
 
@@ -488,6 +634,70 @@ NOTE
 **Correct Answer:** B) Authentication -> Authorization -> Mutating Admission -> Schema/Validating Admission -> etcd
 
 **Explanation:** A request must first be authenticated (who are you?), then authorized (can you do this?), then mutated (defaults/sidecars injected), then validated (schema & policy rules), before being committed to etcd.
+
+</details>
+
+**Q3: Why is the kube-apiserver described as completely stateless?**
+
+- [ ] A) It loses all authentication tokens whenever an administrator logs out of the terminal.
+- [ ] B) It does not persist any cluster state in its own memory or local disk; all durable state is stored in etcd.
+- [ ] C) It runs as a serverless function that shuts down after every HTTP request.
+- [ ] D) It communicates exclusively via UDP packets.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) It does not persist any cluster state in its own memory or local disk; all durable state is stored in etcd.
+
+**Explanation:** kube-apiserver stores no state locally on disk or memory; it reads and writes all persistent object state directly to etcd. Because it is stateless, multiple API server instances can run active-active behind a load balancer.
+
+</details>
+
+**Q4: What role does API Priority and Fairness (APF) play in kube-apiserver protection?**
+
+- [ ] A) It automatically encrypts Secret objects using external cloud KMS keys.
+- [ ] B) It classifies incoming requests into priority levels and flow schemas to prevent rogue or misconfigured clients from overwhelming the API server.
+- [ ] C) It balances network bandwidth equally between worker node ethernet interfaces.
+- [ ] D) It automatically scales the number of replica pods when CPU usage exceeds 80%.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) It classifies incoming requests into priority levels and flow schemas to prevent rogue or misconfigured clients from overwhelming the API server.
+
+**Explanation:** APF inspects incoming requests, assigns them to flow schemas and priority queues (e.g., exempt, system, leader-election, workload-high), and drops or throttles low-priority traffic during traffic spikes to protect critical control plane operations.
+
+</details>
+
+**Q5: In the Kubernetes API schema hierarchy, what does GVR stand for?**
+
+- [ ] A) Gateway, VirtualService, Route
+- [ ] B) Group, Version, Resource
+- [ ] C) Global, Variable, Replica
+- [ ] D) Governance, Validation, Reconciliation
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) Group, Version, Resource
+
+**Explanation:** GVR stands for Group, Version, Resource (e.g., Group: `apps`, Version: `v1`, Resource: `deployments`). It defines the exact REST URL path exposed by the API server.
+
+</details>
+
+**Q6: What is the purpose of Mutating Admission Webhooks versus Validating Admission Webhooks?**
+
+- [ ] A) Mutating webhooks can modify the incoming object spec (inject sidecars, defaults); Validating webhooks can only accept or reject the object.
+- [ ] B) Mutating webhooks check user RBAC permissions; Validating webhooks write to etcd.
+- [ ] C) Mutating webhooks run after the object is committed to etcd; Validating webhooks run before.
+- [ ] D) Mutating webhooks apply only to Nodes; Validating webhooks apply only to Pods.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** A) Mutating webhooks can modify the incoming object spec (inject sidecars, defaults); Validating webhooks can only accept or reject the object.
+
+**Explanation:** Mutating admission webhooks run first and can alter the submitted object (e.g., injecting proxy sidecars or security contexts). Validating webhooks run afterward and only return an accept/reject verdict.
 
 </details>
 
@@ -559,6 +769,7 @@ spec:
 
 - [etcd: why etcd](https://etcd.io/docs/v3.5/learning/why/)
 - [Kubernetes etcd guidance](https://kubernetes.io/docs/tasks/administer-cluster/configure-upgrade-etcd/)
+- [CKA Study Notes: Core Concepts (etcd)](../CKA_Study_Notes/01-core-concepts.md) & [Cluster Maintenance (etcd Backup/Restore)](../CKA_Study_Notes/05-cluster-maintenance.md)
 
 ### Demo — etcd
 
@@ -612,6 +823,70 @@ NOTE
 **Correct Answer:** B) Raft consensus requires sequential fsync writes to the write-ahead log (WAL) before acknowledging mutations.
 
 **Explanation:** Every Raft proposal requires appending to disk and fsyncing to the WAL; high disk write latency directly stalls Raft consensus heartbeats and API server writes.
+
+</details>
+
+**Q3: Why is an odd number of members (such as 3 or 5) strongly recommended for an etcd cluster?**
+
+- [ ] A) Even-numbered clusters consume twice as much network bandwidth per Raft heartbeat.
+- [ ] B) Adding an even node increases cluster resource consumption without improving fault tolerance (a 4-node cluster still requires 3 for quorum, tolerating only 1 failure just like a 3-node cluster).
+- [ ] C) etcd refuses to start if it detects an even number of peer URLs in its configuration file.
+- [ ] D) Linux kernel bridge drivers cannot route multicast traffic across even node counts.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) Adding an even node increases cluster resource consumption without improving fault tolerance (a 4-node cluster still requires 3 for quorum, tolerating only 1 failure just like a 3-node cluster).
+
+**Explanation:** Quorum is calculated as (N/2) + 1. In a 3-node cluster, quorum is 2 (tolerates 1 failure). In a 4-node cluster, quorum is 3 (still tolerates only 1 failure). Thus, the 4th node adds overhead without increasing fault tolerance.
+
+</details>
+
+**Q4: When etcd disk space reaches its quota limit (default 2GB to 8GB), what happens to API server operations?**
+
+- [ ] A) etcd automatically purges the oldest half of all user namespaces.
+- [ ] B) etcd enters maintenance alarm mode and raises an `NOSPACE` alarm, rejecting all new write and update requests until compacted and defragmented.
+- [ ] C) The host operating system immediately kernel-panics to prevent data loss.
+- [ ] D) etcd automatically provisions an external cloud block storage volume.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) etcd enters maintenance alarm mode and raises an `NOSPACE` alarm, rejecting all new write and update requests until compacted and defragmented.
+
+**Explanation:** When space exceeds the storage quota, etcd raises an alarm and disables write operations to prevent database file corruption. Operators must compact revisions and run `etcdctl defrag` to reclaim space and disarm the alarm.
+
+</details>
+
+**Q5: What is the difference between a linearizable read and a serializable read in etcd?**
+
+- [ ] A) Linearizable reads consult the Raft leader to verify it is still the legitimate leader before returning data; serializable reads return local data immediately, risking stale reads.
+- [ ] B) Linearizable reads are cached in Redis; serializable reads bypass cache.
+- [ ] C) Linearizable reads only return binary data; serializable reads return JSON.
+- [ ] D) Linearizable reads are executed on worker nodes; serializable reads run on control plane nodes.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** A) Linearizable reads consult the Raft leader to verify it is still the legitimate leader before returning data; serializable reads return local data immediately, risking stale reads.
+
+**Explanation:** Linearizable (quorum) reads ensure you never read stale data by confirming leader lease with quorum before responding. Serializable reads read directly from local member state without contacting quorum, offering lower latency but risking stale reads.
+
+</details>
+
+**Q6: Which command sequence correctly performs an offline restore of an etcd snapshot onto a new cluster node?**
+
+- [ ] A) kubectl apply -f etcd-snapshot.db
+- [ ] B) etcdctl snapshot restore /backup/etcd-snapshot.db --data-dir=/var/lib/etcd-restored
+- [ ] C) systemctl restart etcd --import-snapshot=/backup/etcd-snapshot.db
+- [ ] D) etcd-tool --restore --all-namespaces /backup/etcd-snapshot.db
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) etcdctl snapshot restore /backup/etcd-snapshot.db --data-dir=/var/lib/etcd-restored
+
+**Explanation:** `etcdctl snapshot restore <file> --data-dir=<new-dir>` initializes a fresh etcd data directory from the snapshot before etcd is started.
 
 </details>
 
@@ -692,6 +967,7 @@ spec:
 
 - [Kubernetes scheduler](https://kubernetes.io/docs/concepts/scheduling-eviction/kube-scheduler/)
 - [Scheduling framework](https://kubernetes.io/docs/concepts/scheduling-eviction/scheduling-framework/)
+- [CKA Study Notes: Scheduling](../CKA_Study_Notes/02-scheduling.md)
 
 ### Demo — kube-scheduler
 
@@ -747,6 +1023,70 @@ NOTE
 **Correct Answer:** B) The scheduler creates a Binding subresource via the API server that sets pod.spec.nodeName.
 
 **Explanation:** The scheduler does not contact nodes directly; it creates a Binding object via the API server, setting spec.nodeName. The target node's kubelet watches for pods bound to itself.
+
+</details>
+
+**Q3: In the scheduling cycle of kube-scheduler, what are the two primary phases executed for each unscheduled Pod?**
+
+- [ ] A) Authentication and Authorization
+- [ ] B) Filtering (Predicates) and Scoring (Priorities)
+- [ ] C) Eviction and Preemption
+- [ ] D) Image Pulling and Sandbox Initialization
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) Filtering (Predicates) and Scoring (Priorities)
+
+**Explanation:** kube-scheduler first executes Filtering (eliminating nodes that do not meet requirements like compute, taints, ports), then Scoring (ranking eligible candidate nodes according to priority functions to pick the best host).
+
+</details>
+
+**Q4: What is the key difference between `requiredDuringSchedulingIgnoredDuringExecution` and `preferredDuringSchedulingIgnoredDuringExecution` in node affinity?**
+
+- [ ] A) Required is a hard constraint (pod stays Pending if no node matches); Preferred is a soft preference (scheduler will schedule on non-matching node if necessary).
+- [ ] B) Required runs before pod creation; Preferred runs after pod creation.
+- [ ] C) Preferred will evict the pod if node labels change later; Required will not.
+- [ ] D) Required is deprecated in Kubernetes 1.25+; Preferred is the only supported syntax.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** A) Required is a hard constraint (pod stays Pending if no node matches); Preferred is a soft preference (scheduler will schedule on non-matching node if necessary).
+
+**Explanation:** `requiredDuringScheduling...` acts as a hard requirement that must be satisfied for scheduling. `preferredDuringScheduling...` assigns weighted preference points to matching nodes, but does not block scheduling if no match exists.
+
+</details>
+
+**Q5: What occurs when a higher-priority Pod with a `PriorityClass` cannot find any node with sufficient compute resources?**
+
+- [ ] A) The API server automatically doubles the CPU clock frequency of worker nodes.
+- [ ] B) kube-scheduler initiates Preemption, evicting lower-priority Pods from a candidate node to make room for the higher-priority Pod.
+- [ ] C) The higher-priority Pod is immediately converted into a DaemonSet.
+- [ ] D) The scheduler crashes with an unhandled exception.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) kube-scheduler initiates Preemption, evicting lower-priority Pods from a candidate node to make room for the higher-priority Pod.
+
+**Explanation:** If a high-priority pod cannot be scheduled, kube-scheduler identifies a candidate node and evicts lower-priority victim pods so the high-priority workload can bind.
+
+</details>
+
+**Q6: When configuring Pod anti-affinity to ensure that no two replicas of a database run on the same physical server, what should the `topologyKey` be set to?**
+
+- [ ] A) kubernetes.io/os
+- [ ] B) kubernetes.io/hostname
+- [ ] C) topology.kubernetes.io/zone
+- [ ] D) node.kubernetes.io/instance-type
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) kubernetes.io/hostname
+
+**Explanation:** `topologyKey: kubernetes.io/hostname` scopes the anti-affinity domain to individual hostnames, ensuring no two matching pods land on the same physical or virtual host.
 
 </details>
 
@@ -812,6 +1152,7 @@ spec:
 **Further reading**
 
 - [Controllers](https://kubernetes.io/docs/concepts/architecture/controller/)
+- [CKA Study Notes: Core Concepts (Controller Manager)](../CKA_Study_Notes/01-core-concepts.md)
 
 ### Demo — kube-controller-manager
 
@@ -868,6 +1209,70 @@ NOTE
 **Correct Answer:** C) It observes that current replicas < desired replicas and creates a replacement Pod via the API server.
 
 **Explanation:** The ReplicaSet controller continuously compares observed replicas matching its selector against spec.replicas. If one is missing, it immediately issues an API request to create a new one.
+
+</details>
+
+**Q3: What concurrency and high-availability mechanism does `kube-controller-manager` use when multiple instances run across control plane nodes?**
+
+- [ ] A) Active-Active round-robin load balancing of controller loops across all instances.
+- [ ] B) Active-Passive leader election using a Lease lock in `kube-system`; only the elected leader runs control loops while standbys idle.
+- [ ] C) Shared memory IPC over high-speed InfiniBand links.
+- [ ] D) Sharding controllers across nodes based on namespace alphabetical order.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) Active-Passive leader election using a Lease lock in `kube-system`; only the elected leader runs control loops while standbys idle.
+
+**Explanation:** To prevent split-brain dual-reconciliation where multiple instances issue conflicting changes, `kube-controller-manager` uses an active-passive leader election lock. Only the active leader executes controllers.
+
+</details>
+
+**Q4: Which architectural concept explains why Kubernetes controllers can self-heal after extended network partitions or restarts without missing events?**
+
+- [ ] A) Edge-triggered event delivery only
+- [ ] B) Level-triggered reconciliation loops comparing desired state against actual state continuously
+- [ ] C) Storing past event logs in local SQLite databases
+- [ ] D) Mandatory daily reboots of all worker nodes
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) Level-triggered reconciliation loops comparing desired state against actual state continuously
+
+**Explanation:** Kubernetes is level-triggered rather than edge-triggered: controllers observe the current actual state and drive it toward desired state, meaning missed transient edge events do not prevent reconciliation once connectivity resumes.
+
+</details>
+
+**Q5: If a platform administrator wants to disable only the Route and ServiceAccountToken controllers in kube-controller-manager, which command-line flag is used?**
+
+- [ ] A) --disable-controllers=route,serviceaccount-token
+- [ ] B) --controllers=*, -route, -serviceaccount-token
+- [ ] C) --exclude-controllers=route,serviceaccount-token
+- [ ] D) --skip-controllers=route,serviceaccount-token
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) --controllers=*, -route, -serviceaccount-token
+
+**Explanation:** The `--controllers` flag accepts a comma-separated list of controllers where `*` includes all default controllers and prefixing with `-` excludes specific controllers (e.g. `*, -route, -serviceaccount-token`).
+
+</details>
+
+**Q6: What internal client-go caching component do controllers use to efficiently watch API resources without polling the API server?**
+
+- [ ] A) Redis Cache Client
+- [ ] B) SharedInformer with Reflector, DeltaFIFO queue, and Local Indexer Cache
+- [ ] C) Direct raw TCP socket dump
+- [ ] D) Local file-based SQLite replica
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) SharedInformer with Reflector, DeltaFIFO queue, and Local Indexer Cache
+
+**Explanation:** client-go's `SharedInformer` establishes a watch stream with the API server, maintains an in-memory cached index (Lister), and dispatches add/update/delete notifications to worker queues, avoiding API server polling overhead.
 
 </details>
 
@@ -929,6 +1334,7 @@ spec:
 **Further reading**
 
 - [Cloud controller manager](https://kubernetes.io/docs/concepts/architecture/cloud-controller/)
+- [CKA Study Notes: Core Concepts & Cloud Controller](../CKA_Study_Notes/01-core-concepts.md)
 
 ### Demo — cloud-controller-manager
 
@@ -984,6 +1390,70 @@ NOTE
 **Correct Answer:** B) Service controller
 
 **Explanation:** The cloud Service controller watches for Services of type: LoadBalancer and calls the cloud provider's API to provision and wire up external load balancers.
+
+</details>
+
+**Q3: What was the primary architectural motivation behind moving cloud provider code out of `kube-controller-manager` into `cloud-controller-manager`?**
+
+- [ ] A) To force cloud providers to write their integrations in Python instead of Go.
+- [ ] B) To decouple cloud provider release cycles and private SDKs from core Kubernetes releases, allowing independent development and out-of-tree plugins.
+- [ ] C) To eliminate the need for container runtimes on worker nodes.
+- [ ] D) To make Kubernetes compatible only with private on-premises hardware.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) To decouple cloud provider release cycles and private SDKs from core Kubernetes releases, allowing independent development and out-of-tree plugins.
+
+**Explanation:** In-tree cloud providers tightly coupled vendor SDKs to the Kubernetes core binary. Out-of-tree `cloud-controller-manager` enables cloud vendors to release fixes and features without waiting for upstream Kubernetes releases.
+
+</details>
+
+**Q4: Which specific controller inside `cloud-controller-manager` is responsible for querying the cloud provider API to delete Kubernetes Node objects when a cloud VM is destroyed?**
+
+- [ ] A) Route Controller
+- [ ] B) Node Lifecycle Controller (Node Controller)
+- [ ] C) Service Controller
+- [ ] D) PersistentVolume Controller
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) Node Lifecycle Controller (Node Controller)
+
+**Explanation:** The cloud-controller-manager's node controller queries cloud infrastructure APIs to verify whether an instance still exists. If the VM was terminated in the cloud, it cleans up the corresponding Kubernetes Node object.
+
+</details>
+
+**Q5: What task does the Route Controller inside `cloud-controller-manager` perform?**
+
+- [ ] A) It programs DNS records inside CoreDNS.
+- [ ] B) It configures cloud VPC routing tables so packets destined for a node's Pod CIDR are forwarded to that node's cloud VM IP.
+- [ ] C) It generates TLS certificates for Ingress controllers.
+- [ ] D) It manages SSH authorized keys for node access.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) It configures cloud VPC routing tables so packets destined for a node's Pod CIDR are forwarded to that node's cloud VM IP.
+
+**Explanation:** In clouds with non-overlay VPC routing, the Route Controller configures the cloud VPC route table so traffic destined for a pod subnet assigned to a specific worker node is routed to that node's VM interface.
+
+</details>
+
+**Q6: Which node label is automatically applied by cloud-controller-manager to indicate the physical failure domain of an instance?**
+
+- [ ] A) topology.kubernetes.io/zone and topology.kubernetes.io/region
+- [ ] B) hardware.architecture/rack-number
+- [ ] C) cloud.provider/datacenter-room
+- [ ] D) kubernetes.io/physical-server-bay
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** A) topology.kubernetes.io/zone and topology.kubernetes.io/region
+
+**Explanation:** cloud-controller-manager queries cloud instance metadata and populates standard topology labels: `topology.kubernetes.io/zone` (e.g. `us-east-1a`) and `topology.kubernetes.io/region` (e.g. `us-east-1`).
 
 </details>
 
@@ -1049,6 +1519,7 @@ spec:
 **Further reading**
 
 - [Static Pods](https://kubernetes.io/docs/tasks/configure-pod-container/static-pod/)
+- [CKA Study Notes: Scheduling (Static Pods & Kubelet)](../CKA_Study_Notes/02-scheduling.md)
 
 ### Demo — Static Pods
 
@@ -1104,6 +1575,70 @@ NOTE
 **Correct Answer:** B) A read-only Pod representation created on the API server by kubelet so the Static Pod is visible via kubectl get pods.
 
 **Explanation:** The kubelet creates a Mirror Pod on the API server matching the static pod spec so cluster operators can observe its status using standard Kubernetes API tools.
+
+</details>
+
+**Q3: How does the Kubelet discover and maintain Static Pods without communicating with the kube-scheduler?**
+
+- [ ] A) It queries an external Git repository every 60 seconds.
+- [ ] B) It scans a local host filesystem directory (such as `/etc/kubernetes/manifests`) for YAML files using inotify filesystem watches.
+- [ ] C) It reads static pod configurations from worker node BIOS NVRAM.
+- [ ] D) It listens on a raw UDP multicast port broadcast by the control plane.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) It scans a local host filesystem directory (such as `/etc/kubernetes/manifests`) for YAML files using inotify filesystem watches.
+
+**Explanation:** Static Pods are defined directly on the node filesystem (configured via `staticPodPath` in Kubelet configuration). Kubelet monitors the folder and directly starts and restarts the containers via the local CRI runtime.
+
+</details>
+
+**Q4: What is the purpose of the 'Mirror Pod' that the Kubelet creates in the kube-apiserver for every local Static Pod?**
+
+- [ ] A) It provides visibility of the Static Pod to cluster administrators and allows `kubectl get pods` to display its status.
+- [ ] B) It runs a backup copy of the container on a worker node in case the control plane fails.
+- [ ] C) It proxies HTTP network traffic from user namespaces into the static container.
+- [ ] D) It allows the kube-scheduler to migrate the Static Pod to another host.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** A) It provides visibility of the Static Pod to cluster administrators and allows `kubectl get pods` to display its status.
+
+**Explanation:** Mirror Pods are read-only representations in the API server that allow operators to view static pod status via `kubectl`. Deleting a mirror pod via `kubectl delete` does not delete the static pod; the Kubelet simply recreates the mirror.
+
+</details>
+
+**Q5: What happens when a node's filesystem disk usage exceeds the Kubelet's `imageGCHighThresholdPercent` (default 85%)?**
+
+- [ ] A) The Kubelet immediately formats the node's disk partition.
+- [ ] B) The Kubelet initiates image garbage collection, deleting unused container images until disk usage drops below `imageGCLowThresholdPercent` (default 80%).
+- [ ] C) The Kubelet terminates all Running pods with exit code 137.
+- [ ] D) The Kubelet disables all network interfaces on the node.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) The Kubelet initiates image garbage collection, deleting unused container images until disk usage drops below `imageGCLowThresholdPercent` (default 80%).
+
+**Explanation:** Image garbage collection triggers when disk usage crosses `imageGCHighThresholdPercent`, removing unreferenced images in order of least recently used until usage falls back below the low threshold.
+
+</details>
+
+**Q6: Why is it mandatory for the Kubelet's cgroup driver (`cgroupDriver`) to match the container runtime's cgroup driver (typically `systemd`) on modern Linux distributions?**
+
+- [ ] A) Mismatched drivers cause the Linux kernel to refuse mounting ext4 partitions.
+- [ ] B) Having two different cgroup managers (e.g., Kubelet using cgroupfs while containerd uses systemd) creates split resource accounting and leads to node instability under memory pressure.
+- [ ] C) systemd only supports single-core CPU processors.
+- [ ] D) Kubernetes requires cgroupfs for IPv6 network routing.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) Having two different cgroup managers (e.g., Kubelet using cgroupfs while containerd uses systemd) creates split resource accounting and leads to node instability under memory pressure.
+
+**Explanation:** When systemd is the init system, having Kubelet allocate cgroups via `cgroupfs` while containerd allocates via `systemd` results in conflicting cgroup hierarchies, inaccurate resource tracking, and failed process evictions under load.
 
 </details>
 
@@ -1179,6 +1714,7 @@ spec:
 **Further reading**
 
 - [Nodes and kubelet](https://kubernetes.io/docs/concepts/architecture/nodes/)
+- [CKA Study Notes: Networking (Kube-Proxy & iptables)](../CKA_Study_Notes/07-networking.md)
 
 ### Demo — kubelet
 
@@ -1234,6 +1770,70 @@ NOTE
 **Correct Answer:** B) Using mutual TLS (mTLS) with client certificates typically issued in the system:nodes group.
 
 **Explanation:** Kubelets use client X.509 certificates belonging to the system:nodes group, authorized by the Node authorization mode on the API server.
+
+</details>
+
+**Q3: Why does `kube-proxy` operating in IPVS mode scale better in clusters with tens of thousands of Services compared to iptables mode?**
+
+- [ ] A) IPVS compiles packet routing rules directly into Python scripts.
+- [ ] B) IPVS uses hash tables with O(1) lookup complexity, whereas iptables uses sequential rule lists with O(n) traversal latency.
+- [ ] C) IPVS runs in user-space, avoiding kernel context switches.
+- [ ] D) IPVS eliminates the need for network interface cards.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) IPVS uses hash tables with O(1) lookup complexity, whereas iptables uses sequential rule lists with O(n) traversal latency.
+
+**Explanation:** In iptables mode, packet processing traverses sequential chains of rules whose evaluation cost grows linearly O(n) with service count. IPVS uses kernel hash tables offering near-constant O(1) latency regardless of service scale.
+
+</details>
+
+**Q4: What is the primary benefit and trade-off of setting `externalTrafficPolicy: Local` on a Service of type NodePort or LoadBalancer?**
+
+- [ ] A) Benefit: Preserves client source IP and avoids extra network hops; Trade-off: Potential uneven traffic distribution if pods are not evenly distributed across all nodes.
+- [ ] B) Benefit: Enables automatic gzip compression; Trade-off: Disables TLS termination.
+- [ ] C) Benefit: Encrypts packet payloads; Trade-off: Doubles CPU consumption.
+- [ ] D) Benefit: Allows routing across external internet gateways; Trade-off: Disables DNS resolution.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** A) Benefit: Preserves client source IP and avoids extra network hops; Trade-off: Potential uneven traffic distribution if pods are not evenly distributed across all nodes.
+
+**Explanation:** Setting `externalTrafficPolicy: Local` prevents kube-proxy from SNATing the client IP to the node IP and only forwards traffic to local pods on the entry node, preserving the client IP address but dropping or skewing traffic if that node lacks pod endpoints.
+
+</details>
+
+**Q5: What Linux kernel table does `kube-proxy` rely on in iptables mode to track bi-directional connection states for translated Service IPs?**
+
+- [ ] A) ARP cache table
+- [ ] B) Netfilter Connection Tracking (conntrack) table
+- [ ] C) BGP routing table
+- [ ] D) DNS lookup table
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) Netfilter Connection Tracking (conntrack) table
+
+**Explanation:** Netfilter's `conntrack` facility tracks stateful network flows so reply packets from backend pods can be un-DNATed back to the original cluster virtual IP and returned to the client seamlessly.
+
+</details>
+
+**Q6: Which Kubernetes API resource replaced the legacy `Endpoints` resource to improve kube-proxy performance and control plane scalability in large clusters?**
+
+- [ ] A) IngressRoute
+- [ ] B) EndpointSlice
+- [ ] C) ServiceMesh
+- [ ] D) VirtualIPMap
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) EndpointSlice
+
+**Explanation:** The `EndpointSlice` resource breaks large monolithic Endpoints objects (which had to be re-sent entirely on any single pod change) into scalable chunks of 100 endpoints by default, drastically lowering API bandwidth and kube-proxy processing time.
 
 </details>
 
@@ -1300,6 +1900,7 @@ spec:
 
 - [kube-proxy](https://kubernetes.io/docs/reference/command-line-tools-reference/kube-proxy/)
 - [Service proxying](https://kubernetes.io/docs/concepts/services-networking/service-traffic-policies/)
+- [CKA Study Notes: Core Concepts (Container Runtime & CRI)](../CKA_Study_Notes/01-core-concepts.md)
 
 ### Demo — kube-proxy
 
@@ -1356,6 +1957,70 @@ NOTE
 **Correct Answer:** B) In the Linux kernel on the sending node via iptables/IPVS NAT rules maintained by kube-proxy.
 
 **Explanation:** The virtual ClusterIP does not exist on any physical interface; packet destination is rewritten (DNAT) directly inside the node's kernel by the netfilter rules programmed by kube-proxy.
+
+</details>
+
+**Q3: In the modern Kubernetes container execution hierarchy, what is the role of `containerd-shim`?**
+
+- [ ] A) It compiles Go source code inside the container during startup.
+- [ ] B) It serves as a lightweight parent process for the container, holding stdin/stdout/stderr pipes and exit status open so the container daemon (`containerd`) can restart without terminating running containers.
+- [ ] C) It manages node-level DNS caching.
+- [ ] D) It allocates persistent disk volumes from cloud storage providers.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) It serves as a lightweight parent process for the container, holding stdin/stdout/stderr pipes and exit status open so the container daemon (`containerd`) can restart without terminating running containers.
+
+**Explanation:** `containerd-shim` sits between containerd and runc. It holds container file descriptors open, captures exit codes, and allows daemonless containers that remain running even if containerd is restarted or upgraded.
+
+</details>
+
+**Q4: Which CLI diagnostic tool is specifically designed for inspecting and troubleshooting the Kubernetes CRI runtime directly on a worker node without relying on Docker?**
+
+- [ ] A) kubectl
+- [ ] B) crictl
+- [ ] C) kubeadm
+- [ ] D) systemd-analyze
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) crictl
+
+**Explanation:** `crictl` is the official CRI-compatible debugging CLI tool maintained by the Kubernetes SIG-node community, designed specifically to inspect pods, containers, and images through the CRI gRPC interface.
+
+</details>
+
+**Q5: What is the purpose of configuring a `RuntimeClass` in Kubernetes?**
+
+- [ ] A) To select the JVM version used by Java web applications.
+- [ ] B) To select alternative OCI runtimes (such as gVisor `runsc` for kernel sandbox isolation or Kata Containers for lightweight VM isolation) for specific Pod workloads.
+- [ ] C) To assign priority classes to batch jobs.
+- [ ] D) To enforce storage quotas on local volumes.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) To select alternative OCI runtimes (such as gVisor `runsc` for kernel sandbox isolation or Kata Containers for lightweight VM isolation) for specific Pod workloads.
+
+**Explanation:** `RuntimeClass` allows cluster administrators to define different container runtimes (e.g., standard `runc`, sandbox-isolated `runsc`, or hardware-virtualized `kata`) and allow pods to select them via `spec.runtimeClassName`.
+
+</details>
+
+**Q6: What happens when a container image is specified with a tag like `:latest` and `imagePullPolicy` is omitted?**
+
+- [ ] A) The image is never pulled if an image with the same name exists locally.
+- [ ] B) The pull policy defaults to `Always`, forcing the Kubelet to contact the registry to check whether a newer digest exists before starting the container.
+- [ ] C) The Kubelet fails container creation with an ErrImageNeverPull error.
+- [ ] D) The image is compiled from the nearest git branch.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) The pull policy defaults to `Always`, forcing the Kubelet to contact the registry to check whether a newer digest exists before starting the container.
+
+**Explanation:** When an image tag is `:latest` or omitted, `imagePullPolicy` defaults to `Always`. For any explicit version tag (e.g. `:v1.2.3`), it defaults to `IfNotPresent`.
 
 </details>
 
@@ -1422,6 +2087,7 @@ spec:
 
 - [Container runtimes](https://kubernetes.io/docs/setup/production-environment/container-runtimes/)
 - [CRI specification](https://github.com/kubernetes/cri-api)
+- [CKA Study Notes: Core Concepts (Pods)](../CKA_Study_Notes/01-core-concepts.md)
 
 ### Demo — Container Runtime & CRI
 
@@ -1475,6 +2141,70 @@ NOTE
 **Correct Answer:** B) To hold the Linux network, IPC, and mount namespaces that all containers in the Pod share throughout its lifecycle.
 
 **Explanation:** The pause container holds the shared namespaces (particularly the network namespace) so that if an application container restarts, the Pod IP and network interface remain intact.
+
+</details>
+
+**Q3: What is the primary role of the `pause` container (infrastructure container) in a Kubernetes Pod?**
+
+- [ ] A) It pauses execution of containers when CPU usage exceeds 90%.
+- [ ] B) It initializes and holds the shared Linux namespaces (Network, IPC) so application containers can join the same network space and communicate over localhost.
+- [ ] C) It performs periodic health checks against worker node disks.
+- [ ] D) It compiles container logs into Prometheus metrics.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) It initializes and holds the shared Linux namespaces (Network, IPC) so application containers can join the same network space and communicate over localhost.
+
+**Explanation:** The pause container serves as the parent anchor for the Pod sandbox. It requests and holds the network interface and IPC namespaces open; if an application container restarts, the pod's IP and port bindings remain intact.
+
+</details>
+
+**Q4: When a Pod is being terminated gracefully, what sequence of events occurs on the worker node?**
+
+- [ ] A) The Kubelet immediately sends SIGKILL to all processes and wipes the disk.
+- [ ] B) The Kubelet executes any configured `preStop` lifecycle hooks, sends `SIGTERM` to container processes, waits up to `terminationGracePeriodSeconds` (default 30s), and sends `SIGKILL` only if processes have not exited.
+- [ ] C) The Kubelet pauses all other pods on the node until the target container shuts down.
+- [ ] D) The Kubelet drains the node's memory into swap space.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) The Kubelet executes any configured `preStop` lifecycle hooks, sends `SIGTERM` to container processes, waits up to `terminationGracePeriodSeconds` (default 30s), and sends `SIGKILL` only if processes have not exited.
+
+**Explanation:** Graceful termination runs `preStop` hooks first, sends `SIGTERM` to allow in-flight connections to finish, waits for the grace period (default 30s), and issues `SIGKILL` as a last resort.
+
+</details>
+
+**Q5: What is the difference between a Pod's `restartPolicy: Always` versus `restartPolicy: OnFailure`?**
+
+- [ ] A) Always restarts containers regardless of exit status (0 or non-zero); OnFailure restarts only if the container exits with a non-zero error code.
+- [ ] B) Always applies to worker nodes; OnFailure applies only to the control plane.
+- [ ] C) Always restarts the host machine; OnFailure restarts only the Docker daemon.
+- [ ] D) Always is used exclusively for batch Jobs; OnFailure is used for Deployments.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** A) Always restarts containers regardless of exit status (0 or non-zero); OnFailure restarts only if the container exits with a non-zero error code.
+
+**Explanation:** `Always` ensures containers are continually restarted even after clean exits (code 0), which is standard for long-running services. `OnFailure` restarts containers only on non-zero exit codes (crashes), standard for batch jobs.
+
+</details>
+
+**Q6: How do multiple containers in the same Pod access shared local storage?**
+
+- [ ] A) By opening an NFS socket between their respective IP addresses.
+- [ ] B) By declaring a shared `volume` in `spec.volumes` (e.g. `emptyDir: {}`) and mounting it in each container's `volumeMounts`.
+- [ ] C) By writing directly to the host's `/root` directory.
+- [ ] D) Containers in the same pod cannot share filesystem volumes.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) By declaring a shared `volume` in `spec.volumes` (e.g. `emptyDir: {}`) and mounting it in each container's `volumeMounts`.
+
+**Explanation:** Volumes defined at the Pod level can be mounted into any or all containers in that Pod at chosen mount paths, enabling fast in-memory or disk file sharing between co-located containers.
 
 </details>
 
@@ -1541,6 +2271,7 @@ spec:
 **Further reading**
 
 - [Sidecar containers](https://kubernetes.io/docs/concepts/workloads/pods/sidecar-containers/)
+- [CKA Study Notes: Application Lifecycle (Multi-Container Pods)](../CKA_Study_Notes/04-application-lifecycle-management.md)
 
 ### Demo — Sidecar Containers
 
@@ -1612,6 +2343,70 @@ NOTE
 
 </details>
 
+**Q3: In Kubernetes 1.28+, how are native sidecar containers configured in a Pod specification?**
+
+- [ ] A) Inside a top-level `spec.sidecars` field.
+- [ ] B) Inside `spec.initContainers` with `restartPolicy: Always`.
+- [ ] C) Inside `metadata.annotations` with `sidecar.istio.io/inject: true`.
+- [ ] D) Inside `spec.containers` with `role: sidecar`.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) Inside `spec.initContainers` with `restartPolicy: Always`.
+
+**Explanation:** Native sidecars are defined within `spec.initContainers` having `restartPolicy: Always`. They start before regular application containers and remain running for the entire lifecycle of the Pod.
+
+</details>
+
+**Q4: What problem does the native sidecar feature solve compared to traditional legacy multi-container Pod patterns?**
+
+- [ ] A) It eliminates the need for container images.
+- [ ] B) It guarantees that helper services (such as logging or service mesh proxies) start before app containers begin and terminate gracefully after app containers finish.
+- [ ] C) It reduces container memory consumption to zero.
+- [ ] D) It bypasses Linux cgroup CPU bandwidth throttling.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) It guarantees that helper services (such as logging or service mesh proxies) start before app containers begin and terminate gracefully after app containers finish.
+
+**Explanation:** Legacy sidecars were regular containers with no deterministic startup or shutdown ordering, causing app containers to fail if proxies weren't ready, or preventing batch jobs from completing because the sidecar never exited.
+
+</details>
+
+**Q5: How do Service Mesh sidecars (such as Envoy in Istio or Linkerd) transparently intercept inbound and outbound TCP traffic for an application container?**
+
+- [ ] A) By modifying the application source code at compile time.
+- [ ] B) By using an init container (running with `NET_ADMIN` capability) to configure iptables PREROUTING and OUTPUT rules that redirect traffic to the sidecar's localhost proxy port.
+- [ ] C) By assigning a separate IP address to the sidecar container.
+- [ ] D) By intercepting packets at the hardware router layer.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) By using an init container (running with `NET_ADMIN` capability) to configure iptables PREROUTING and OUTPUT rules that redirect traffic to the sidecar's localhost proxy port.
+
+**Explanation:** An `istio-init` container runs with `CAP_NET_ADMIN` to inject iptables rules into the Pod's shared network namespace, redirecting incoming and outgoing TCP flows to Envoy's local listening port (typically 15001/15006).
+
+</details>
+
+**Q6: How are compute resource requests (CPU and Memory) calculated for a Pod running both an application container and a sidecar container?**
+
+- [ ] A) The Kubelet only accounts for the larger container's resources.
+- [ ] B) The Pod's total resource request is the sum of the requests of all running application and sidecar containers.
+- [ ] C) Sidecars do not consume Pod quota and run without resource tracking.
+- [ ] D) The scheduler ignores sidecar limits during node placement.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) The Pod's total resource request is the sum of the requests of all running application and sidecar containers.
+
+**Explanation:** Because regular and native sidecars run concurrently throughout the Pod lifecycle, the scheduler and kubelet calculate the Pod's total resource requests by summing the requests of all active containers.
+
+</details>
+
 ## 13. Init Containers
 
 **Part 1 — Technical Discussion:** **Init Containers** are specialized containers that run sequentially to completion before any application containers in the Pod are started. If an init container fails, the kubelet restarts the Pod until the init container succeeds (governed by `restartPolicy`).
@@ -1680,6 +2475,7 @@ spec:
 **Further reading**
 
 - [Init containers](https://kubernetes.io/docs/concepts/workloads/pods/init-containers/)
+- [CKA Study Notes: Application Lifecycle (Init Containers)](../CKA_Study_Notes/04-application-lifecycle-management.md)
 
 ### Demo — Init Containers
 
@@ -1751,6 +2547,70 @@ NOTE
 
 </details>
 
+**Q3: In what order do multiple Init Containers execute within a Pod?**
+
+- [ ] A) In parallel simultaneously to minimize startup latency.
+- [ ] B) Sequentially, in the exact order they are defined in `spec.initContainers`, with each completing successfully before the next begins.
+- [ ] C) In reverse alphabetical order based on their container name.
+- [ ] D) In random order determined by the Kubelet.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) Sequentially, in the exact order they are defined in `spec.initContainers`, with each completing successfully before the next begins.
+
+**Explanation:** Init containers run strictly sequentially. Each init container must run to completion with exit code 0 before the next init container is started. If any fails, the pod restarts according to its `restartPolicy`.
+
+</details>
+
+**Q4: Which of the following probe types is supported on standard Init Containers?**
+
+- [ ] A) LivenessProbe
+- [ ] B) ReadinessProbe
+- [ ] C) StartupProbe
+- [ ] D) None of the above (standard init containers do not support probes)
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** D) None of the above (standard init containers do not support probes)
+
+**Explanation:** Standard init containers do not support readiness, liveness, or startup probes because their readiness is directly defined by process termination with exit code 0.
+
+</details>
+
+**Q5: What is a major security advantage of performing database schema migrations or security credential downloads in an Init Container rather than the main application container?**
+
+- [ ] A) Init containers are immune to Linux kernel vulnerabilities.
+- [ ] B) Migration tools, compiler toolchains, or administrative database credentials do not need to be present inside the final production application container image.
+- [ ] C) Init containers run without using network interfaces.
+- [ ] D) Init containers bypass Kubernetes RBAC policies.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) Migration tools, compiler toolchains, or administrative database credentials do not need to be present inside the final production application container image.
+
+**Explanation:** Separating setup into an init container keeps the runtime application container image minimal and secure (distroless), removing administrative tools, database migration utilities, and elevated credentials from the long-running attack surface.
+
+</details>
+
+**Q6: How does the Kubernetes scheduler calculate effective resource requests for a Pod with multiple Init Containers?**
+
+- [ ] A) It takes the sum of all init containers plus all app containers.
+- [ ] B) It takes the maximum of: (the highest init container request) or (the sum of all app/sidecar container requests).
+- [ ] C) It completely ignores init container resource requests.
+- [ ] D) It doubles the memory requested by the first init container.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) It takes the maximum of: (the highest init container request) or (the sum of all app/sidecar container requests).
+
+**Explanation:** Because init containers run sequentially, only one runs at a time. Therefore, the scheduler computes the effective request as `max(max(init_container_requests), sum(app_container_requests))`.
+
+</details>
+
 ## 14. CNI (Container Network Interface)
 
 **Part 1 — Technical Discussion:** The **Container Network Interface (CNI)** is a CNCF specification that standardizes how third-party networking plugins configure Linux network namespaces for containers. Kubernetes mandates a flat, non-NAT network model across the entire cluster.
@@ -1809,6 +2669,7 @@ spec:
 
 - [Network plugins and CNI](https://kubernetes.io/docs/concepts/extend-kubernetes/compute-storage-net/network-plugins/)
 - [CNI project](https://github.com/containernetworking/cni)
+- [CKA Study Notes: Networking (CNI & Pod Networking)](../CKA_Study_Notes/07-networking.md)
 
 ### Demo — CNI (Container Network Interface)
 
@@ -1864,6 +2725,70 @@ NOTE
 **Correct Answer:** A) A virtual ethernet (veth) pair connecting the pod's eth0 to a host bridge or routing table.
 
 **Explanation:** A veth pair functions like a virtual patch cable: one end sits inside the pod's network namespace as eth0, and the peer end sits in the host namespace attached to a bridge or routing engine.
+
+</details>
+
+**Q3: What are the fundamental tenets of the Kubernetes network model that every CNI plugin must satisfy?**
+
+- [ ] A) All pods share a single IP address and communicate using port offsets.
+- [ ] B) Every pod receives a unique IP address reachable by every other pod in the cluster without NAT, and node agents (kubelet) can communicate with all pods on that node.
+- [ ] C) Pods can only communicate with other pods running on the exact same physical host.
+- [ ] D) All pod traffic must route through an external internet proxy.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) Every pod receives a unique IP address reachable by every other pod in the cluster without NAT, and node agents (kubelet) can communicate with all pods on that node.
+
+**Explanation:** The Kubernetes IP-per-Pod model requires that all pods communicate with all other pods across nodes without NAT, and agents on a node can reach all pods on that same node directly.
+
+</details>
+
+**Q4: On Linux hosts running an overlay CNI (such as Calico VXLAN or Flannel), why must the CNI interface MTU be set lower than the physical host network MTU (e.g. 1450 vs 1500)?**
+
+- [ ] A) To account for the 50-byte encapsulation header (Ethernet + IP + UDP + VXLAN) and prevent packet fragmentation.
+- [ ] B) Because Linux kernel bridges do not support MTUs above 1450.
+- [ ] C) To reduce memory consumption inside containerd.
+- [ ] D) To comply with Wi-Fi 802.11 standards.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** A) To account for the 50-byte encapsulation header (Ethernet + IP + UDP + VXLAN) and prevent packet fragmentation.
+
+**Explanation:** VXLAN encapsulation adds outer IP, UDP, and VXLAN headers (typically 50 bytes). If the CNI MTU matches the host MTU (1500), inner packets exceeding 1450 bytes will exceed physical MTU, causing silent packet drops or fragmentation.
+
+</details>
+
+**Q5: Where are CNI network configuration files and executable binaries stored on a standard Linux Kubernetes node?**
+
+- [ ] A) Config: `/etc/cni/net.d/`, Binaries: `/opt/cni/bin/`
+- [ ] B) Config: `/var/log/cni/`, Binaries: `/usr/bin/`
+- [ ] C) Config: `/etc/kubernetes/manifests/`, Binaries: `/tmp/`
+- [ ] D) Config: `/home/cni/`, Binaries: `/sbin/`
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** A) Config: `/etc/cni/net.d/`, Binaries: `/opt/cni/bin/`
+
+**Explanation:** Standard CNI paths on Linux are `/etc/cni/net.d/` for JSON configuration files (read by the runtime in lexicographical order) and `/opt/cni/bin/` for CNI plugin binaries (bridge, loopback, host-local, calico, cilium).
+
+</details>
+
+**Q6: What is the primary operational advantage of eBPF-based CNI implementations (such as Cilium or Calico eBPF mode) over traditional iptables-based CNI networking?**
+
+- [ ] A) eBPF allows containers to run without Docker.
+- [ ] B) eBPF programs attach directly to kernel socket and network hooks (tc/xdp), bypassing iptables rule evaluation and connection tracking for significantly lower latency and higher throughput.
+- [ ] C) eBPF encrypts all cluster memory using hardware TPMs.
+- [ ] D) eBPF eliminates the need for worker nodes.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) eBPF programs attach directly to kernel socket and network hooks (tc/xdp), bypassing iptables rule evaluation and connection tracking for significantly lower latency and higher throughput.
+
+**Explanation:** eBPF attaches programs directly to Linux network interface layers (traffic control `tc` and eXpress Data Path `xdp`), routing packets directly in kernel space without the overhead of traversing hundreds of iptables chains and conntrack locks.
 
 </details>
 
@@ -1941,6 +2866,7 @@ data:
 
 - [DNS for Services and Pods](https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/)
 - [CoreDNS project](https://coredns.io/)
+- [CKA Study Notes: Networking (CoreDNS)](../CKA_Study_Notes/07-networking.md)
 
 ### Demo — CoreDNS
 
@@ -1996,6 +2922,70 @@ NOTE
 **Correct Answer:** B) By watching the Kubernetes API server for Service and EndpointSlice resource events.
 
 **Explanation:** The CoreDNS kubernetes plugin connects to the kube-apiserver with an informer cache, watching Services and Endpoints to answer queries from live cluster state.
+
+</details>
+
+**Q3: In what order are plugins evaluated inside the CoreDNS `Corefile`?**
+
+- [ ] A) In the exact order they are written line-by-line in the Corefile.
+- [ ] B) In a predefined compile-time plugin order determined by `plugin.cfg` in the CoreDNS binary, regardless of their line order in the Corefile.
+- [ ] C) In alphabetical order based on plugin name.
+- [ ] D) In random order determined at server startup.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) In a predefined compile-time plugin order determined by `plugin.cfg` in the CoreDNS binary, regardless of their line order in the Corefile.
+
+**Explanation:** CoreDNS plugin execution order is determined at compile time by the ordering in `plugin.cfg`, not the order in which directives appear in the Corefile ConfigMap.
+
+</details>
+
+**Q4: What DNS records are returned when querying a Headless Service (`spec.clusterIP: None`) compared to a standard ClusterIP Service?**
+
+- [ ] A) A Headless Service returns a CNAME pointing to google.com.
+- [ ] B) A standard Service returns the single virtual ClusterIP; a Headless Service returns multiple `A` records containing the direct IP addresses of all ready backend Pods.
+- [ ] C) A Headless Service returns an error because it has no virtual IP.
+- [ ] D) A Headless Service returns the IP address of the kube-apiserver.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) A standard Service returns the single virtual ClusterIP; a Headless Service returns multiple `A` records containing the direct IP addresses of all ready backend Pods.
+
+**Explanation:** A standard Service returns its single virtual ClusterIP. A Headless Service (`clusterIP: None`) has no virtual IP; CoreDNS resolves queries directly to the set of individual ready Pod IPs (A/AAAA records).
+
+</details>
+
+**Q5: Why does setting `options ndots:5` in `/etc/resolv.conf` create extra network overhead for external domain queries (like `api.stripe.com`)?**
+
+- [ ] A) It encrypts all DNS requests with 5 separate keys.
+- [ ] B) Any hostname containing fewer than 5 dots is treated as an incomplete local name and appended to every local search domain (e.g. `api.stripe.com.default.svc.cluster.local`) before querying the root domain.
+- [ ] C) It forces CoreDNS to query 5 different external DNS servers simultaneously.
+- [ ] D) It restricts queries to 5 packets per second.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) Any hostname containing fewer than 5 dots is treated as an incomplete local name and appended to every local search domain (e.g. `api.stripe.com.default.svc.cluster.local`) before querying the root domain.
+
+**Explanation:** With `ndots:5`, any domain with fewer than 5 dots is checked sequentially against all search domains (`<ns>.svc.cluster.local`, `svc.cluster.local`, `cluster.local`) first. Each external lookup incurs 3-4 failed DNS queries before resolving.
+
+</details>
+
+**Q6: What is the primary role of the `NodeLocal DNSCache` daemon in large Kubernetes clusters?**
+
+- [ ] A) It stores DNS query records in etcd for compliance auditing.
+- [ ] B) It runs a caching DNS agent on a link-local IP (`169.254.20.10`) on every worker node, serving queries locally to eliminate conntrack UDP race conditions and reduce CoreDNS control plane load.
+- [ ] C) It synchronizes external cloud Route53 records.
+- [ ] D) It forces all DNS queries to use IPv6.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) It runs a caching DNS agent on a link-local IP (`169.254.20.10`) on every worker node, serving queries locally to eliminate conntrack UDP race conditions and reduce CoreDNS control plane load.
+
+**Explanation:** NodeLocal DNSCache runs a local cache instance on each node listening on a link-local address. Pods query localhost, reducing CoreDNS network traffic and avoiding Linux conntrack UDP race conditions that cause sporadic 5-second DNS timeouts.
 
 </details>
 
@@ -2062,6 +3052,7 @@ spec:
 **Further reading**
 
 - [Service networking](https://kubernetes.io/docs/concepts/services-networking/service/)
+- [CKA Study Notes: Networking (Services & ClusterIP)](../CKA_Study_Notes/07-networking.md)
 
 ### Demo — Services
 
@@ -2120,6 +3111,70 @@ NOTE
 **Correct Answer:** C) type: LoadBalancer
 
 **Explanation:** In Kubernetes, Service types build upon each other: LoadBalancer allocates a cloud LB, which forwards to NodePort, which routes to ClusterIP.
+
+</details>
+
+**Q3: In a Kubernetes Service manifest, what is the distinction between `port` and `targetPort`?**
+
+- [ ] A) `port` is the port exposed on the Service's virtual ClusterIP; `targetPort` is the actual port the application container listens on inside the backend Pod.
+- [ ] B) `port` is for UDP traffic; `targetPort` is for TCP traffic.
+- [ ] C) `port` is the host node port; `targetPort` is the proxy port.
+- [ ] D) `port` is deprecated in Kubernetes 1.29+.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** A) `port` is the port exposed on the Service's virtual ClusterIP; `targetPort` is the actual port the application container listens on inside the backend Pod.
+
+**Explanation:** `spec.ports[*].port` defines the listening port exposed by the Service abstraction itself inside the cluster. `spec.ports[*].targetPort` defines the destination container port on the backend Pod to which packets are forwarded.
+
+</details>
+
+**Q4: Why does pinging a Service's virtual ClusterIP (e.g. `ping 10.96.0.1`) typically fail, even when the Service is routing HTTP traffic properly?**
+
+- [ ] A) ClusterIP addresses are virtual entries in iptables/IPVS rules that translate specific TCP/UDP transport ports; they are not real physical network interfaces and do not respond to ICMP Echo packets.
+- [ ] B) The Linux kernel permanently disables ICMP in containerized environments.
+- [ ] C) ClusterIPs require an active BGP session to respond to pings.
+- [ ] D) CoreDNS blocks ICMP packets by default.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** A) ClusterIP addresses are virtual entries in iptables/IPVS rules that translate specific TCP/UDP transport ports; they are not real physical network interfaces and do not respond to ICMP Echo packets.
+
+**Explanation:** A ClusterIP does not exist as an interface or ARP responder on any host; it exists solely as a destination translation target in iptables/IPVS for specified TCP/UDP ports. ICMP ping packets have no port and are dropped.
+
+</details>
+
+**Q5: What requirement must be met when defining a Kubernetes Service with multiple ports in `spec.ports`?**
+
+- [ ] A) All ports must use the UDP protocol.
+- [ ] B) Every port entry in `spec.ports` must have a unique `name` assigned to it.
+- [ ] C) The Service type must be LoadBalancer.
+- [ ] D) The Service must use `clusterIP: None`.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) Every port entry in `spec.ports` must have a unique `name` assigned to it.
+
+**Explanation:** When multiple ports are defined in a Service, Kubernetes requires each port to specify a unique `name` (e.g. `name: http` and `name: https`) to prevent ambiguity in EndpointSlice and DNS SRV records.
+
+</details>
+
+**Q6: How can an operator configure a Service to route subsequent requests from the same client IP to the same backend Pod?**
+
+- [ ] A) By setting `spec.sessionAffinity: ClientIP` on the Service.
+- [ ] B) By enabling HTTP cookies in kube-proxy.
+- [ ] C) By creating a StatefulSet with ordinal routing.
+- [ ] D) By assigning a static MAC address to the pod.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** A) By setting `spec.sessionAffinity: ClientIP` on the Service.
+
+**Explanation:** Setting `spec.sessionAffinity: ClientIP` instructs kube-proxy to program iptables/IPVS rules that map connections from the same client IP address to the same backend pod for a configurable timeout period.
 
 </details>
 
@@ -2188,6 +3243,7 @@ endpoints:
 **Further reading**
 
 - [EndpointSlices](https://kubernetes.io/docs/concepts/services-networking/endpoint-slices/)
+- [CKA Study Notes: Networking (NodePort & LoadBalancer)](../CKA_Study_Notes/07-networking.md)
 
 ### Demo — Endpoints
 
@@ -2246,6 +3302,70 @@ NOTE
 **Correct Answer:** A) The Pod must have passed its readiness probe (ContainersReady: True).
 
 **Explanation:** A pod is only considered ready to serve live user traffic when its readiness probes pass; unready pods are excluded from active service endpoints.
+
+</details>
+
+**Q3: What is the relationship between the three primary Kubernetes Service types: ClusterIP, NodePort, and LoadBalancer?**
+
+- [ ] A) They are mutually exclusive and operate on completely different network OSI layers.
+- [ ] B) They form a strict superset hierarchy: A NodePort is automatically a ClusterIP, and a LoadBalancer is automatically both a NodePort and a ClusterIP.
+- [ ] C) NodePort replaces ClusterIP, while LoadBalancer replaces kube-proxy.
+- [ ] D) LoadBalancer operates only on worker nodes, while NodePort operates only on control plane nodes.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) They form a strict superset hierarchy: A NodePort is automatically a ClusterIP, and a LoadBalancer is automatically both a NodePort and a ClusterIP.
+
+**Explanation:** Service types form an inclusive hierarchy: When you create a `NodePort`, Kubernetes automatically assigns a `ClusterIP`. When you create a `LoadBalancer`, Kubernetes provisions a cloud load balancer, opens a `NodePort` on all nodes, and allocates a `ClusterIP`.
+
+</details>
+
+**Q4: Which field in a Service of type LoadBalancer restricts inbound access to specific external CIDR IP ranges at the cloud firewall level?**
+
+- [ ] A) spec.ipBlockList
+- [ ] B) spec.loadBalancerSourceRanges
+- [ ] C) spec.allowedIngressCIDRs
+- [ ] D) metadata.annotations.firewall-rule
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) spec.loadBalancerSourceRanges
+
+**Explanation:** `spec.loadBalancerSourceRanges` allows operators to specify client CIDRs (e.g., `['203.0.113.0/24']`). Supported cloud providers configure their security groups/firewalls to allow traffic only from those IP blocks.
+
+</details>
+
+**Q5: When `externalTrafficPolicy: Local` is enabled on a NodePort/LoadBalancer Service, what port is allocated for cloud load balancer health checks to determine which nodes have ready Pods?**
+
+- [ ] A) spec.healthCheckNodePort
+- [ ] B) spec.ports[0].targetPort
+- [ ] C) spec.clusterIPPort
+- [ ] D) Kubelet port 10250
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** A) spec.healthCheckNodePort
+
+**Explanation:** When `externalTrafficPolicy: Local` is used, Kubernetes allocates `spec.healthCheckNodePort`. Cloud load balancers probe this HTTP port; nodes with zero local pod replicas return HTTP 503, ensuring traffic is only routed to nodes hosting live pods.
+
+</details>
+
+**Q6: How does MetalLB enable Service type LoadBalancer functionality on bare-metal Kubernetes clusters without cloud provider APIs?**
+
+- [ ] A) By rewriting the Linux kernel routing table on client laptops.
+- [ ] B) By operating in Layer 2 mode (announcing IPs via ARP/NDP from a leader node) or BGP mode (peering with network routers to announce pod/service routes).
+- [ ] C) By deploying an external NGINX reverse proxy on every worker node.
+- [ ] D) By converting all NodePort services to DNS CNAME records.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) By operating in Layer 2 mode (announcing IPs via ARP/NDP from a leader node) or BGP mode (peering with network routers to announce pod/service routes).
+
+**Explanation:** MetalLB provides bare-metal load balancing using standard network protocols: Layer 2 mode uses ARP (IPv4) or NDP (IPv6) to bind service IPs to node MAC addresses, while BGP mode establishes dynamic routing sessions with upstream datacenter switches.
 
 </details>
 
@@ -2315,6 +3435,7 @@ spec:
 **Further reading**
 
 - [Ingress](https://kubernetes.io/docs/concepts/services-networking/ingress/)
+- [CKA Study Notes: Networking (Ingress)](../CKA_Study_Notes/07-networking.md)
 
 ### Demo — Ingress
 
@@ -2396,6 +3517,70 @@ NOTE
 
 </details>
 
+**Q3: What is the architectural difference between an `Ingress` resource and an `Ingress Controller` in Kubernetes?**
+
+- [ ] A) An Ingress is a control plane daemon; an Ingress Controller is a worker node daemon.
+- [ ] B) An Ingress is a declarative API metadata resource defining routing rules; an Ingress Controller is the running reverse proxy daemon (like NGINX or Envoy) that watches the API and executes the routing.
+- [ ] C) Ingress handles UDP traffic; Ingress Controller handles TCP traffic.
+- [ ] D) Ingress is deprecated; Ingress Controller is its replacement.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) An Ingress is a declarative API metadata resource defining routing rules; an Ingress Controller is the running reverse proxy daemon (like NGINX or Envoy) that watches the API and executes the routing.
+
+**Explanation:** An Ingress object is simply declarative configuration in etcd describing hostname/path routing and TLS rules. An Ingress Controller (such as ingress-nginx or Traefik) is the actual software daemon that fulfills those rules by proxying HTTP(S) traffic.
+
+</details>
+
+**Q4: Which Ingress path type matches an incoming request URL prefix on a element-by-element path segment basis?**
+
+- [ ] A) Exact
+- [ ] B) Prefix
+- [ ] C) ImplementationSpecific
+- [ ] D) Regex
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) Prefix
+
+**Explanation:** `pathType: Prefix` matches URL path prefixes split by `/` delimiters. For example, `/v1` matches `/v1/` and `/v1/users`, but does not match `/v10`.
+
+</details>
+
+**Q5: How is TLS termination configured on an Ingress resource to decrypt HTTPS traffic?**
+
+- [ ] A) By pasting raw certificate strings directly into `spec.rules`.
+- [ ] B) By specifying `spec.tls[*].secretName` referencing a `kubernetes.io/tls` Secret containing `tls.crt` and `tls.key` in the same namespace.
+- [ ] C) By installing the certificate directly onto the worker node's host BIOS.
+- [ ] D) By configuring a NodePort with port 443.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) By specifying `spec.tls[*].secretName` referencing a `kubernetes.io/tls` Secret containing `tls.crt` and `tls.key` in the same namespace.
+
+**Explanation:** Ingress specifies `spec.tls` blocks with hostnames and `secretName`. The referenced Secret must exist in the same namespace and contain `tls.crt` (public cert chain) and `tls.key` (private key).
+
+</details>
+
+**Q6: What new Kubernetes standard is designed to succeed Ingress by providing expressive, role-oriented, and cross-namespace routing capabilities?**
+
+- [ ] A) ServiceMesh API
+- [ ] B) Gateway API (`GatewayClass`, `Gateway`, `HTTPRoute`)
+- [ ] C) EgressRoute API
+- [ ] D) VirtualService API
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) Gateway API (`GatewayClass`, `Gateway`, `HTTPRoute`)
+
+**Explanation:** The Kubernetes Gateway API provides a modern, role-oriented replacement for Ingress, separating platform infrastructure governance (`GatewayClass`, `Gateway`) from application routing rules (`HTTPRoute`, `GRPCRoute`).
+
+</details>
+
 ## 19. NetworkPolicy
 
 **Part 1 — Technical Discussion:** **NetworkPolicy** is an application-centric firewall specification that controls Layer-3 and Layer-4 packet flow between Pods and network endpoints. By default, Kubernetes networks operate in **permissive mode** (all Pods can communicate freely with all other Pods).
@@ -2469,6 +3654,7 @@ spec:
 **Further reading**
 
 - [Network Policies](https://kubernetes.io/docs/concepts/services-networking/network-policies/)
+- [CKA Study Notes: Security (NetworkPolicies)](../CKA_Study_Notes/06-security.md)
 
 ### Demo — NetworkPolicy
 
@@ -2542,6 +3728,70 @@ NOTE
 
 </details>
 
+**Q3: What is the network security posture of a Kubernetes namespace before any `NetworkPolicy` is created in that namespace?**
+
+- [ ] A) Default-Deny (all incoming and outgoing traffic is blocked).
+- [ ] B) Default-Allow (all Pods can communicate with all other Pods across all namespaces and external networks).
+- [ ] C) Only DNS traffic is permitted; all HTTP traffic is blocked.
+- [ ] D) Pods can communicate only with the kube-apiserver.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) Default-Allow (all Pods can communicate with all other Pods across all namespaces and external networks).
+
+**Explanation:** By default, Kubernetes network namespaces are completely open (non-isolated). All pods can communicate with any other pod across any namespace unless a NetworkPolicy selects the pod and enforces isolation.
+
+</details>
+
+**Q4: What is the result when a NetworkPolicy has `policyTypes: [Ingress]` and an empty `spec.podSelector: {}`, but no `ingress` rules defined?**
+
+- [ ] A) It allows all inbound traffic to all pods in the namespace.
+- [ ] B) It isolates all pods in the namespace and blocks 100% of incoming traffic (Default-Deny Ingress).
+- [ ] C) It crashes the CNI plugin on all worker nodes.
+- [ ] D) It deletes all Services in the namespace.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) It isolates all pods in the namespace and blocks 100% of incoming traffic (Default-Deny Ingress).
+
+**Explanation:** Selecting all pods (`podSelector: {}`) for Ingress without providing any `ingress` rules creates a default-deny ingress policy, isolating all pods in the namespace from all inbound network traffic.
+
+</details>
+
+**Q5: In a NetworkPolicy ingress rule, what is the semantic difference between two items in a single `from` list element versus two separate elements in the `from` list?**
+
+- [ ] A) Single element with both `namespaceSelector` and `podSelector` is an AND (intersection); separate list items represent an OR (union).
+- [ ] B) Single element is an OR; separate list items represent an AND.
+- [ ] C) Single element applies to TCP; separate elements apply to UDP.
+- [ ] D) There is no difference in rule evaluation.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** A) Single element with both `namespaceSelector` and `podSelector` is an AND (intersection); separate list items represent an OR (union).
+
+**Explanation:** In YAML, a single map entry containing both selectors (`- namespaceSelector: ... ;   podSelector: ...`) is an AND: the pod must match BOTH. Two list items (`- namespaceSelector: ... ; - podSelector: ...`) is an OR: traffic from either is allowed.
+
+</details>
+
+**Q6: Why would applying a valid `NetworkPolicy` manifest have no effect on network traffic in a standard kind cluster running default kindnet?**
+
+- [ ] A) NetworkPolicies only work on physical fiber-optic cables.
+- [ ] B) NetworkPolicy enforcement requires a policy-aware CNI plugin (such as Calico or Cilium); default basic CNIs (like kindnet or flannel) do not program or enforce policy rules.
+- [ ] C) kind clusters do not have an API server.
+- [ ] D) The `NetworkPolicy` API must be enabled via a feature flag in the Linux kernel.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) NetworkPolicy enforcement requires a policy-aware CNI plugin (such as Calico or Cilium); default basic CNIs (like kindnet or flannel) do not program or enforce policy rules.
+
+**Explanation:** The API server accepts NetworkPolicy objects in all clusters, but actual enforcement happens at the data plane. If the installed CNI (like basic flannel or kindnet) lacks a policy controller, rules are simply ignored.
+
+</details>
+
 ## 20. PersistentVolume (PV)
 
 **Part 1 — Technical Discussion:** A **PersistentVolume (PV)** is a piece of networked or local storage provisioned in the cluster that exists as an independent, cluster-scoped resource with a lifecycle decoupled from any individual Pod that consumes it.
@@ -2605,6 +3855,7 @@ spec:
 **Further reading**
 
 - [Persistent Volumes](https://kubernetes.io/docs/concepts/storage/persistent-volumes/)
+- [CKA Study Notes: Storage (Persistent Volumes)](../CKA_Study_Notes/08-storage.md)
 
 ### Demo — PersistentVolume (PV)
 
@@ -2694,6 +3945,70 @@ NOTE
 
 </details>
 
+**Q3: What is the primary architectural difference in lifecycle and scope between a `PersistentVolume` (PV) and a `PersistentVolumeClaim` (PVC)?**
+
+- [ ] A) PV is namespace-scoped; PVC is cluster-scoped.
+- [ ] B) PV is a cluster-scoped storage resource provisioned by an administrator or CSI driver; PVC is a namespace-scoped request for storage made by a user/developer.
+- [ ] C) PVs can only be attached to worker nodes; PVCs attach to control plane nodes.
+- [ ] D) PVs store metadata; PVCs store actual data files.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) PV is a cluster-scoped storage resource provisioned by an administrator or CSI driver; PVC is a namespace-scoped request for storage made by a user/developer.
+
+**Explanation:** A PersistentVolume is a cluster-wide resource representing underlying storage capacity. A PersistentVolumeClaim is a namespaced request that binds to a matching PV, separating platform storage provisioning from tenant consumption.
+
+</details>
+
+**Q4: What happens when a PersistentVolume with `persistentVolumeReclaimPolicy: Retain` is unbound after its associated PVC is deleted?**
+
+- [ ] A) The PV and its underlying storage volume are immediately erased and deleted.
+- [ ] B) The PV transitions to the `Released` status phase; the volume and data remain intact on the storage backend, but the PV cannot be bound to another PVC until manually scrubbed by an admin.
+- [ ] C) The PV is immediately reassigned to the default namespace.
+- [ ] D) The storage backend formats the partition using ext4.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) The PV transitions to the `Released` status phase; the volume and data remain intact on the storage backend, but the PV cannot be bound to another PVC until manually scrubbed by an admin.
+
+**Explanation:** Under `Retain`, when a PVC is deleted, the PV moves to `Released`. The data is preserved safely on the storage device, but the PV cannot be claimed by another PVC until an administrator cleans the data and resets `claimRef`.
+
+</details>
+
+**Q5: What is the meaning of the `ReadWriteOncePod` (RWOP) access mode introduced in Kubernetes 1.22+?**
+
+- [ ] A) The volume can be mounted as read-write by multiple pods across different nodes.
+- [ ] B) The volume can be mounted as read-write by exactly one single Pod in the entire cluster, preventing multiple pods on the same node from corrupting the volume.
+- [ ] C) The volume can only be written to once, after which it becomes read-only.
+- [ ] D) The volume is wiped every time the pod restarts.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) The volume can be mounted as read-write by exactly one single Pod in the entire cluster, preventing multiple pods on the same node from corrupting the volume.
+
+**Explanation:** `ReadWriteOnce` (RWO) allows multiple pods on the *same node* to read/write the volume. `ReadWriteOncePod` (RWOP) strictly restricts read-write access to a *single pod in the entire cluster*, preventing concurrent write corruption.
+
+</details>
+
+**Q6: Why must a PersistentVolume using a `local` volume source specify `nodeAffinity` in its specification?**
+
+- [ ] A) To ensure the volume is replicated to all other nodes in the cluster.
+- [ ] B) Because local storage exists on a specific physical disk on a specific node; the scheduler must bind and run consuming Pods on that exact node.
+- [ ] C) To assign an IP address to the local disk.
+- [ ] D) To enable encryption at rest on the local partition.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) Because local storage exists on a specific physical disk on a specific node; the scheduler must bind and run consuming Pods on that exact node.
+
+**Explanation:** A local PV is tied directly to a local disk or partition on a single machine. The `nodeAffinity` field informs the Kubernetes scheduler which node hosts the data so workloads are placed where the disk physically exists.
+
+</details>
+
 ## 21. PersistentVolumeClaim (PVC)
 
 **Part 1 — Technical Discussion:** A **PersistentVolumeClaim (PVC)** is a user's request for storage in a specific namespace. It functions analogously to how a Pod requests compute resources (CPU/RAM): while administrators or StorageClasses provision PersistentVolumes, developers create PVCs declaring required capacity and access modes.
@@ -2769,6 +4084,7 @@ spec:
 **Further reading**
 
 - [PersistentVolumeClaims](https://kubernetes.io/docs/concepts/storage/persistent-volumes/#persistentvolumeclaims)
+- [CKA Study Notes: Storage (Persistent Volume Claims)](../CKA_Study_Notes/08-storage.md)
 
 ### Demo — PersistentVolumeClaim (PVC)
 
@@ -2856,6 +4172,70 @@ NOTE
 
 </details>
 
+**Q3: What three main criteria does the PersistentVolume controller evaluate when binding a PVC to a PersistentVolume?**
+
+- [ ] A) Pod CPU request, Node memory capacity, and Kernel version.
+- [ ] B) StorageClass name, Access Modes, and Capacity (PV capacity must be >= requested PVC capacity).
+- [ ] C) Container image tag, Namespace quota, and Host network port.
+- [ ] D) Git commit SHA, Docker daemon version, and DNS search domain.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) StorageClass name, Access Modes, and Capacity (PV capacity must be >= requested PVC capacity).
+
+**Explanation:** A PVC binds to a PV only when both share the same StorageClass (or both have none), the PV supports all requested access modes (RWO, RWX, etc.), and the PV capacity meets or exceeds the requested storage size.
+
+</details>
+
+**Q4: If a user requires expanding an existing PersistentVolumeClaim from 10Gi to 50Gi, what must be true about the underlying StorageClass?**
+
+- [ ] A) The StorageClass must have `allowVolumeExpansion: true`.
+- [ ] B) The StorageClass must be marked as `readOnly: true`.
+- [ ] C) The StorageClass must use `reclaimPolicy: Recycle`.
+- [ ] D) Storage expansion is strictly prohibited in Kubernetes without recreating the cluster.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** A) The StorageClass must have `allowVolumeExpansion: true`.
+
+**Explanation:** Volume expansion requires `allowVolumeExpansion: true` on the StorageClass. When enabled, users can edit `spec.resources.requests.storage` on the PVC, and the CSI driver will resize the underlying storage volume.
+
+</details>
+
+**Q5: What is the purpose of the `kubernetes.io/pvc-protection` finalizer attached to a PersistentVolumeClaim?**
+
+- [ ] A) It encrypts files written to the volume with AES-256.
+- [ ] B) It delays the physical deletion of a PVC while it is actively being used by a running Pod, preventing data corruption or abrupt volume detachment.
+- [ ] C) It automatically synchronizes PVC contents to an external S3 bucket.
+- [ ] D) It prevents users from deleting any namespaces.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) It delays the physical deletion of a PVC while it is actively being used by a running Pod, preventing data corruption or abrupt volume detachment.
+
+**Explanation:** The Storage Object Protection feature attaches the `kubernetes.io/pvc-protection` finalizer to active PVCs. If an operator runs `kubectl delete pvc`, the PVC stays in `Terminating` until no active Pod is referencing it.
+
+</details>
+
+**Q6: How can a single PersistentVolumeClaim be mounted into two different directories inside a container, or shared across multiple subdirectories, without exposing the root of the volume?**
+
+- [ ] A) Using the `volumeMounts.subPath` parameter.
+- [ ] B) By creating multiple symlinks in the container Dockerfile.
+- [ ] C) Using the `spec.volumeDevices` array.
+- [ ] D) PVCs cannot mount subdirectories.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** A) Using the `volumeMounts.subPath` parameter.
+
+**Explanation:** `volumeMounts.subPath` allows mounting a specific subfolder within a volume instead of its root directory, enabling sharing of a single volume across multiple mounts or containers without exposing the parent filesystem.
+
+</details>
+
 ## 22. StorageClass
 
 **Part 1 — Technical Discussion:** A **StorageClass** provides dynamic storage provisioning for Kubernetes clusters, eliminating the administrative overhead of manually creating static PersistentVolumes. It acts as an abstraction template defining provisioner plugins, cloud storage parameters, and volume binding behaviors.
@@ -2911,6 +4291,7 @@ parameters:
 **Further reading**
 
 - [StorageClasses](https://kubernetes.io/docs/concepts/storage/storage-classes/)
+- [CKA Study Notes: Storage (StorageClasses & Dynamic Provisioning)](../CKA_Study_Notes/08-storage.md)
 
 ### Demo — StorageClass
 
@@ -2965,6 +4346,70 @@ NOTE
 **Correct Answer:** B) The CSI external-provisioner controller.
 
 **Explanation:** The CSI external-provisioner sidecar watches for PVCs with an associated StorageClass and issues CreateVolume gRPC requests to the CSI driver.
+
+</details>
+
+**Q3: What is the key difference between `volumeBindingMode: Immediate` and `volumeBindingMode: WaitForFirstConsumer` on a StorageClass?**
+
+- [ ] A) Immediate allocates storage and binds the volume as soon as the PVC is created; WaitForFirstConsumer delays provisioning and binding until a Pod using the PVC is scheduled, ensuring the volume is created in the pod's availability zone.
+- [ ] B) Immediate provisions storage on SSDs; WaitForFirstConsumer provisions on HDDs.
+- [ ] C) Immediate is used for NFS; WaitForFirstConsumer is used for iSCSI.
+- [ ] D) Immediate skips volume format; WaitForFirstConsumer formats the filesystem.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** A) Immediate allocates storage and binds the volume as soon as the PVC is created; WaitForFirstConsumer delays provisioning and binding until a Pod using the PVC is scheduled, ensuring the volume is created in the pod's availability zone.
+
+**Explanation:** With `Immediate`, cloud disks are provisioned immediately upon PVC creation without knowing where the consumer pod will run, risking multi-zone scheduling deadlocks. `WaitForFirstConsumer` delays creation until scheduling, guaranteeing zonal alignment.
+
+</details>
+
+**Q4: How does Kubernetes determine which StorageClass to use when a developer creates a PVC without specifying `storageClassName`?**
+
+- [ ] A) It rejects the PVC with an HTTP 400 Bad Request.
+- [ ] B) It uses the StorageClass marked with the annotation `storageclass.kubernetes.io/is-default-class: 'true'`. If none exists, dynamic provisioning fails.
+- [ ] C) It randomly selects a StorageClass from the cluster.
+- [ ] D) It always falls back to hostPath storage.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) It uses the StorageClass marked with the annotation `storageclass.kubernetes.io/is-default-class: 'true'`. If none exists, dynamic provisioning fails.
+
+**Explanation:** If `storageClassName` is omitted from a PVC, the dynamic provisioner looks for a StorageClass with the default annotation. If a default class is found, it is used; otherwise, the PVC remains unbound until a class or PV is supplied.
+
+</details>
+
+**Q5: In the modern Container Storage Interface (CSI) specification, what are the two distinct plugins deployed for a storage driver?**
+
+- [ ] A) A Client plugin and a Server plugin.
+- [ ] B) A CSI Controller plugin (Deployment for provisioning/attaching volumes via cloud APIs) and a CSI Node plugin (DaemonSet for formatting/mounting volumes onto worker nodes).
+- [ ] C) A Master plugin and a Worker plugin.
+- [ ] D) An Ingress plugin and an Egress plugin.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) A CSI Controller plugin (Deployment for provisioning/attaching volumes via cloud APIs) and a CSI Node plugin (DaemonSet for formatting/mounting volumes onto worker nodes).
+
+**Explanation:** A complete CSI driver consists of a central Controller plugin (watches PV/PVCs and invokes cloud APIs to create/attach disks) and a Node plugin running on every node (invoked by Kubelet to format, partition, and mount disks locally).
+
+</details>
+
+**Q6: Which Kubernetes resource allows taking point-in-time copies of a PersistentVolumeClaim for backup and disaster recovery?**
+
+- [ ] A) VolumeSnapshot
+- [ ] B) StorageBackup
+- [ ] C) DiskClone
+- [ ] D) PVCCopy
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** A) VolumeSnapshot
+
+**Explanation:** The CSI Snapshotting feature uses `VolumeSnapshot` (namespaced user request), `VolumeSnapshotClass` (storage driver parameters), and `VolumeSnapshotContent` (cluster-scoped snapshot record) to manage point-in-time storage backups.
 
 </details>
 
@@ -3023,6 +4468,7 @@ rules:
 **Further reading**
 
 - [RBAC roles and permissions](https://kubernetes.io/docs/reference/access-authn-authz/rbac/#role-and-clusterrole)
+- [CKA Study Notes: Application Lifecycle (ConfigMaps)](../CKA_Study_Notes/04-application-lifecycle-management.md)
 
 ### Demo — Role
 
@@ -3077,6 +4523,70 @@ NOTE
 **Correct Answer:** B) It uses purely additive (allow-only) evaluation; if any matching rule grants the verb on the resource, the action is permitted.
 
 **Explanation:** Kubernetes RBAC has no 'deny' rules; all permissions are additive (whitelisting). Access is authorized if at least one rule grants the requested verb.
+
+</details>
+
+**Q3: What is the maximum data storage size limit for a single ConfigMap object in standard Kubernetes?**
+
+- [ ] A) 10 Megabytes (10MB)
+- [ ] B) 1 Megabyte (1MB)
+- [ ] C) 512 Kilobytes (512KB)
+- [ ] D) Unlimited (bounded only by host RAM)
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) 1 Megabyte (1MB)
+
+**Explanation:** Because ConfigMaps are stored directly as JSON/protobuf entries within etcd, they are bounded by etcd's default request and value size limit of 1 Megabyte (1MB).
+
+</details>
+
+**Q4: How does setting `immutable: true` on a ConfigMap improve cluster performance and operational safety?**
+
+- [ ] A) It encrypts the ConfigMap with GPG keys.
+- [ ] B) It protects against accidental configuration drift and significantly reduces kube-apiserver load by allowing Kubelets to stop watching the ConfigMap for updates.
+- [ ] C) It forces the ConfigMap to be stored in the Linux kernel ring buffer.
+- [ ] D) It prevents the ConfigMap from being backed up by etcd snapshots.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) It protects against accidental configuration drift and significantly reduces kube-apiserver load by allowing Kubelets to stop watching the ConfigMap for updates.
+
+**Explanation:** Marking a ConfigMap immutable ensures its contents cannot be altered, which allows Kubelets to close active watch connections to the API server, significantly reducing control plane watch overhead in large-scale deployments.
+
+</details>
+
+**Q5: When a ConfigMap is mounted into a Pod as a volume, how are updates to the ConfigMap reflected inside the running container?**
+
+- [ ] A) The container is immediately killed and restarted with exit code 0.
+- [ ] B) The Kubelet's periodic sync loop updates the projected symlink targets inside the container without restarting the pod, though applications must detect the file modification themselves.
+- [ ] C) Updates are never reflected until the worker node is rebooted.
+- [ ] D) The Kubelet re-executes the container entrypoint script.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) The Kubelet's periodic sync loop updates the projected symlink targets inside the container without restarting the pod, though applications must detect the file modification themselves.
+
+**Explanation:** Volume-mounted ConfigMaps are updated automatically by the Kubelet using atomic directory symlink swapping. In contrast, environment variables loaded via `valueFrom` or `envFrom` are never updated without a pod restart.
+
+</details>
+
+**Q6: Which field in a ConfigMap manifest is specifically designed to store non-UTF-8 binary data such as small certificates or gzip archives?**
+
+- [ ] A) spec.binaryFiles
+- [ ] B) binaryData (base64-encoded strings)
+- [ ] C) data.bytes
+- [ ] D) metadata.rawBinary
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) binaryData (base64-encoded strings)
+
+**Explanation:** The `binaryData` field allows storing binary assets as base64-encoded strings, whereas standard `data` requires valid UTF-8 strings.
 
 </details>
 
@@ -3142,6 +4652,7 @@ roleRef:
 **Further reading**
 
 - [RoleBindings](https://kubernetes.io/docs/reference/access-authn-authz/rbac/#rolebinding-and-clusterrolebinding)
+- [CKA Study Notes: Security (Secrets & Encryption at Rest)](../CKA_Study_Notes/06-security.md)
 
 ### Demo — RoleBinding
 
@@ -3200,6 +4711,70 @@ NOTE
 
 </details>
 
+**Q3: By default in a vanilla Kubernetes installation without external configuration, how are Secret resources stored inside the etcd database?**
+
+- [ ] A) Encrypted using hardware AES-NI instructions.
+- [ ] B) Encrypted with RSA-4096 bit public keys.
+- [ ] C) Unencrypted as plain base64-encoded text, meaning anyone with read access to etcd can decode the secrets in plaintext.
+- [ ] D) Stored in volatile worker node memory only.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** C) Unencrypted as plain base64-encoded text, meaning anyone with read access to etcd can decode the secrets in plaintext.
+
+**Explanation:** By default, Kubernetes Secrets are merely base64-encoded strings stored in plaintext in etcd. Base64 is an encoding format, NOT encryption; anyone with access to etcd or API backup files can immediately decode the contents.
+
+</details>
+
+**Q4: To enable native Encryption at Rest for Secrets inside etcd, what resource file must be passed to the `kube-apiserver` via `--encryption-provider-config`?**
+
+- [ ] A) KubeletConfiguration
+- [ ] B) EncryptionConfiguration (specifying providers such as `kms`, `aescbc`, or `secretbox`)
+- [ ] C) SecurityContextConstraints
+- [ ] D) ClusterRoleBinding
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) EncryptionConfiguration (specifying providers such as `kms`, `aescbc`, or `secretbox`)
+
+**Explanation:** The `EncryptionConfiguration` file configures encryption providers (e.g. cloud KMS, AES-CBC, secretbox). The first provider in the list encrypts newly written secrets, while subsequent providers allow reading previously written secrets.
+
+</details>
+
+**Q5: When a Secret is mounted into a Pod as a volume, what underlying filesystem technology does Kubelet use on the worker node to safeguard credentials?**
+
+- [ ] A) An encrypted NTFS partition.
+- [ ] B) A RAM-backed `tmpfs` volume, ensuring the secret payload is stored in memory and never written to the host's physical hard drive.
+- [ ] C) A remote S3 bucket mount.
+- [ ] D) An unformatted raw disk block.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) A RAM-backed `tmpfs` volume, ensuring the secret payload is stored in memory and never written to the host's physical hard drive.
+
+**Explanation:** Kubelet mounts secrets as `tmpfs` (temporary in-memory filesystems). Because tmpfs resides strictly in volatile RAM, secrets are never flushed or written to the node's physical persistent storage.
+
+</details>
+
+**Q6: What is the primary difference between a native Kubernetes Secret and using an External Secrets Operator (ESO) with HashiCorp Vault or AWS Secrets Manager?**
+
+- [ ] A) Native Secrets do not work with container images.
+- [ ] B) External Secrets Operator synchronizes secrets from an enterprise secret management system into Kubernetes Secrets dynamically, maintaining centralized rotation, auditing, and fine-grained access policies outside the cluster.
+- [ ] C) Native Secrets require Java runtimes to decrypt.
+- [ ] D) External Secrets Operator stores secrets directly in DNS TXT records.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) External Secrets Operator synchronizes secrets from an enterprise secret management system into Kubernetes Secrets dynamically, maintaining centralized rotation, auditing, and fine-grained access policies outside the cluster.
+
+**Explanation:** External Secrets Operator bridges Kubernetes with external vaults (AWS Secrets Manager, HashiCorp Vault, Azure Key Vault), allowing security teams to manage secrets, rotations, and audit trails centrally outside of Kubernetes YAML.
+
+</details>
+
 ## 25. ClusterRole
 
 **Part 1 — Technical Discussion:** A **ClusterRole** is a cluster-scoped RBAC resource. Unlike namespaced Roles, ClusterRoles govern permissions across the entire cluster (all namespaces) or for non-namespaced cluster-level resources.
@@ -3253,6 +4828,7 @@ rules:
 **Further reading**
 
 - [RBAC roles and permissions](https://kubernetes.io/docs/reference/access-authn-authz/rbac/#role-and-clusterrole)
+- [CKA Study Notes: Security (Roles & RoleBindings)](../CKA_Study_Notes/06-security.md)
 
 ### Demo — ClusterRole
 
@@ -3307,6 +4883,70 @@ NOTE
 **Correct Answer:** B) The cluster dynamically combines rules from other ClusterRoles matching specified label selectors into an aggregate role.
 
 **Explanation:** ClusterRole aggregation allows custom controllers to extend built-in roles (like admin or edit) by labeling new ClusterRoles that are automatically merged.
+
+</details>
+
+**Q3: What is the scope and limitation of a Kubernetes `Role` compared to a `ClusterRole`?**
+
+- [ ] A) A Role can grant permissions across all namespaces and cluster-scoped resources.
+- [ ] B) A Role is strictly namespace-scoped; its permission rules apply only to resources within the specific namespace in which the Role is defined.
+- [ ] C) A Role can only be bound to ServiceAccounts, never to human Users.
+- [ ] D) A Role applies only to worker nodes.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) A Role is strictly namespace-scoped; its permission rules apply only to resources within the specific namespace in which the Role is defined.
+
+**Explanation:** A `Role` is always bound to a single namespace and can only grant access to namespaced resources (Pods, Services, Deployments) within that namespace. It cannot grant access to cluster-scoped resources like Nodes or PVs.
+
+</details>
+
+**Q4: Which design principle governs all Kubernetes RBAC authorization rules?**
+
+- [ ] A) Deny rules always take precedence over Allow rules.
+- [ ] B) RBAC is purely additive (white-listing only); there are no 'Deny' rules. If an action is not explicitly permitted by a rule, it is denied by default.
+- [ ] C) Permissions are inherited automatically from parent namespaces.
+- [ ] D) Root users are hardcoded in the Linux kernel and bypass RBAC.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) RBAC is purely additive (white-listing only); there are no 'Deny' rules. If an action is not explicitly permitted by a rule, it is denied by default.
+
+**Explanation:** Kubernetes RBAC is strictly additive: rules grant capabilities (`allow`). There is no syntax to declare a `deny`. All actions not explicitly permitted by at least one binding evaluating to true are forbidden.
+
+</details>
+
+**Q5: What happens if a `RoleBinding` in namespace `finance` references a `ClusterRole` named `secret-reader` in its `roleRef`?**
+
+- [ ] A) The subjects gain permission to read Secrets across all namespaces in the cluster.
+- [ ] B) The subjects gain permission to read Secrets ONLY within the `finance` namespace.
+- [ ] C) The API server rejects the RoleBinding with a validation error.
+- [ ] D) The cluster converts the namespace into a cluster administrator.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) The subjects gain permission to read Secrets ONLY within the `finance` namespace.
+
+**Explanation:** A `RoleBinding` can reference a `ClusterRole`. When it does, it scopes the permissions defined in the ClusterRole strictly down to the namespace of the RoleBinding, enabling reuse of common permission definitions across namespaces.
+
+</details>
+
+**Q6: How are subresources (such as reading pod logs or executing commands inside a container) represented in RBAC rules?**
+
+- [ ] A) By listing them as `resources: ["pods/log", "pods/exec"]` in the rule definition.
+- [ ] B) By adding annotations to the pod manifest.
+- [ ] C) By granting full root access to the Node object.
+- [ ] D) Subresources cannot be controlled with RBAC.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** A) By listing them as `resources: ["pods/log", "pods/exec"]` in the rule definition.
+
+**Explanation:** Subresources use a slash delimiter format in the `resources` array (e.g., `pods/log`, `pods/exec`, `pods/status`, `deployments/scale`), allowing granular RBAC controls without granting broad object access.
 
 </details>
 
@@ -3365,6 +5005,7 @@ roleRef:
 **Further reading**
 
 - [RoleBindings](https://kubernetes.io/docs/reference/access-authn-authz/rbac/#rolebinding-and-clusterrolebinding)
+- [CKA Study Notes: Security (ClusterRoles & ClusterRoleBindings)](../CKA_Study_Notes/06-security.md)
 
 ### Demo — ClusterRoleBinding
 
@@ -3421,6 +5062,70 @@ NOTE
 **Correct Answer:** B) No; ClusterRoleBindings are cluster-scoped and always apply across all namespaces; to scope permissions to one namespace, use a RoleBinding.
 
 **Explanation:** ClusterRoleBindings are inherently global; scoping permissions to a specific namespace requires a namespaced RoleBinding.
+
+</details>
+
+**Q3: Which types of resources require a `ClusterRole` and `ClusterRoleBinding` rather than a standard `Role`?**
+
+- [ ] A) Namespaced Pods and ConfigMaps.
+- [ ] B) Cluster-scoped resources (such as `Nodes`, `PersistentVolumes`, `StorageClasses`, `Namespaces`) and non-resource URL paths (like `/healthz`, `/metrics`).
+- [ ] C) Deployments with more than 10 replicas.
+- [ ] D) Pods running with hostNetwork: true.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) Cluster-scoped resources (such as `Nodes`, `PersistentVolumes`, `StorageClasses`, `Namespaces`) and non-resource URL paths (like `/healthz`, `/metrics`).
+
+**Explanation:** Non-namespaced resources (Nodes, PVs, Namespaces, StorageClasses) and non-resource HTTP endpoints (`/healthz`, `/metrics`, `/livez`) do not belong to any namespace and can only be authorized via ClusterRoles and ClusterRoleBindings.
+
+</details>
+
+**Q4: What is an Aggregated ClusterRole and how is it constructed?**
+
+- [ ] A) A ClusterRole created by merging etcd database tables directly.
+- [ ] B) A ClusterRole that uses `aggregationRule.clusterRoleSelectors` to dynamically combine permissions from multiple other ClusterRoles matching specific label selectors.
+- [ ] C) A ClusterRole that automatically grants admin rights to every user in the company.
+- [ ] D) A ClusterRole generated by the CNI plugin.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) A ClusterRole that uses `aggregationRule.clusterRoleSelectors` to dynamically combine permissions from multiple other ClusterRoles matching specific label selectors.
+
+**Explanation:** Aggregated ClusterRoles combine permissions from other ClusterRoles using label selectors (`matchLabels`). Controllers dynamically populate the aggregated role's rules, allowing custom CRDs to automatically extend default roles like `admin` or `edit`.
+
+</details>
+
+**Q5: Which built-in user-facing ClusterRole provides full read-write access to namespaced resources (except Roles and RoleBindings) while denying cluster-scoped administrative rights?**
+
+- [ ] A) cluster-admin
+- [ ] B) admin
+- [ ] C) view
+- [ ] D) system:node
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) admin
+
+**Explanation:** The built-in `admin` role grants read-write access to most namespaced resources (including Deployments, Services, Secrets), whereas `cluster-admin` grants unrestricted superuser rights across the entire cluster.
+
+</details>
+
+**Q6: How can an administrator quickly verify whether a specific ServiceAccount or user has permission to perform an action using the CLI?**
+
+- [ ] A) kubectl auth can-i <verb> <resource> --as=<user> [-n <namespace>]
+- [ ] B) kubectl test rbac --user=<user>
+- [ ] C) kubectl get permissions --all
+- [ ] D) kubectl describe cluster-admin
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** A) kubectl auth can-i <verb> <resource> --as=<user> [-n <namespace>]
+
+**Explanation:** `kubectl auth can-i <verb> <resource>` (e.g. `kubectl auth can-i create deployments --as=developer -n dev`) queries the API server's SelfSubjectAccessReview API to evaluate and report whether the action is authorized.
 
 </details>
 
@@ -3486,6 +5191,7 @@ spec:
 
 - [ServiceAccounts](https://kubernetes.io/docs/concepts/security/service-accounts/)
 - [RBAC authorization](https://kubernetes.io/docs/reference/access-authn-authz/rbac/)
+- [CKA Study Notes: Security (ServiceAccounts)](../CKA_Study_Notes/06-security.md)
 
 ### Demo — ServiceAccount
 
@@ -3539,6 +5245,70 @@ NOTE
 **Correct Answer:** B) /var/run/secrets/kubernetes.io/serviceaccount/
 
 **Explanation:** Kubelet automatically mounts the token, ca.crt, and namespace files into /var/run/secrets/kubernetes.io/serviceaccount/ unless automountServiceAccountToken: false is configured.
+
+</details>
+
+**Q3: What is the primary difference between a `ServiceAccount` and a standard Kubernetes User account?**
+
+- [ ] A) ServiceAccounts are managed directly by Kubernetes API resources for in-cluster processes/Pods; User accounts represent humans and are managed externally (via certificates, OIDC, LDAP) without API objects.
+- [ ] B) ServiceAccounts can only be used on Windows nodes.
+- [ ] C) User accounts are stored in etcd; ServiceAccounts are stored on GitHub.
+- [ ] D) ServiceAccounts cannot be bound to RBAC roles.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** A) ServiceAccounts are managed directly by Kubernetes API resources for in-cluster processes/Pods; User accounts represent humans and are managed externally (via certificates, OIDC, LDAP) without API objects.
+
+**Explanation:** Kubernetes does not have an API resource for human Users (they are authenticated via external IdPs, X.509 certs, or tokens). ServiceAccounts are first-class namespaced Kubernetes API objects designed for machine workloads.
+
+</details>
+
+**Q4: In modern Kubernetes (1.24+), how are ServiceAccount tokens provided to Pods by default?**
+
+- [ ] A) As static, non-expiring secret tokens permanently saved in the namespace's Secret store.
+- [ ] B) Via the `TokenRequest` API as time-bound, audience-restricted, automatically rotated projected volume tokens mounted at `/var/run/secrets/kubernetes.io/serviceaccount/token`.
+- [ ] C) Through an unencrypted environment variable called `$K8S_TOKEN`.
+- [ ] D) By opening an SSH connection to the kube-apiserver.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) Via the `TokenRequest` API as time-bound, audience-restricted, automatically rotated projected volume tokens mounted at `/var/run/secrets/kubernetes.io/serviceaccount/token`.
+
+**Explanation:** Bound Service Account Token Volume projection issues short-lived, time-expiring JWT tokens tied directly to the specific pod instance and API audience, replacing the insecure legacy pattern of eternal static Secret tokens.
+
+</details>
+
+**Q5: If a Pod does not need to communicate with the Kubernetes API server, what setting should be applied for security hardening?**
+
+- [ ] A) `automountServiceAccountToken: false` on the Pod spec or ServiceAccount.
+- [ ] B) `hostNetwork: false`.
+- [ ] C) `dnsPolicy: None`.
+- [ ] D) Assigning `priorityClassName: system-cluster-critical`.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** A) `automountServiceAccountToken: false` on the Pod spec or ServiceAccount.
+
+**Explanation:** Setting `automountServiceAccountToken: false` prevents Kubelet from mounting API credentials into the container filesystem, neutralizing credential theft risk if the application container is compromised.
+
+</details>
+
+**Q6: Where does Kubelet mount in-pod API credentials by default inside a container?**
+
+- [ ] A) /etc/kubernetes/admin.conf
+- [ ] B) /var/run/secrets/kubernetes.io/serviceaccount/
+- [ ] C) /root/.kube/config
+- [ ] D) /tmp/k8s-credentials/
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) /var/run/secrets/kubernetes.io/serviceaccount/
+
+**Explanation:** The standard credential mount path inside every pod is `/var/run/secrets/kubernetes.io/serviceaccount/`, containing `token` (JWT), `ca.crt` (cluster CA certificate), and `namespace` (the pod's namespace name).
 
 </details>
 
@@ -3602,6 +5372,7 @@ spec:
 
 - [Node lifecycle](https://kubernetes.io/docs/concepts/architecture/nodes/#node-lifecycle)
 - [Node controller](https://kubernetes.io/docs/concepts/architecture/nodes/)
+- [CKA Study Notes: Cluster Maintenance (Node Drain & Eviction)](../CKA_Study_Notes/05-cluster-maintenance.md)
 
 ### Demo — Node (controller)
 
@@ -3662,6 +5433,70 @@ NOTE
 
 </details>
 
+**Q3: How long after a worker node stops reporting heartbeats does the Node Lifecycle Controller mark the node as `NotReady` or `Unknown` by default?**
+
+- [ ] A) 5 seconds
+- [ ] B) 40 seconds (`node-monitor-grace-period`)
+- [ ] C) 10 minutes
+- [ ] D) 1 hour
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) 40 seconds (`node-monitor-grace-period`)
+
+**Explanation:** The default `node-monitor-grace-period` in kube-controller-manager is 40 seconds. If no lease heartbeat is received within this window, the controller changes the node's Ready condition to Unknown or False.
+
+</details>
+
+**Q4: When a node transitions to `NotReady` or `Unreachable`, what taint is automatically applied by the Node Lifecycle Controller?**
+
+- [ ] A) `node.kubernetes.io/not-ready:NoExecute` or `node.kubernetes.io/unreachable:NoExecute`
+- [ ] B) `kubernetes.io/shutdown:Crash`
+- [ ] C) `node.critical/evict:Immediate`
+- [ ] D) `hardware.failure/reboot:True`
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** A) `node.kubernetes.io/not-ready:NoExecute` or `node.kubernetes.io/unreachable:NoExecute`
+
+**Explanation:** The controller injects `node.kubernetes.io/not-ready:NoExecute` or `node.kubernetes.io/unreachable:NoExecute`. Pods without matching tolerations begin eviction.
+
+</details>
+
+**Q5: By default, how long will a standard Pod tolerate a `node.kubernetes.io/not-ready:NoExecute` taint before the node controller evicts it?**
+
+- [ ] A) 0 seconds (immediate eviction)
+- [ ] B) 300 seconds (5 minutes, configured via default tolerationSeconds)
+- [ ] C) 24 hours
+- [ ] D) Indefinitely
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) 300 seconds (5 minutes, configured via default tolerationSeconds)
+
+**Explanation:** Kubernetes automatically appends default tolerations to all pods for `not-ready` and `unreachable` with `tolerationSeconds: 300` (5 minutes), preventing immediate mass eviction during transient network blips.
+
+</details>
+
+**Q6: Which Kubelet Node condition indicates that the host's Linux process table is running out of available PID numbers?**
+
+- [ ] A) MemoryPressure
+- [ ] B) PIDPressure
+- [ ] C) DiskPressure
+- [ ] D) NetworkUnavailable
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) PIDPressure
+
+**Explanation:** `PIDPressure` indicates that the number of allocated Linux process IDs on the host is nearing the system limit (`kernel.pid_max`), prompting Kubelet to reject new pods to prevent host kernel lockups.
+
+</details>
+
 ## 29. Namespace (controller)
 
 **Part 1 — Technical Discussion:** The **Namespace Controller** manages the lifecycle, state reconciliation, and cascading deletion of `Namespace` resources in a cluster.
@@ -3714,6 +5549,7 @@ metadata:
 **Further reading**
 
 - [Namespaces](https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/)
+- [CKA Study Notes: Core Concepts (Namespaces)](../CKA_Study_Notes/01-core-concepts.md)
 
 ### Demo — Namespace (controller)
 
@@ -3770,6 +5606,70 @@ NOTE
 **Correct Answer:** B) Cluster-scoped objects like Nodes, PersistentVolumes, and ClusterRoles.
 
 **Explanation:** Namespace deletion cascades to all namespaced objects within its boundary, but cluster-scoped resources exist independently outside any namespace.
+
+</details>
+
+**Q3: What action does the Namespace Controller take when a user executes `kubectl delete namespace <name>`?**
+
+- [ ] A) It immediately deletes the namespace object, leaving running pods orphaned.
+- [ ] B) It transitions the namespace status to `Terminating` and initiates asynchronous cascading deletion of all namespaced resources (Pods, Services, PVCs, ConfigMaps) inside that namespace.
+- [ ] C) It sends an email notification to cluster administrators for approval.
+- [ ] D) It reboots all worker nodes.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) It transitions the namespace status to `Terminating` and initiates asynchronous cascading deletion of all namespaced resources (Pods, Services, PVCs, ConfigMaps) inside that namespace.
+
+**Explanation:** Deleting a namespace puts it into `Terminating`. The namespace controller discovers and deletes all resources residing in that namespace in order before finalizing namespace deletion.
+
+</details>
+
+**Q4: Why does a namespace occasionally become stuck in the `Terminating` status indefinitely?**
+
+- [ ] A) Because the cluster has run out of CPU quota.
+- [ ] B) One or more resources within the namespace have active `finalizers` that cannot be cleared (e.g., an unavailable custom metrics API or dangling PVC protection).
+- [ ] C) Because DNS records cannot be deleted without an internet connection.
+- [ ] D) Because worker nodes refuse to run garbage collection.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) One or more resources within the namespace have active `finalizers` that cannot be cleared (e.g., an unavailable custom metrics API or dangling PVC protection).
+
+**Explanation:** A namespace cannot be completely deleted while objects inside it still have pending finalizers, or if an aggregated API service responsible for a resource type is unresponsive.
+
+</details>
+
+**Q5: Which of the following resources is strictly non-namespaced (cluster-scoped)?**
+
+- [ ] A) ConfigMap
+- [ ] B) PersistentVolume (PV)
+- [ ] C) Service
+- [ ] D) Secret
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) PersistentVolume (PV)
+
+**Explanation:** `PersistentVolume`, `Node`, `Namespace`, `StorageClass`, and `ClusterRole` are cluster-scoped (non-namespaced) resources. ConfigMap, Service, and Secret are namespaced.
+
+</details>
+
+**Q6: Which command displays all Kubernetes resource types along with their API group and whether they are namespaced or cluster-scoped?**
+
+- [ ] A) kubectl api-resources
+- [ ] B) kubectl get all --all-namespaces
+- [ ] C) kubectl explain schema
+- [ ] D) kubectl cluster-info dump
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** A) kubectl api-resources
+
+**Explanation:** `kubectl api-resources` lists all resource types registered with the API server, showing their short name, API group, whether they are namespaced (true/false), and Kind.
 
 </details>
 
@@ -3849,6 +5749,7 @@ spec:
 **Further reading**
 
 - [Resource quotas](https://kubernetes.io/docs/concepts/policy/resource-quotas/)
+- [CKA Study Notes: Scheduling (Resource Limits & Quotas)](../CKA_Study_Notes/02-scheduling.md)
 
 ### Demo — ResourceQuota
 
@@ -3917,6 +5818,70 @@ NOTE
 
 </details>
 
+**Q3: What is the primary difference in scope and enforcement between a `ResourceQuota` and a `LimitRange`?**
+
+- [ ] A) ResourceQuota enforces aggregate resource consumption limits across an entire namespace; LimitRange sets default, minimum, and maximum resource constraints on individual containers/Pods.
+- [ ] B) ResourceQuota is for storage; LimitRange is for CPU.
+- [ ] C) ResourceQuota applies to worker nodes; LimitRange applies to control plane nodes.
+- [ ] D) ResourceQuota applies to external users; LimitRange applies to internal pods.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** A) ResourceQuota enforces aggregate resource consumption limits across an entire namespace; LimitRange sets default, minimum, and maximum resource constraints on individual containers/Pods.
+
+**Explanation:** A ResourceQuota bounds total cumulative usage in a namespace (e.g. max 20 CPUs, 50 Pods total). A LimitRange enforces per-pod or per-container boundaries (e.g. min 100m CPU, default 256Mi RAM) and injects default requests/limits.
+
+</details>
+
+**Q4: If a namespace has a `ResourceQuota` restricting total `requests.cpu`, what happens if a user submits a Pod that does NOT declare any CPU request or limit?**
+
+- [ ] A) The Pod is assigned 100% of the host node's CPU.
+- [ ] B) The API server rejects Pod creation with HTTP 403 Forbidden, unless a `LimitRange` in the namespace injects default CPU requests.
+- [ ] C) The scheduler automatically assigns 1 milliCPU.
+- [ ] D) The ResourceQuota is automatically disabled.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) The API server rejects Pod creation with HTTP 403 Forbidden, unless a `LimitRange` in the namespace injects default CPU requests.
+
+**Explanation:** When a quota restricts compute resources, every submitted container must specify that resource. If a container lacks requests/limits and no LimitRange provides defaults, the admission controller rejects the creation request.
+
+</details>
+
+**Q5: What is the difference between `default` and `defaultRequest` in a container `LimitRange` specification?**
+
+- [ ] A) `default` sets the container resource Limit; `defaultRequest` sets the container resource Request.
+- [ ] B) `default` is for memory; `defaultRequest` is for CPU.
+- [ ] C) `default` applies to Deployments; `defaultRequest` applies to Jobs.
+- [ ] D) `default` is deprecated.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** A) `default` sets the container resource Limit; `defaultRequest` sets the container resource Request.
+
+**Explanation:** In a LimitRange, `default` defines the fallback resource *limits* applied when a pod omits them, while `defaultRequest` defines the fallback resource *requests*.
+
+</details>
+
+**Q6: Which ResourceQuota scope restricts resource calculations only to Pods that have an active deadline specified (such as batch Jobs)?**
+
+- [ ] A) BestEffort
+- [ ] B) Terminating
+- [ ] C) NotTerminating
+- [ ] D) PriorityClass
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) Terminating
+
+**Explanation:** The `Terminating` scope matches Pods that have `spec.activeDeadlineSeconds >= 0` (like batch jobs), allowing separate quotas for short-lived batch workloads versus non-terminating long-running services.
+
+</details>
+
 ## 31. Garbage Collector
 
 **Part 1 — Technical Discussion:** The **Garbage Collector (GC)** is a core controller inside `kube-controller-manager` responsible for identifying and cleaning up orphaned API objects whose parent owner object has been deleted.
@@ -3979,6 +5944,7 @@ spec:
 **Further reading**
 
 - [Owners and dependents](https://kubernetes.io/docs/concepts/architecture/garbage-collection/)
+- [CKA Study Notes: Core Concepts (Garbage Collection)](../CKA_Study_Notes/01-core-concepts.md)
 
 ### Demo — Garbage Collector
 
@@ -4036,6 +6002,70 @@ NOTE
 **Correct Answer:** A) Background deletion deletes child objects after or alongside the parent; Orphan deletion leaves child objects running with their owner references cleared.
 
 **Explanation:** With propagationPolicy: Orphan, the parent is removed while child resources survive as unowned, standalone objects.
+
+</details>
+
+**Q3: What is the primary function of `metadata.ownerReferences` on Kubernetes API objects?**
+
+- [ ] A) It specifies which human developer owns the git commit.
+- [ ] B) It links child resources (such as Pods managed by a ReplicaSet) to their parent controller, allowing the Garbage Collector to automatically clean up dependents when the parent is deleted.
+- [ ] C) It authorizes external TLS connections.
+- [ ] D) It sets billing chargeback codes for cloud accounting.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) It links child resources (such as Pods managed by a ReplicaSet) to their parent controller, allowing the Garbage Collector to automatically clean up dependents when the parent is deleted.
+
+**Explanation:** OwnerReferences establish parent-child relationships between API objects (e.g. Deployment -> ReplicaSet -> Pod). The Garbage Collector uses these links to prune orphaned dependent resources automatically.
+
+</details>
+
+**Q4: What is the difference between `propagationPolicy: Background` and `propagationPolicy: Foreground` during cascading resource deletion?**
+
+- [ ] A) Background deletes the parent first and cleans up child objects asynchronously in the background; Foreground marks the parent in 'deletion in progress' until all child objects are deleted first.
+- [ ] B) Background deletes resources at midnight; Foreground deletes immediately.
+- [ ] C) Background is for worker nodes; Foreground is for control plane nodes.
+- [ ] D) Background only deletes Services; Foreground only deletes Pods.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** A) Background deletes the parent first and cleans up child objects asynchronously in the background; Foreground marks the parent in 'deletion in progress' until all child objects are deleted first.
+
+**Explanation:** With `Background`, Kubernetes deletes the owner object immediately, then the garbage collector deletes dependents later. With `Foreground`, the owner enters `Terminating` with a finalizer, waiting until all dependents are deleted before disappearing.
+
+</details>
+
+**Q5: What restriction applies to `ownerReferences` regarding namespace boundaries?**
+
+- [ ] A) OwnerReferences can cross namespaces only if both namespaces share the same prefix.
+- [ ] B) Cross-namespace owner references are disallowed by design; a namespaced child resource can only have an ownerReference to a parent within the same namespace.
+- [ ] C) OwnerReferences can only point to objects in the `default` namespace.
+- [ ] D) There are no namespace restrictions on OwnerReferences.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) Cross-namespace owner references are disallowed by design; a namespaced child resource can only have an ownerReference to a parent within the same namespace.
+
+**Explanation:** By design, namespaced resources cannot specify owners in different namespaces. This prevents privilege escalation or accidental cross-tenant deletion across namespace boundaries.
+
+</details>
+
+**Q6: How do `finalizers` on an object interact with the Kubernetes Garbage Collector?**
+
+- [ ] A) They immediately erase the object from etcd.
+- [ ] B) They inform the API server that asynchronous cleanup actions (like external cloud load balancer teardown) must succeed before the object can be completely purged from etcd.
+- [ ] C) They force all pods into CrashLoopBackOff.
+- [ ] D) They encrypt the object with AES-256.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) They inform the API server that asynchronous cleanup actions (like external cloud load balancer teardown) must succeed before the object can be completely purged from etcd.
+
+**Explanation:** Finalizers are string identifiers (e.g. `kubernetes.io/pv-protection`) in `metadata.finalizers`. When an object is deleted, it remains in `Terminating` with a `deletionTimestamp` until controllers finish cleanup and remove their finalizers.
 
 </details>
 
@@ -4104,6 +6134,7 @@ spec:
 **Further reading**
 
 - [ReplicaSets](https://kubernetes.io/docs/concepts/workloads/controllers/replicaset/)
+- [CKA Study Notes: Core Concepts (ReplicaSets)](../CKA_Study_Notes/01-core-concepts.md)
 
 ### Demo — ReplicaSet
 
@@ -4160,6 +6191,70 @@ NOTE
 **Correct Answer:** B) Set-based requirements (e.g. environment in (production, staging)).
 
 **Explanation:** ReplicaSets support rich set-based selectors (in, notin, exists), whereas legacy ReplicationControllers only supported exact equality (key = value).
+
+</details>
+
+**Q3: What distinguishes a `ReplicaSet` from its predecessor, the legacy `ReplicationController`?**
+
+- [ ] A) ReplicaSets can run on Windows, whereas ReplicationControllers only run on Linux.
+- [ ] B) ReplicaSets support set-based label selectors (`matchExpressions` with `In`, `NotIn`, `Exists`), whereas ReplicationControllers only support simple equality-based selectors.
+- [ ] C) ReplicaSets do not use etcd.
+- [ ] D) ReplicaSets can only manage a single Pod replica.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) ReplicaSets support set-based label selectors (`matchExpressions` with `In`, `NotIn`, `Exists`), whereas ReplicationControllers only support simple equality-based selectors.
+
+**Explanation:** The primary evolution from ReplicationController to ReplicaSet was the introduction of set-based selectors (`matchExpressions`), allowing complex queries across environments, tiers, and versions.
+
+</details>
+
+**Q4: Why is it generally considered an anti-pattern for developers to manage `ReplicaSet` objects directly?**
+
+- [ ] A) ReplicaSets are deprecated and will be removed in the next release.
+- [ ] B) Deployments manage ReplicaSets automatically, providing declarative rolling updates, rollbacks, and revision history that raw ReplicaSets lack.
+- [ ] C) ReplicaSets cannot restart crashed containers.
+- [ ] D) ReplicaSets consume twice as much network bandwidth.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) Deployments manage ReplicaSets automatically, providing declarative rolling updates, rollbacks, and revision history that raw ReplicaSets lack.
+
+**Explanation:** Deployments sit on top of ReplicaSets. While ReplicaSets ensure replica counts, they do not support automated rolling updates or rollbacks. Deployments manage ReplicaSet lifecycles declaratively.
+
+</details>
+
+**Q5: What happens if an existing running Pod has labels matching a newly created `ReplicaSet`'s selector?**
+
+- [ ] A) The ReplicaSet deletes the existing Pod immediately.
+- [ ] B) The ReplicaSet adopts the existing Pod and counts it toward its desired replica count.
+- [ ] C) The ReplicaSet fails to start with a duplicate label error.
+- [ ] D) The API server renames the Pod.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) The ReplicaSet adopts the existing Pod and counts it toward its desired replica count.
+
+**Explanation:** ReplicaSets operate on label matching, not creation lineage. A ReplicaSet will automatically adopt any unowned Pod matching its selector, counting it toward `spec.replicas`.
+
+</details>
+
+**Q6: What is the purpose of the `pod-template-hash` label injected into Pods by the Deployment controller?**
+
+- [ ] A) It serves as a cryptographic checksum to detect container tampering.
+- [ ] B) It ensures that different ReplicaSets created by a Deployment do not have overlapping label selectors, preventing multi-ReplicaSet selector collisions.
+- [ ] C) It defines the root password for the pod.
+- [ ] D) It hashes the pod's IP address for load balancing.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) It ensures that different ReplicaSets created by a Deployment do not have overlapping label selectors, preventing multi-ReplicaSet selector collisions.
+
+**Explanation:** The Deployment controller hashes the `PodTemplateSpec` and injects `pod-template-hash` into the child ReplicaSet and Pod labels so the Deployment can distinguish between replicas of different revisions.
 
 </details>
 
@@ -4241,6 +6336,7 @@ spec:
 **Further reading**
 
 - [Deployments](https://kubernetes.io/docs/concepts/workloads/controllers/deployment/)
+- [CKA Study Notes: Application Lifecycle (Rolling Updates)](../CKA_Study_Notes/04-application-lifecycle-management.md)
 
 ### Demo — Deployment
 
@@ -4300,6 +6396,70 @@ NOTE
 **Correct Answer:** B) Using kubectl rollout undo deployment/<name>.
 
 **Explanation:** kubectl rollout undo instructs the Deployment controller to roll back the pod template spec to the previous recorded revision in its history.
+
+</details>
+
+**Q3: What is the default deployment strategy in Kubernetes, and what are its two primary tuning parameters?**
+
+- [ ] A) Recreate (downtime); tuned by `activeDeadlineSeconds`.
+- [ ] B) RollingUpdate; tuned by `maxSurge` (maximum pods created above desired count) and `maxUnavailable` (maximum pods unavailable during the update).
+- [ ] C) Canary; tuned by `canaryPercentage`.
+- [ ] D) BlueGreen; tuned by `color`.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) RollingUpdate; tuned by `maxSurge` (maximum pods created above desired count) and `maxUnavailable` (maximum pods unavailable during the update).
+
+**Explanation:** The default strategy is `RollingUpdate`. It is governed by `maxSurge` (how many extra pods can be created above `spec.replicas`) and `maxUnavailable` (how many pods can be down during the rollout), both defaulting to 25%.
+
+</details>
+
+**Q4: Which command rolls back a Deployment to a specific historical revision number?**
+
+- [ ] A) kubectl rollout undo deployment/<name> --to-revision=<N>
+- [ ] B) kubectl deployment rollback <name> -v <N>
+- [ ] C) kubectl revert deployment <name> --revision <N>
+- [ ] D) kubectl apply --rollback <N>
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** A) kubectl rollout undo deployment/<name> --to-revision=<N>
+
+**Explanation:** `kubectl rollout undo deployment/<name> --to-revision=<N>` restores the pod template from the specified historical ReplicaSet revision recorded in the rollout history.
+
+</details>
+
+**Q5: What happens to an in-progress RollingUpdate if the new version's Pods fail their `readinessProbe` checks?**
+
+- [ ] A) The Deployment controller immediately terminates all old healthy pods.
+- [ ] B) The new Pods never transition to `Ready`, preventing the Deployment controller from progressing further or terminating additional old Pods, thereby containing the failure.
+- [ ] C) The entire cluster enters emergency maintenance mode.
+- [ ] D) The Kubelet deletes the Deployment manifest from etcd.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) The new Pods never transition to `Ready`, preventing the Deployment controller from progressing further or terminating additional old Pods, thereby containing the failure.
+
+**Explanation:** Rolling updates wait for new pods to report Ready before terminating old pods. If readiness probes fail, the rollout stalls, preserving the existing healthy pods and preventing user downtime.
+
+</details>
+
+**Q6: How can an administrator pause an active Deployment rollout to inspect the state or execute canary testing before completing the update?**
+
+- [ ] A) kubectl rollout pause deployment/<name>
+- [ ] B) kubectl stop deployment/<name>
+- [ ] C) kubectl drain deployment/<name>
+- [ ] D) systemctl stop kube-deployment
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** A) kubectl rollout pause deployment/<name>
+
+**Explanation:** `kubectl rollout pause deployment/<name>` pauses the rollout, allowing operators to make multiple changes or verify canary behavior before resuming the rollout with `kubectl rollout resume`.
 
 </details>
 
@@ -4385,6 +6545,7 @@ spec:
 **Further reading**
 
 - [StatefulSets](https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/)
+- [CKA Study Notes: Storage & StatefulSets](../CKA_Study_Notes/08-storage.md)
 
 ### Demo — StatefulSet
 
@@ -4475,6 +6636,70 @@ NOTE
 
 </details>
 
+**Q3: What three core guarantees distinguish a `StatefulSet` from a `Deployment`?**
+
+- [ ] A) Faster container startup, zero CPU usage, and automated SSL certs.
+- [ ] B) Stable, unique network identifiers (predictable ordinal DNS names); stable, persistent storage bound to each pod; and ordered, graceful deployment and scaling.
+- [ ] C) Ability to run without Docker, automated backups to S3, and root host access.
+- [ ] D) Guaranteed execution only on control plane nodes.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) Stable, unique network identifiers (predictable ordinal DNS names); stable, persistent storage bound to each pod; and ordered, graceful deployment and scaling.
+
+**Explanation:** StatefulSets provide stable ordinal indices (`pod-0`, `pod-1`), deterministic network identities via Headless Services (`pod-0.svc.ns.svc.cluster.local`), and persistent storage that stays bound to the same ordinal across restarts.
+
+</details>
+
+**Q4: Why is a Headless Service (`spec.clusterIP: None`) strictly required for a StatefulSet?**
+
+- [ ] A) StatefulSets cannot route HTTP traffic.
+- [ ] B) It enables direct DNS resolution for each individual Pod ordinal (e.g. `statefulset-0.service-name`), allowing clustered stateful databases (Cassandra, ZooKeeper, Kafka) to locate specific peers directly.
+- [ ] C) Headless Services bypass Linux kernel routing tables.
+- [ ] D) It encrypts database network traffic.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) It enables direct DNS resolution for each individual Pod ordinal (e.g. `statefulset-0.service-name`), allowing clustered stateful databases (Cassandra, ZooKeeper, Kafka) to locate specific peers directly.
+
+**Explanation:** Clustered stateful applications need peer-to-peer discovery rather than generic load balancing. A Headless Service creates direct SRV/A records for every pod ordinal (`<pod-name>.<service-name>.<ns>.svc.cluster.local`).
+
+</details>
+
+**Q5: What happens to the PersistentVolumeClaims created by a StatefulSet's `volumeClaimTemplates` when the StatefulSet is scaled down or deleted?**
+
+- [ ] A) The PVCs and underlying storage disks are immediately deleted.
+- [ ] B) The PVCs are deliberately NOT deleted, preserving critical application data and allowing pods to reattach to the exact same storage when scaled back up.
+- [ ] C) The PVCs are merged into a single archive file.
+- [ ] D) The PVCs are transferred to the default namespace.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) The PVCs are deliberately NOT deleted, preserving critical application data and allowing pods to reattach to the exact same storage when scaled back up.
+
+**Explanation:** To safeguard stateful data against accidental data loss during scale-down operations, StatefulSets do not delete PVCs created from `volumeClaimTemplates`. Deleting them requires manual administrative action.
+
+</details>
+
+**Q6: What is the purpose of `spec.updateStrategy.rollingUpdate.partition` in a StatefulSet?**
+
+- [ ] A) It partitions the hard drive into separate partitions.
+- [ ] B) It enables canary deployments by updating only Pods with an ordinal greater than or equal to the partition number, leaving lower-numbered ordinals on the old version.
+- [ ] C) It restricts pod execution to specific CPU cores.
+- [ ] D) It splits network traffic across different VPC subnets.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) It enables canary deployments by updating only Pods with an ordinal greater than or equal to the partition number, leaving lower-numbered ordinals on the old version.
+
+**Explanation:** Setting a partition number (e.g. `partition: 3` on a 5-replica set) updates only pods 3 and 4, allowing staged canary verification before rolling out the update to pods 0, 1, and 2.
+
+</details>
+
 ## 35. DaemonSet
 
 **Part 1 — Technical Discussion:** A **DaemonSet** ensures that all (or a selected subset of) Nodes run exactly one copy of a Pod. As new nodes join the cluster, the DaemonSet controller automatically adds the Pod; as nodes are decommissioned, the Pods are garbage collected.
@@ -4550,6 +6775,7 @@ spec:
 **Further reading**
 
 - [DaemonSets](https://kubernetes.io/docs/concepts/workloads/controllers/daemonset/)
+- [CKA Study Notes: Scheduling (DaemonSets)](../CKA_Study_Notes/02-scheduling.md)
 
 ### Demo — DaemonSet
 
@@ -4627,6 +6853,70 @@ NOTE
 
 </details>
 
+**Q3: What is the primary operational role of a `DaemonSet` in a Kubernetes cluster?**
+
+- [ ] A) To run short-lived computational batch scripts that exit upon completion.
+- [ ] B) To ensure that all (or eligible) worker nodes execute exactly one copy of a specific Pod (e.g. CNI networking agents, log collectors, node monitoring daemons).
+- [ ] C) To provide external Layer-7 HTTP routing.
+- [ ] D) To manage the etcd Raft consensus loop.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) To ensure that all (or eligible) worker nodes execute exactly one copy of a specific Pod (e.g. CNI networking agents, log collectors, node monitoring daemons).
+
+**Explanation:** A DaemonSet guarantees that every eligible node in the cluster runs a single replica of a pod. As new nodes join the cluster, the DaemonSet controller automatically adds the pod to them.
+
+</details>
+
+**Q4: When an administrator executes `kubectl drain <node>`, why must the `--ignore-daemonsets` flag typically be specified?**
+
+- [ ] A) Because DaemonSets cannot run on worker nodes.
+- [ ] B) Because DaemonSets are bound to every node; if evicted, the DaemonSet controller would immediately recreate them on that same node, causing the drain command to fail or hang.
+- [ ] C) Because DaemonSets ignore SIGTERM signals.
+- [ ] D) Because DaemonSets are managed by systemd.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) Because DaemonSets are bound to every node; if evicted, the DaemonSet controller would immediately recreate them on that same node, causing the drain command to fail or hang.
+
+**Explanation:** Without `--ignore-daemonsets`, `kubectl drain` refuses to proceed because evicting a daemonset pod is futile: the daemonset controller would immediately schedule a new copy on the same node.
+
+</details>
+
+**Q5: How can an operator configure a DaemonSet to run only on nodes equipped with physical GPU hardware?**
+
+- [ ] A) By setting `spec.gpu: true` on the DaemonSet.
+- [ ] B) By configuring `nodeSelector` or `spec.template.spec.affinity.nodeAffinity` on the DaemonSet pod template to match GPU node labels (e.g. `accelerator: nvidia-tesla`).
+- [ ] C) By installing the CUDA driver into the kube-apiserver.
+- [ ] D) DaemonSets cannot be targeted to specific nodes.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) By configuring `nodeSelector` or `spec.template.spec.affinity.nodeAffinity` on the DaemonSet pod template to match GPU node labels (e.g. `accelerator: nvidia-tesla`).
+
+**Explanation:** DaemonSets evaluate node selectors and node affinity. Specifying node matching rules restricts the DaemonSet controller to creating pods only on nodes possessing the matching labels.
+
+</details>
+
+**Q6: What update strategies are supported by the DaemonSet controller in `spec.updateStrategy.type`?**
+
+- [ ] A) `RollingUpdate` (default, updates nodes gradually according to `maxUnavailable`) and `OnDelete` (updates a node's pod only when the old pod is manually killed).
+- [ ] B) `Recreate` and `Immediate`.
+- [ ] C) `BlueGreen` and `Canary`.
+- [ ] D) `Parallel` and `Serial`.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** A) `RollingUpdate` (default, updates nodes gradually according to `maxUnavailable`) and `OnDelete` (updates a node's pod only when the old pod is manually killed).
+
+**Explanation:** DaemonSets support `RollingUpdate` (automatically terminates and replaces old daemon pods node by node) and `OnDelete` (does not touch running pods until an administrator or automation explicitly deletes them).
+
+</details>
+
 ## 36. Job
 
 **Part 1 — Technical Discussion:** A **Job** creates one or more Pods and tracks them to successful termination (exit code 0). Unlike Deployments and ReplicaSets which continuously restart finished containers to keep them running, a Job ensures that batch tasks execute to completion.
@@ -4686,6 +6976,7 @@ spec:
 **Further reading**
 
 - [Jobs](https://kubernetes.io/docs/concepts/workloads/controllers/job/)
+- [CKA Study Notes: Application Lifecycle (Jobs)](../CKA_Study_Notes/04-application-lifecycle-management.md)
 
 ### Demo — Job
 
@@ -4757,6 +7048,70 @@ NOTE
 
 </details>
 
+**Q3: Which `restartPolicy` values are valid for a Kubernetes `Job` object?**
+
+- [ ] A) Only `Always`
+- [ ] B) `Never` or `OnFailure` (setting `Always` is strictly rejected by the API server)
+- [ ] C) `Conditional` or `Fallback`
+- [ ] D) `OnError` only
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) `Never` or `OnFailure` (setting `Always` is strictly rejected by the API server)
+
+**Explanation:** Jobs run batch processes to completion. A `restartPolicy: Always` makes no sense for a finite job and is rejected by the API server schema; only `Never` (create a new pod on failure) or `OnFailure` (restart container inside same pod) are allowed.
+
+</details>
+
+**Q4: In a Kubernetes Job specification, what is the operational difference between `completions` and `parallelism`?**
+
+- [ ] A) `completions` defines how many successful pod terminations are required for the Job to finish; `parallelism` defines the maximum number of pods that can run concurrently.
+- [ ] B) `completions` is for CPU; `parallelism` is for RAM.
+- [ ] C) `completions` sets timeout seconds; `parallelism` sets retry count.
+- [ ] D) `completions` applies only to CronJobs.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** A) `completions` defines how many successful pod terminations are required for the Job to finish; `parallelism` defines the maximum number of pods that can run concurrently.
+
+**Explanation:** `spec.completions` specifies the target total count of successful pod runs needed, while `spec.parallelism` dictates how many worker pods are allowed to execute at the same time.
+
+</details>
+
+**Q5: What does the `backoffLimit` field (default 6) in a Job manifest configure?**
+
+- [ ] A) The maximum network bandwidth allocated to the job.
+- [ ] B) The maximum number of retries before the Job controller marks the entire Job as permanently Failed.
+- [ ] C) The delay in milliseconds between log entries.
+- [ ] D) The number of backup nodes.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) The maximum number of retries before the Job controller marks the entire Job as permanently Failed.
+
+**Explanation:** `backoffLimit` dictates how many times failed pod runs will be retried with exponential backoff delay (10s, 20s, 40s...) before the Job controller gives up and sets the Job condition to Failed.
+
+</details>
+
+**Q6: How can completed batch Jobs and their associated Pods be automatically cleaned up after finishing without manual scripting?**
+
+- [ ] A) By setting `spec.ttlSecondsAfterFinished` on the Job manifest.
+- [ ] B) By configuring a ResourceQuota with `ttl: 0`.
+- [ ] C) By setting `imagePullPolicy: Never`.
+- [ ] D) Kubernetes automatically deletes all Jobs after 60 seconds.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** A) By setting `spec.ttlSecondsAfterFinished` on the Job manifest.
+
+**Explanation:** The TTL-after-finished controller automatically purges completed or failed Jobs and their associated pods after the duration configured in `spec.ttlSecondsAfterFinished` expires.
+
+</details>
+
 ## 37. CronJob
 
 **Part 1 — Technical Discussion:** A **CronJob** runs Jobs on a recurring, time-based schedule using standard UNIX cron format (`minute hour day-of-month month day-of-week`).
@@ -4819,6 +7174,7 @@ spec:
 **Further reading**
 
 - [CronJobs](https://kubernetes.io/docs/concepts/workloads/controllers/cron-jobs/)
+- [CKA Study Notes: Application Lifecycle (CronJobs)](../CKA_Study_Notes/04-application-lifecycle-management.md)
 
 ### Demo — CronJob
 
@@ -4894,6 +7250,70 @@ NOTE
 
 </details>
 
+**Q3: What are the three supported options for `concurrencyPolicy` in a Kubernetes `CronJob`?**
+
+- [ ] A) `Immediate`, `Delayed`, `Queued`
+- [ ] B) `Allow` (concurrent runs permitted), `Forbid` (skip new run if previous has not finished), `Replace` (cancel running job and start new one)
+- [ ] C) `Fast`, `Normal`, `Slow`
+- [ ] D) `Exclusive`, `Shared`, `Distributed`
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) `Allow` (concurrent runs permitted), `Forbid` (skip new run if previous has not finished), `Replace` (cancel running job and start new one)
+
+**Explanation:** `concurrencyPolicy` defines behavior when a new schedule arrives while an older job is still running: `Allow` runs both concurrently; `Forbid` skips the new execution; `Replace` terminates the older job and launches the new one.
+
+</details>
+
+**Q4: What is the purpose of `startingDeadlineSeconds` on a CronJob?**
+
+- [ ] A) The time limit for the container image to download.
+- [ ] B) The window of time in seconds after the scheduled trigger time during which a missed Job execution can still be started (e.g. if the cluster was down or paused).
+- [ ] C) The execution duration limit for the running job process.
+- [ ] D) The DNS lookup timeout.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) The window of time in seconds after the scheduled trigger time during which a missed Job execution can still be started (e.g. if the cluster was down or paused).
+
+**Explanation:** If a CronJob misses its scheduled time (due to control plane downtime or node maintenance), `startingDeadlineSeconds` defines how long after the missed schedule it is still allowed to start; past the deadline, it is counted as a missed run.
+
+</details>
+
+**Q5: How can an administrator temporarily pause all future automated runs of a CronJob without deleting the resource?**
+
+- [ ] A) By setting `spec.suspend: true` on the CronJob manifest.
+- [ ] B) By changing the schedule to `* * * * *`.
+- [ ] C) By deleting the kube-controller-manager.
+- [ ] D) By adding a `NoSchedule` taint to all worker nodes.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** A) By setting `spec.suspend: true` on the CronJob manifest.
+
+**Explanation:** Setting `spec.suspend: true` pauses execution of all future scheduled runs while preserving the CronJob definition, historical jobs, and configuration intact.
+
+</details>
+
+**Q6: Which parameters control the pruning of finished historical Job objects created by a CronJob?**
+
+- [ ] A) `spec.successfulJobsHistoryLimit` (default 3) and `spec.failedJobsHistoryLimit` (default 1)
+- [ ] B) `spec.retentionPolicy.keepDays`
+- [ ] C) `metadata.historyPruneSeconds`
+- [ ] D) `spec.maxBackupCount`
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** A) `spec.successfulJobsHistoryLimit` (default 3) and `spec.failedJobsHistoryLimit` (default 1)
+
+**Explanation:** `successfulJobsHistoryLimit` (default 3) and `failedJobsHistoryLimit` (default 1) govern how many completed and failed Job records the CronJob controller retains in the API server before pruning.
+
+</details>
+
 ## 38. ReplicationController (legacy)
 
 **Part 1 — Technical Discussion:** A **ReplicationController** is the legacy v1 ancestor to `ReplicaSet`. It served the same core purpose of ensuring that a specified number of Pod replicas were running at all times.
@@ -4954,6 +7374,7 @@ spec:
 **Further reading**
 
 - [ReplicationController](https://kubernetes.io/docs/concepts/workloads/controllers/replicationcontroller/)
+- [CKA Study Notes: Core Concepts (ReplicationControllers)](../CKA_Study_Notes/01-core-concepts.md)
 
 ### Demo — ReplicationController (legacy)
 
@@ -5031,6 +7452,70 @@ NOTE
 
 </details>
 
+**Q3: Why is the legacy `ReplicationController` retained in the core Kubernetes API (`apiVersion: v1`)?**
+
+- [ ] A) It is the required controller for all control plane components.
+- [ ] B) For strict backward compatibility with original Kubernetes v1 manifests, though it is fully superseded by Deployments and ReplicaSets.
+- [ ] C) It offers better performance than ReplicaSet on ARM64 hardware.
+- [ ] D) It is used exclusively for Windows container workloads.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) For strict backward compatibility with original Kubernetes v1 manifests, though it is fully superseded by Deployments and ReplicaSets.
+
+**Explanation:** `ReplicationController` is preserved in the core `v1` API group so that legacy automation and original manifests from early Kubernetes releases continue to function without breaking backward compatibility.
+
+</details>
+
+**Q4: Which selector operator is completely unsupported by a `ReplicationController`?**
+
+- [ ] A) Equality (`environment = production`)
+- [ ] B) Set-based operators (`tier in (frontend, backend)` or `matchExpressions`)
+- [ ] C) String matching
+- [ ] D) Exact label keys
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) Set-based operators (`tier in (frontend, backend)` or `matchExpressions`)
+
+**Explanation:** ReplicationControllers only support equality-based matching (`selector: { app: web }`). They cannot parse `matchExpressions` or set-based operators (`In`, `NotIn`, `Exists`), which were introduced with ReplicaSets.
+
+</details>
+
+**Q5: Can a modern Kubernetes `Deployment` object manage a `ReplicationController`?**
+
+- [ ] A) Yes, if configured with `spec.controllerKind: ReplicationController`.
+- [ ] B) No; Deployments are designed exclusively to manage `ReplicaSet` objects (`apps/v1`).
+- [ ] C) Yes, but only in the `kube-system` namespace.
+- [ ] D) Yes, if the cluster runs in legacy compatibility mode.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) No; Deployments are designed exclusively to manage `ReplicaSet` objects (`apps/v1`).
+
+**Explanation:** Deployments exclusively create and manage ReplicaSets. They have no code path to manage legacy ReplicationControllers.
+
+</details>
+
+**Q6: What is the recommended migration path to upgrade an application running under a `ReplicationController` to a `Deployment` without downtime?**
+
+- [ ] A) Delete all worker nodes and restore from an etcd backup.
+- [ ] B) Deploy a Deployment whose pod template has the identical labels; the Deployment's ReplicaSet will adopt the pods (or roll out new ones), after which the ReplicationController can be deleted with `--cascade=orphan`.
+- [ ] C) Rename the `kind: ReplicationController` line to `kind: Deployment` without changing the schema.
+- [ ] D) Reboot the cluster.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) Deploy a Deployment whose pod template has the identical labels; the Deployment's ReplicaSet will adopt the pods (or roll out new ones), after which the ReplicationController can be deleted with `--cascade=orphan`.
+
+**Explanation:** Because Kubernetes works on label matching, deploying a Deployment with identical labels and deleting the ReplicationController with `--cascade=orphan` allows zero-downtime adoption of existing workloads.
+
+</details>
+
 ## 39. HorizontalPodAutoscaler (HPA)
 
 **Part 1 — Technical Discussion:** The **HorizontalPodAutoscaler (HPA)** automatically scales the number of Pod replicas in a Deployment, ReplicaSet, or StatefulSet up or down based on observed resource utilization or custom application metrics.
@@ -5103,6 +7588,7 @@ spec:
 
 - [Horizontal Pod Autoscaling](https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/)
 - [Autoscaling concepts](https://kubernetes.io/docs/concepts/workloads/autoscaling/)
+- [CKA Study Notes: Logging & Monitoring (Metrics Server & HPA)](../CKA_Study_Notes/03-logging-and-monitoring.md)
 
 ### Demo — HorizontalPodAutoscaler (HPA)
 
@@ -5164,6 +7650,70 @@ NOTE
 **Correct Answer:** B) To prevent 'flapping' (rapid oscillation of scaling up and down in response to transient metric spikes).
 
 **Explanation:** Rapid scaling oscillations degrade application stability; the cooldown window smooths out scale-down decisions over time.
+
+</details>
+
+**Q3: What cluster service must be running for the Horizontal Pod Autoscaler (HPA) to scale workloads based on CPU and memory utilization?**
+
+- [ ] A) CoreDNS
+- [ ] B) Metrics Server (aggregating resource metrics from Kubelet Summary APIs)
+- [ ] C) Flannel CNI
+- [ ] D) External Secrets Operator
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) Metrics Server (aggregating resource metrics from Kubelet Summary APIs)
+
+**Explanation:** HPA queries the `metrics.k8s.io` API. This API is fulfilled by the cluster `Metrics Server`, which periodically scrapes container CPU and RAM usage from Kubelet `/stats/summary` endpoints.
+
+</details>
+
+**Q4: What is the mathematical scaling formula used by the HPA controller to determine desired replica count?**
+
+- [ ] A) `desiredReplicas = ceil[currentReplicas * (currentMetricValue / targetMetricValue)]`
+- [ ] B) `desiredReplicas = currentReplicas + (currentMetricValue * 2)`
+- [ ] C) `desiredReplicas = maxReplicas - minReplicas`
+- [ ] D) `desiredReplicas = floor[targetMetricValue / currentReplicas]`
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** A) `desiredReplicas = ceil[currentReplicas * (currentMetricValue / targetMetricValue)]`
+
+**Explanation:** The HPA evaluates the ratio of observed metric value to target value: `desiredReplicas = ceil[currentReplicas * (currentMetricValue / targetMetricValue)]`, scaling up or down to keep metrics near target.
+
+</details>
+
+**Q5: What is the purpose of the `spec.behavior.scaleDown.stabilizationWindowSeconds` setting in an HPA definition?**
+
+- [ ] A) It delays the startup of containers.
+- [ ] B) It prevents rapid 'flapping' (thrashing) by observing metrics over a sustained window (default 300s / 5 minutes) before scaling down replicas.
+- [ ] C) It restricts pod network throughput.
+- [ ] D) It forces CPU throttling on worker nodes.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) It prevents rapid 'flapping' (thrashing) by observing metrics over a sustained window (default 300s / 5 minutes) before scaling down replicas.
+
+**Explanation:** A stabilization window smooths out momentary spikes and dips in load. During scale-down, HPA looks back across the stabilization window and picks the highest desired replica count calculated during that window, avoiding premature downscaling.
+
+</details>
+
+**Q6: What requirement must application containers meet for an HPA targeting `type: Resource` (e.g. 80% CPU utilization) to calculate percentages?**
+
+- [ ] A) Containers must run as root.
+- [ ] B) Containers must have explicit `resources.requests` defined for that resource; without requests, HPA cannot calculate percentage utilization and will report `<unknown>`.
+- [ ] C) Containers must expose a `/metrics` Prometheus endpoint.
+- [ ] D) Containers must be part of a DaemonSet.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) Containers must have explicit `resources.requests` defined for that resource; without requests, HPA cannot calculate percentage utilization and will report `<unknown>`.
+
+**Explanation:** Target percentage utilization is calculated relative to container resource requests (`actual_usage / requested_resource * 100`). If `requests.cpu` is omitted, HPA has no baseline and cannot compute target percentages.
 
 </details>
 
@@ -5232,6 +7782,7 @@ spec:
 
 - [Vertical Pod Autoscaling](https://github.com/kubernetes/autoscaler/tree/master/vertical-pod-autoscaler)
 - [Autoscaling concepts](https://kubernetes.io/docs/concepts/workloads/autoscaling/)
+- [CKA Study Notes: Logging & Monitoring (Resource Optimization & VPA)](../CKA_Study_Notes/03-logging-and-monitoring.md)
 
 ### Demo — VerticalPodAutoscaler (VPA)
 
@@ -5307,6 +7858,70 @@ NOTE
 
 </details>
 
+**Q3: What are the three primary components that constitute the Kubernetes Vertical Pod Autoscaler (VPA)?**
+
+- [ ] A) Ingress, Service, and EndpointSlice
+- [ ] B) VPA Recommender (computes resource recommendations), VPA Updater (evicts pods needing resizing), and VPA Admission Controller (injects recommended requests upon pod recreation)
+- [ ] C) Kubelet, Containerd, and Runc
+- [ ] D) Prometheus, Grafana, and Alertmanager
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) VPA Recommender (computes resource recommendations), VPA Updater (evicts pods needing resizing), and VPA Admission Controller (injects recommended requests upon pod recreation)
+
+**Explanation:** VPA operates via three decoupled components: Recommender (observes historic usage and calculates target CPU/RAM), Updater (evicts out-of-spec pods), and Mutating Admission Controller (injects new resource values when pods recreate).
+
+</details>
+
+**Q4: What is the operational effect of setting `updateMode: 'Off'` in a VerticalPodAutoscaler manifest?**
+
+- [ ] A) The VPA is completely uninstalled.
+- [ ] B) The VPA computes and publishes recommended resource requests in its status field, but never modifies, evicts, or resizes running Pods.
+- [ ] C) The VPA shuts down all worker nodes.
+- [ ] D) The VPA deletes all Pods matching the targetRef.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) The VPA computes and publishes recommended resource requests in its status field, but never modifies, evicts, or resizes running Pods.
+
+**Explanation:** `updateMode: 'Off'` operates as a safe observation tool. The recommender logs optimal resource sizes in `status.recommendation`, enabling engineers to review recommendations without risking automated pod disruptions.
+
+</details>
+
+**Q5: Why should HPA and VPA generally NOT be configured to scale the same workload based on the same resource metric (such as CPU utilization)?**
+
+- [ ] A) Linux kernels do not support both autoscalers simultaneously.
+- [ ] B) They enter a race condition (thrashing loop): high CPU causes VPA to increase pod CPU requests, while HPA simultaneously adds more replicas, leading to severe resource over-allocation.
+- [ ] C) etcd database corruption will occur.
+- [ ] D) The API server blocks the creation of the VPA manifest.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) They enter a race condition (thrashing loop): high CPU causes VPA to increase pod CPU requests, while HPA simultaneously adds more replicas, leading to severe resource over-allocation.
+
+**Explanation:** Scaling both horizontally (HPA) and vertically (VPA) on the same metric creates conflicting control loops. If CPU spikes, VPA raises the pod's CPU request while HPA adds replicas, resulting in unpredictable and compounding resource expansion.
+
+</details>
+
+**Q6: How does the Kubernetes 'In-Place Pod Resource Resizing' feature (alpha/beta in K8s 1.27+) improve upon traditional VPA behavior?**
+
+- [ ] A) It eliminates the need for Linux cgroups.
+- [ ] B) It allows container CPU and memory requests/limits to be adjusted dynamically without restarting or evicting the container, avoiding application downtime.
+- [ ] C) It converts containers into virtual machines.
+- [ ] D) It doubles host physical RAM on demand.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) It allows container CPU and memory requests/limits to be adjusted dynamically without restarting or evicting the container, avoiding application downtime.
+
+**Explanation:** Traditionally, changing pod resources required pod eviction and restart. In-place resizing allows modifying `resources.requests` and `resources.limits` on running containers without restart by adjusting cgroup limits live in the Linux kernel.
+
+</details>
+
 ## 41. Pod Disruption Budget (PDB)
 
 **Part 1 — Technical Discussion:** A **PodDisruptionBudget (PDB)** limits the number of concurrent voluntary disruptions that an application's Pods can suffer during cluster maintenance operations (e.g., `kubectl drain`, automated node pool upgrades, cluster autoscaler scale-downs).
@@ -5364,6 +7979,7 @@ spec:
 
 - [Pod disruption budgets](https://kubernetes.io/docs/concepts/workloads/pods/disruptions/)
 - [Eviction API](https://kubernetes.io/docs/concepts/scheduling-eviction/api-eviction/)
+- [CKA Study Notes: Cluster Maintenance (Pod Disruption Budgets)](../CKA_Study_Notes/05-cluster-maintenance.md)
 
 ### Demo — Pod Disruption Budget (PDB)
 
@@ -5434,5 +8050,1204 @@ NOTE
 **Correct Answer:** B) The Eviction API rejects or delays the eviction request, causing kubectl drain to wait or retry until sufficient healthy replicas exist elsewhere.
 
 **Explanation:** The Eviction API checks active PDBs and returns HTTP 429 (Too Many Requests) if an eviction would breach the budget, protecting application availability during maintenance.
+
+</details>
+
+**Q3: In a `PodDisruptionBudget` (PDB) specification, what is the constraint regarding `minAvailable` and `maxUnavailable`?**
+
+- [ ] A) Both must always be specified simultaneously.
+- [ ] B) They are mutually exclusive; you can specify either `minAvailable` OR `maxUnavailable`, but never both in the same PDB.
+- [ ] C) `minAvailable` is for memory; `maxUnavailable` is for CPU.
+- [ ] D) `minAvailable` is deprecated.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) They are mutually exclusive; you can specify either `minAvailable` OR `maxUnavailable`, but never both in the same PDB.
+
+**Explanation:** A PDB specification allows either `minAvailable` (minimum healthy pods that must remain) or `maxUnavailable` (maximum pods that can be down simultaneously). Specifying both in the same PDB is rejected by the API server schema.
+
+</details>
+
+**Q4: What happens if an administrator runs `kubectl drain <node>` when a Pod running on that node is protected by a PDB requiring `minAvailable: 100%`?**
+
+- [ ] A) The node is drained immediately without warnings.
+- [ ] B) The Eviction API rejects the eviction with HTTP 429 Too Many Requests, causing `kubectl drain` to stall and retry indefinitely until the timeout expires or the budget is relaxed.
+- [ ] C) The PDB is automatically deleted by the node controller.
+- [ ] D) The entire cluster is rebooted.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) The Eviction API rejects the eviction with HTTP 429 Too Many Requests, causing `kubectl drain` to stall and retry indefinitely until the timeout expires or the budget is relaxed.
+
+**Explanation:** A PDB of `minAvailable: 100%` or `maxUnavailable: 0` creates a drain deadlock. The API server refuses eviction requests, blocking automated node upgrades or drain operations until an operator intervenes.
+
+</details>
+
+**Q5: Does a PodDisruptionBudget protect applications from involuntary disruptions such as hardware node power loss or kernel panics?**
+
+- [ ] A) Yes; PDBs restart hardware automatically.
+- [ ] B) No; PDBs safeguard ONLY against voluntary disruptions (e.g. `kubectl drain`, cluster autoscaler scale-down, automated node pool upgrades); they cannot prevent physical hardware crashes or kernel failures.
+- [ ] C) Yes, by maintaining a redundant cold spare node.
+- [ ] D) Yes, if the cluster runs on cloud VMs.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) No; PDBs safeguard ONLY against voluntary disruptions (e.g. `kubectl drain`, cluster autoscaler scale-down, automated node pool upgrades); they cannot prevent physical hardware crashes or kernel failures.
+
+**Explanation:** PDBs govern only voluntary administrative operations routed through the Kubernetes Eviction API. They cannot prevent involuntary disruptions like hardware failure, kernel panics, or unexpected host reboots.
+
+</details>
+
+**Q6: What is the purpose of the `spec.unhealthyPodEvictionPolicy` setting introduced in Kubernetes 1.27+ for PDBs?**
+
+- [ ] A) It sends an alert to PagerDuty when a pod is unhealthy.
+- [ ] B) It controls whether pods that are already unhealthy or failing readiness probes are allowed to be evicted immediately during a drain, preventing unhealthy pods from permanently blocking node maintenance.
+- [ ] C) It automatically restarts all unhealthy pods every 60 seconds.
+- [ ] D) It marks unhealthy pods as completed.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) It controls whether pods that are already unhealthy or failing readiness probes are allowed to be evicted immediately during a drain, preventing unhealthy pods from permanently blocking node maintenance.
+
+**Explanation:** `unhealthyPodEvictionPolicy: AlwaysAllow` allows eviction of pods that are already not ready/unhealthy regardless of budget constraints, ensuring broken application pods do not deadlock cluster node maintenance drains.
+
+</details>
+
+## 42. Probes & Health Checks (Liveness, Readiness, Startup)
+
+**Part 1 — Technical Discussion:** Kubernetes relies on three native probe mechanisms executed directly by the worker node's `kubelet` to determine whether a container process is healthy, initialized, and capable of serving user traffic.
+
+### The Three Probe Types
+- **`startupProbe`:** Determines whether the application within the container has successfully started. While the `startupProbe` is running, all `livenessProbe` and `readinessProbe` evaluations are paused. If it fails `failureThreshold` times, the container is killed and restarted according to `restartPolicy`. This protects slow-booting legacy or JVM apps.
+- **`livenessProbe`:** Periodically validates whether the application is alive and healthy. If the probe fails consecutively, kubelet terminates the container process and initiates a restart. This catches deadlocks, infinite loops, and unrecoverable thread starvation.
+- **`readinessProbe`:** Determines whether the container is ready to accept incoming network traffic. If it fails, the Pod condition `Ready` is set to `False`, and Kubernetes endpoints controllers immediately remove the Pod IP from Service backends and `EndpointSlices`. Crucially, **the container is not restarted**.
+
+### Supported Probe Handlers
+1. `httpGet`: Initiates an HTTP GET request to a specified port and path. Status codes 200–399 indicate success.
+2. `tcpSocket`: Attempts to open a TCP socket connection on a specified port. Successful connection indicates health.
+3. `exec`: Executes a command inside the container namespace. Exit code 0 indicates success.
+4. `grpc`: Issues a standard gRPC health check request (`grpc.health.v1.HealthCheckRequest`).
+
+```yaml
+# comprehensive-probes.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: resilient-web-app
+  labels:
+    app: resilient-web
+spec:
+  containers:
+  - name: api
+    image: nginx:alpine
+    ports:
+    - containerPort: 80
+    startupProbe:
+      httpGet:
+        path: /healthz
+        port: 80
+      initialDelaySeconds: 5
+      periodSeconds: 5
+      failureThreshold: 30 # Gives app up to 150 seconds to initialize
+    livenessProbe:
+      httpGet:
+        path: /healthz
+        port: 80
+      periodSeconds: 10
+      timeoutSeconds: 3
+      failureThreshold: 3
+    readinessProbe:
+      httpGet:
+        path: /ready
+        port: 80
+      periodSeconds: 5
+      successThreshold: 1
+      failureThreshold: 2
+```
+
+![Probes & Health Checks technical illustration](generated/kubernetes-apartment-complex/42-technical.png)
+
+**Technical perspective:** Probes decouple process execution from traffic readiness. A frequent anti-pattern is confusing liveness with readiness: if an external database goes down and a service responds with 500 errors, failing a liveness probe will cause kubelet to restart all pods simultaneously in a cascading thundering herd. In contrast, failing a readiness probe safely withdraws the pods from the load balancer until the database recovers, preserving process state.
+
+
+### Component architecture flow
+
+<iframe src="diagrams/topic-42.html" width="100%" height="560" style="border:none;"></iframe>
+
+> [!TIP]
+> View the interactive animated diagram in [diagrams/topic-42.html](diagrams/topic-42.html).
+
+**Part 2 — Analogy / Zine:** The resident building safety and inspection protocol: Startup verifies the water heater and gas mains are fully connected before the tenant unpacks; Liveness verifies the tenant hasn't fainted from carbon monoxide (if so, call paramedics/evacuate); Readiness verifies the apartment door is unlocked and tidy before allowing postal carriers and guests inside.
+
+![Probes & Health Checks zine illustration](generated/kubernetes-apartment-complex/42-zine.png)
+
+**Zine explanation:** The illustration translates container lifecycle checks into apartment safety routines.
+
+* **Zine Text & Layout:**
+* (Top): "Probes & Health Checks — The Apartment Inspection Protocols"
+* (Caption): "Startup protects boot time, Liveness restarts frozen apps, and Readiness gates front-door traffic."
+
+**Further reading**
+
+- [Configure Liveness, Readiness and Startup Probes](https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/)
+- [Pod Lifecycle and Container States](https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/)
+- [CKA Study Notes: Application Lifecycle Management](../CKA_Study_Notes/04-application-lifecycle-management.md)
+
+### Demo — Probes & Health Checks (Liveness, Readiness, Startup)
+
+<div style="background:#000;color:#fff;border-radius:8px;padding:1rem;overflow:auto;box-shadow:0 2px 8px rgba(0,0,0,.25);"><pre style="background:transparent;color:#fff;margin:0;white-space:pre-wrap;">
+SETUP
+  kubectl create namespace zine-demo
+
+YAML  (probe-demo.yaml)
+  apiVersion: v1
+  kind: Pod
+  metadata:
+    name: probe-demo
+    namespace: zine-demo
+    labels:
+      app: probe-demo
+  spec:
+    containers:
+    - name: web
+      image: busybox
+      command: ["sh", "-c", "touch /tmp/ready; sleep 20; rm -f /tmp/ready; sleep 600"]
+      readinessProbe:
+        exec:
+          command: ["cat", "/tmp/ready"]
+        initialDelaySeconds: 2
+        periodSeconds: 3
+
+STEPS
+  1. kubectl apply -f probe-demo.yaml
+  2. kubectl get pod probe-demo -n zine-demo -w
+  3. Notice after 2 seconds READY becomes 1/1.
+  4. After 20 seconds /tmp/ready is deleted.
+  5. Watch READY transition to 0/1 without the container being killed or restarted.
+
+WHAT YOU SHOULD SEE
+  The container remains Running with RESTARTS=0, but READY transitions to 0/1 because readiness governs Service traffic inclusion, not container lifecycle.
+
+CLEANUP
+  kubectl delete namespace zine-demo
+
+NOTE
+  Demonstrates how readiness probes isolate pods from traffic without incurring restart penalties.
+</pre></div>
+
+
+### Knowledge Check — Quiz
+
+**Q1: What is the primary operational distinction between a `livenessProbe` and a `readinessProbe` in Kubernetes?**
+
+- [ ] A) A livenessProbe restarts the container if it fails, whereas a readinessProbe removes the Pod's IP from Service endpoints without restarting it.
+- [ ] B) A livenessProbe checks CPU usage, whereas a readinessProbe checks memory usage.
+- [ ] C) A readinessProbe kills the Pod immediately, while a livenessProbe sends a warning to the event log.
+- [ ] D) A livenessProbe is executed only once at boot, while a readinessProbe runs continuously.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** A) A livenessProbe restarts the container if it fails, whereas a readinessProbe removes the Pod's IP from Service endpoints without restarting it.
+
+**Explanation:** If a livenessProbe fails `failureThreshold` times, kubelet restarts the container. If a readinessProbe fails, kubelet sets `Ready=False` so endpoints controllers remove the pod from Service traffic routing without terminating the process.
+
+</details>
+
+**Q2: When deploying a legacy or JVM-based application that takes 3 minutes to warm up before serving requests, which probe should you configure to prevent premature container restarts?**
+
+- [ ] A) A high-frequency `readinessProbe` with `failureThreshold: 1`.
+- [ ] B) A `startupProbe` with sufficient `failureThreshold` and `periodSeconds` to disable liveness/readiness probes until initialization completes.
+- [ ] C) An initContainer running `sleep 180`.
+- [ ] D) A `terminationGracePeriodSeconds` set to 300.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) A `startupProbe` with sufficient `failureThreshold` and `periodSeconds` to disable liveness/readiness probes until initialization completes.
+
+**Explanation:** A `startupProbe` disables liveness and readiness checks until it succeeds for the first time. This protects slow-starting applications from being killed by aggressive liveness probes during boot.
+
+</details>
+
+**Q3: Which of the following is NOT a native probe mechanism supported by the Kubernetes kubelet in modern versions (v1.24+)?**
+
+- [ ] A) `httpGet`
+- [ ] B) `tcpSocket`
+- [ ] C) `grpc`
+- [ ] D) `smtpPing`
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** D) `smtpPing`
+
+**Explanation:** Kubernetes natively supports four probe mechanisms: `httpGet` (HTTP status 200-399), `tcpSocket` (TCP connection establishment), `exec` (exit code 0 inside container), and `grpc` (gRPC health checking protocol). `smtpPing` is not a Kubernetes probe type.
+
+</details>
+
+**Q4: What happens if a Pod's container defines a `readinessProbe` with `initialDelaySeconds: 10`, `periodSeconds: 5`, and `failureThreshold: 3`, and the probe endpoint starts returning HTTP 500?**
+
+- [ ] A) The container is instantly killed and rescheduled to another node.
+- [ ] B) After 3 consecutive failures (approx. 15 seconds), the Pod condition Ready becomes False, and endpoints controllers strip its IP from backend Services.
+- [ ] C) The API server scales the deployment replicas up by 1.
+- [ ] D) The Pod enters CrashLoopBackOff state.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) After 3 consecutive failures (approx. 15 seconds), the Pod condition Ready becomes False, and endpoints controllers strip its IP from backend Services.
+
+**Explanation:** Readiness failure transitions the Pod to not ready. The container process continues running, but Service endpoints stop routing ingress traffic to it until consecutive successful probes pass `successThreshold`.
+
+</details>
+
+**Q5: Why is running an intensive shell script in an `exec` probe every 2 seconds generally considered an anti-pattern in high-density production clusters?**
+
+- [ ] A) Because `exec` probes run on the control plane instead of the worker node.
+- [ ] B) Because each `exec` probe invocation forks and executes new processes inside the container namespace, consuming host PID resources and CPU overhead.
+- [ ] C) Because `exec` probes automatically invalidate Docker image layers.
+- [ ] D) Because `exec` probes can only check files in `/tmp`.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) Because each `exec` probe invocation forks and executes new processes inside the container namespace, consuming host PID resources and CPU overhead.
+
+**Explanation:** Executing shell commands inside a container requires the container runtime to fork and exec a process (e.g. `/bin/sh`), which incurs kernel overhead, creates transient PIDs, and risks node exhaustion at high scale compared to lightweight socket/HTTP probes.
+
+</details>
+
+**Q6: Which container probe setting controls how many consecutive successful probe responses are required before a previously failed container is marked healthy again?**
+
+- [ ] A) `initialDelaySeconds`
+- [ ] B) `timeoutSeconds`
+- [ ] C) `successThreshold`
+- [ ] D) `failureThreshold`
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** C) `successThreshold`
+
+**Explanation:** `successThreshold` defines minimum consecutive successes for the probe to be considered successful after having failed (defaults to 1; must be 1 for liveness and startup probes).
+
+</details>
+
+## 43. EndpointSlices & Headless Services
+
+**Part 1 — Technical Discussion:** In high-scale Kubernetes clusters, traditional monolithic `Endpoints` objects created severe performance bottlenecks: any change to a single Pod IP in a 5,000-pod service triggered full serialization and broadcast of the entire multi-megabyte object to every worker node running `kube-proxy`. Kubernetes introduced **`EndpointSlice`** (`discovery.k8s.io/v1`) to partition endpoints into smaller, scalable subsets (default 100 endpoints per slice).
+
+### Headless Services (`clusterIP: None`)
+When an application requires direct peer-to-peer network connections without intermediate layer-4 proxying or virtual IP load balancing (common in distributed databases, StatefulSets, Kafka, and ZooKeeper), a **Headless Service** is configured with `spec.clusterIP: None`.
+
+- **DNS Behavior:** Instead of returning a single ClusterIP, CoreDNS returns direct DNS `A`/`AAAA` records containing the individual IP addresses of all backing Pods.
+- **Predictable SRV Records:** StatefulSet members obtain deterministic FQDNs:
+  `$(pod-name).$(service-name).$(namespace).svc.cluster.local`
+
+```yaml
+# headless-stateful-service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: database-headless
+  namespace: data-tier
+spec:
+  clusterIP: None # Defines a Headless Service
+  selector:
+    app: distributed-db
+  ports:
+  - port: 5432
+    name: postgres
+```
+
+```yaml
+# sample-endpointslice.yaml
+apiVersion: discovery.k8s.io/v1
+kind: EndpointSlice
+metadata:
+  name: database-headless-abc12
+  namespace: data-tier
+  labels:
+    kubernetes.io/service-name: database-headless
+addressType: IPv4
+ports:
+  - name: postgres
+    port: 5432
+    protocol: TCP
+endpoints:
+  - addresses:
+      - "10.244.1.42"
+    conditions:
+      ready: true
+      serving: true
+      terminating: false
+    nodeName: worker-node-02
+    zone: us-east-1a
+```
+
+![EndpointSlices & Headless Services technical illustration](generated/kubernetes-apartment-complex/43-technical.png)
+
+**Technical perspective:** EndpointSlices model rich metadata including `conditions.terminating` and `zone` topology hints. This enables **Topology Aware Routing**, allowing kube-proxy to route traffic preferentially to Pods within the same availability zone, slashing cross-zone egress latency and cloud transit bandwidth costs.
+
+
+### Component architecture flow
+
+<iframe src="diagrams/topic-43.html" width="100%" height="560" style="border:none;"></iframe>
+
+> [!TIP]
+> View the interactive animated diagram in [diagrams/topic-43.html](diagrams/topic-43.html).
+
+**Part 2 — Analogy / Zine:** The resident intercom and direct telephone directory: Instead of forcing every piece of mail and caller to pass through a single crowded front desk receptionist (ClusterIP), a direct intercom system (Headless Service) allows visitors to buzz individual apartments directly. For massive towers with thousands of units, the front lobby organizes tenant names into modular 100-resident ring binders (EndpointSlices) rather than a single monolithic phone book.
+
+![EndpointSlices & Headless Services zine illustration](generated/kubernetes-apartment-complex/43-zine.png)
+
+**Zine explanation:** Translating direct service discovery and scalable endpoint chunking into building intercom directories.
+
+* **Zine Text & Layout:**
+* (Top): "EndpointSlices & Headless Services — The Direct Intercom"
+* (Caption): "Bypasses virtual IPs to give stateful pods direct DNS records and chunks endpoints for massive scale."
+
+**Further reading**
+
+- [EndpointSlices Documentation](https://kubernetes.io/docs/concepts/services-networking/endpoint-slices/)
+- [Headless Services](https://kubernetes.io/docs/concepts/services-networking/service/#headless-services)
+- [CKA Study Notes: Networking & Service Discovery](../CKA_Study_Notes/07-networking.md)
+
+### Demo — EndpointSlices & Headless Services
+
+<div style="background:#000;color:#fff;border-radius:8px;padding:1rem;overflow:auto;box-shadow:0 2px 8px rgba(0,0,0,.25);"><pre style="background:transparent;color:#fff;margin:0;white-space:pre-wrap;">
+SETUP
+  kubectl create namespace zine-demo
+
+YAML  (headless-demo.yaml)
+  apiVersion: v1
+  kind: Service
+  metadata:
+    name: db-headless
+    namespace: zine-demo
+  spec:
+    clusterIP: None
+    selector:
+      app: db
+    ports:
+    - port: 80
+      name: http
+  ---
+  apiVersion: apps/v1
+  kind: Deployment
+  metadata:
+    name: db-nodes
+    namespace: zine-demo
+  spec:
+    replicas: 2
+    selector:
+      matchLabels:
+        app: db
+    template:
+      metadata:
+        labels:
+          app: db
+      spec:
+        containers:
+        - name: nginx
+          image: nginx:alpine
+
+STEPS
+  1. kubectl apply -f headless-demo.yaml
+  2. kubectl get svc db-headless -n zine-demo     # CLUSTER-IP will show None
+  3. kubectl get endpointslices -n zine-demo -l kubernetes.io/service-name=db-headless
+  4. kubectl describe endpointslice -n zine-demo -l kubernetes.io/service-name=db-headless
+
+WHAT YOU SHOULD SEE
+  The EndpointSlice displays each individual Pod IP address with conditions (ready=true), node name, and protocol mapping, while the Service has no virtual cluster IP.
+
+CLEANUP
+  kubectl delete namespace zine-demo
+
+NOTE
+  Headless services power stateful clustering where pods need to establish direct socket connections to specific peers.
+</pre></div>
+
+
+### Knowledge Check — Quiz
+
+**Q1: What primary scalability bottleneck in large Kubernetes clusters led to the creation of `EndpointSlice` resources to replace legacy `Endpoints`?**
+
+- [ ] A) Legacy Endpoints did not support IPv6.
+- [ ] B) A single Endpoints object contained all Pod IPs for a service; updating a single Pod in a 5,000-replica service forced the API server to serialize and broadcast the entire multi-megabyte object to all nodes.
+- [ ] C) Legacy Endpoints were limited to only 3 backend pods.
+- [ ] D) Endpoints could not resolve DNS SRV records.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) A single Endpoints object contained all Pod IPs for a service; updating a single Pod in a 5,000-replica service forced the API server to serialize and broadcast the entire multi-megabyte object to all nodes.
+
+**Explanation:** Monolithic Endpoints objects scaled poorly because any single pod change caused complete re-serialization and transmission of thousands of IPs. EndpointSlices chunk endpoints into smaller sets (default 100 endpoints per slice), drastically reducing network and CPU overhead.
+
+</details>
+
+**Q2: By default, how many backend endpoints does the Kubernetes `EndpointSlice` controller pack into a single `EndpointSlice` resource before creating an additional slice?**
+
+- [ ] A) 10
+- [ ] B) 100
+- [ ] C) 1,000
+- [ ] D) 65,535
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) 100
+
+**Explanation:** By default, the EndpointSlice controller distributes endpoints across slices of up to 100 endpoints each (controlled by the `--max-endpoints-per-slice` flag on kube-controller-manager).
+
+</details>
+
+**Q3: How do you define a 'Headless Service' in Kubernetes, and what is its primary DNS behavior?**
+
+- [ ] A) Set `spec.type: ExternalName`; it maps external CNAME records.
+- [ ] B) Set `spec.clusterIP: None`; DNS queries for the service name return direct A/AAAA records for the individual backing Pod IPs instead of a single virtual ClusterIP.
+- [ ] C) Omit `spec.ports`; it disables all networking on the pod.
+- [ ] D) Set `metadata.annotations: headless=true`; it disables TLS termination.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) Set `spec.clusterIP: None`; DNS queries for the service name return direct A/AAAA records for the individual backing Pod IPs instead of a single virtual ClusterIP.
+
+**Explanation:** Specifying `clusterIP: None` creates a Headless Service. Without a virtual cluster IP, CoreDNS returns the set of matching Pod IP addresses directly, which is critical for stateful clustering (e.g. Cassandra, ZooKeeper, Elasticsearch).
+
+</details>
+
+**Q4: When querying CoreDNS for a StatefulSet pod named `db-0` governed by a headless service named `db-headless` in namespace `prod`, what FQDN resolves directly to `db-0`'s IP?**
+
+- [ ] A) `db-0.db-headless.prod.svc.cluster.local`
+- [ ] B) `db-headless.db-0.prod.pod.cluster.local`
+- [ ] C) `db-0.prod.cluster.local`
+- [ ] D) `statefulset.db-0.svc.cluster.local`
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** A) `db-0.db-headless.prod.svc.cluster.local`
+
+**Explanation:** Kubernetes automatically registers predictable A records for StatefulSet pods with the pattern `<pod-name>.<service-name>.<namespace>.svc.<cluster-domain>`.
+
+</details>
+
+**Q5: What information does an `EndpointSlice` store for each backend endpoint that legacy `Endpoints` did not natively model in a first-class structured format?**
+
+- [ ] A) Docker image hash and container creation timestamp.
+- [ ] B) Endpoint conditions (`ready`, `serving`, `terminating`) and topology zone hints for topology-aware routing.
+- [ ] C) Host CPU utilization percentages.
+- [ ] D) Linux kernel routing table entries.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) Endpoint conditions (`ready`, `serving`, `terminating`) and topology zone hints for topology-aware routing.
+
+**Explanation:** EndpointSlice objects include structured endpoint conditions (`ready`, `serving`, `terminating`), node names, and `zone` topology information that enable Topology Aware Routing without cluster-wide broadcasts.
+
+</details>
+
+**Q6: If a Pod in a StatefulSet is terminating (`deletionTimestamp` is set) but still finishing active connections, how does an `EndpointSlice` represent its state compared to `spec.publishNotReadyAddresses`?**
+
+- [ ] A) The slice immediately deletes the endpoint entry.
+- [ ] B) The endpoint's `conditions.ready` becomes `false`, but `conditions.terminating` becomes `true` (and `serving` remains `true` if configured), enabling graceful traffic draining.
+- [ ] C) The Pod is marked as a static pod.
+- [ ] D) The EndpointSlice crashes.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) The endpoint's `conditions.ready` becomes `false`, but `conditions.terminating` becomes `true` (and `serving` remains `true` if configured), enabling graceful traffic draining.
+
+**Explanation:** EndpointSlices distinguish between `ready`, `serving`, and `terminating`. This allows traffic forwarders (kube-proxy, ingress controllers) to gracefully drain in-flight requests during rolling updates.
+
+</details>
+
+## 44. Pod Security Standards (PSS) & Admission (PSA)
+
+**Part 1 — Technical Discussion:** Following the deprecation and removal of `PodSecurityPolicy` (PSP) in Kubernetes 1.25+, the native **Pod Security Admission (PSA)** controller implements built-in security policies based on the CNCF **Pod Security Standards (PSS)**.
+
+### The Three Security Profiles
+1. **`Privileged`:** Completely unrestricted policy. Containers may run as root, share host namespaces (`hostPID`, `hostNetwork`, `hostIPC`), access raw host block devices, and enable all Linux capabilities. Intended only for system daemons and CNI/CSI drivers.
+2. **`Baseline`:** Minimally restrictive policy that prevents known privilege escalations with minimal configuration friction. Forbids `privileged: true`, host namespaces, host ports, and capabilities beyond a safe default list, but **allows running as root user**.
+3. **`Restricted`:** Heavily hardened policy enforcing modern cloud-native security best practices. Mandates:
+   - Rootless execution (`runAsNonRoot: true`, `runAsUser: > 0`).
+   - Disallowing privilege escalation (`allowPrivilegeEscalation: false`).
+   - Dropping all capabilities (`drop: ["ALL"]`) with optional addition of `NET_BIND_SERVICE`.
+   - Read-only root filesystems (`readOnlyRootFilesystem: true`).
+   - Restricted volume types (only `configMap`, `secret`, `emptyDir`, `projected`, `downwardAPI`, `persistentVolumeClaim`).
+
+### Namespace Policy Configuration
+PSA is configured declaratively using standardized namespace labels across three evaluation modes:
+- `pod-security.kubernetes.io/enforce`: Rejects pods that violate the standard.
+- `pod-security.kubernetes.io/audit`: Allows violating pods to run, but generates an audit log entry.
+- `pod-security.kubernetes.io/warn`: Returns user-facing CLI warnings upon submission without blocking.
+
+```yaml
+# hardened-namespace.yaml
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: finance-workloads
+  labels:
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/enforce-version: latest
+    pod-security.kubernetes.io/warn: restricted
+    pod-security.kubernetes.io/audit: restricted
+```
+
+```yaml
+# compliant-restricted-pod.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: secure-microservice
+  namespace: finance-workloads
+spec:
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 10001
+    seccompProfile:
+      type: RuntimeDefault
+  containers:
+  - name: app
+    image: nginxinc/nginx-unprivileged:alpine
+    securityContext:
+      allowPrivilegeEscalation: false
+      readOnlyRootFilesystem: true
+      capabilities:
+        drop:
+        - ALL
+```
+
+![Pod Security Standards technical illustration](generated/kubernetes-apartment-complex/44-technical.png)
+
+**Technical perspective:** Built-in PSA eliminates the operational overhead, latency penalty, and failure modes of maintaining external third-party mutating admission webhooks for baseline cluster hygiene. By pinning `enforce-version: v1.31`, teams avoid surprise validation breaks when upgrading Kubernetes control plane versions.
+
+
+### Component architecture flow
+
+<iframe src="diagrams/topic-44.html" width="100%" height="560" style="border:none;"></iframe>
+
+> [!TIP]
+> View the interactive animated diagram in [diagrams/topic-44.html](diagrams/topic-44.html).
+
+**Part 2 — Analogy / Zine:** Building safety codes and fire marshal regulations: The building manager tags wings with standardized safety tiers: Maintenance Workshops (Privileged — heavy equipment and blowtorches allowed), Residential Suites (Baseline — standard appliances, no commercial stoves), and High-Security Bio-Clean Wing (Restricted — fireproof furnishings, non-combustible clothing, and zero open flames permitted). The fire marshal checks every blueprint at the door and blocks entry if fire codes are breached.
+
+![Pod Security Standards zine illustration](generated/kubernetes-apartment-complex/44-zine.png)
+
+**Zine explanation:** Mapping cluster isolation profiles to building safety standards and fire marshal code enforcement.
+
+* **Zine Text & Layout:**
+* (Top): "Pod Security Standards — Building Safety Codes"
+* (Caption): "Privileged, Baseline, and Restricted profiles enforced natively at admission without external webhooks."
+
+**Further reading**
+
+- [Pod Security Standards Documentation](https://kubernetes.io/docs/concepts/security/pod-security-standards/)
+- [Pod Security Admission](https://kubernetes.io/docs/concepts/security/pod-security-admission/)
+- [CKA Study Notes: Security Primitives & Hardening](../CKA_Study_Notes/06-security.md)
+
+### Demo — Pod Security Standards (PSS) & Admission (PSA)
+
+<div style="background:#000;color:#fff;border-radius:8px;padding:1rem;overflow:auto;box-shadow:0 2px 8px rgba(0,0,0,.25);"><pre style="background:transparent;color:#fff;margin:0;white-space:pre-wrap;">
+SETUP
+  kubectl create namespace pss-demo
+  kubectl label namespace pss-demo pod-security.kubernetes.io/enforce=restricted
+
+YAML  (insecure-pod.yaml)
+  apiVersion: v1
+  kind: Pod
+  metadata:
+    name: insecure-pod
+    namespace: pss-demo
+  spec:
+    containers:
+    - name: nginx
+      image: nginx:alpine
+
+STEPS
+  1. kubectl apply -f insecure-pod.yaml
+  2. Observe the immediate API admission rejection error:
+     'Error from server (Forbidden): pods "insecure-pod" is forbidden: violates PodSecurity "restricted:latest"...'
+  3. Notice it lists violations: runAsNonRoot != true, allowPrivilegeEscalation != false, capabilities.drop != ALL.
+
+WHAT YOU SHOULD SEE
+  The API server strictly denies the request without persisting the object to etcd or scheduling it to any worker node.
+
+CLEANUP
+  kubectl delete namespace pss-demo
+
+NOTE
+  Demonstrates declarative zero-trust namespace admission enforcement without third-party plugins.
+</pre></div>
+
+
+### Knowledge Check — Quiz
+
+**Q1: What built-in admission mechanism replaced the deprecated `PodSecurityPolicy` (PSP) starting in Kubernetes 1.25+?**
+
+- [ ] A) AppArmor Controller
+- [ ] B) Pod Security Admission (PSA) enforcing Pod Security Standards (PSS)
+- [ ] C) SELinux DaemonSet
+- [ ] D) IPTables Security Agent
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) Pod Security Admission (PSA) enforcing Pod Security Standards (PSS)
+
+**Explanation:** Pod Security Admission (PSA) is the native replacement for PSP. It evaluates pods against three standardized profiles (`privileged`, `baseline`, `restricted`) defined by the Pod Security Standards.
+
+</details>
+
+**Q2: Which of the three Pod Security Standards (PSS) levels enforces the most stringent security best practices, prohibiting privilege escalation, host namespaces, and requiring rootless execution?**
+
+- [ ] A) `privileged`
+- [ ] B) `baseline`
+- [ ] C) `restricted`
+- [ ] D) `isolated`
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** C) `restricted`
+
+**Explanation:** `restricted` is the most secure profile; it mandates running as non-root, drops all default Linux capabilities except `NET_BIND_SERVICE`, forbids host namespaces, and requires volume restrictions.
+
+</details>
+
+**Q3: How do cluster administrators configure Pod Security Admission policies on a target namespace?**
+
+- [ ] A) By creating custom iptables chains on worker nodes.
+- [ ] B) By applying standard labels to the namespace object (e.g., `pod-security.kubernetes.io/enforce: restricted`).
+- [ ] C) By editing `/etc/shadow` inside container images.
+- [ ] D) By mounting a ConfigMap to kubelet's static manifests directory.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) By applying standard labels to the namespace object (e.g., `pod-security.kubernetes.io/enforce: restricted`).
+
+**Explanation:** PSA is configured declaratively using namespace labels with three modes: `enforce` (rejects violating pods), `audit` (logs violations in audit logs), and `warn` (returns user-facing CLI warnings).
+
+</details>
+
+**Q4: What is the key difference between the `enforce` mode and the `audit` mode in Pod Security Admission?**
+
+- [ ] A) `enforce` modifies pod manifests to fix them, while `audit` deletes violating namespaces.
+- [ ] B) `enforce` rejects the pod creation request if it breaches the standard, whereas `audit` allows the pod to run but records an event in the API audit log.
+- [ ] C) `audit` restarts kube-apiserver on every violation.
+- [ ] D) `enforce` applies only to worker nodes; `audit` applies only to control plane nodes.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) `enforce` rejects the pod creation request if it breaches the standard, whereas `audit` allows the pod to run but records an event in the API audit log.
+
+**Explanation:** `enforce` acts as an active gatekeeper that rejects HTTP POST/PUT requests for non-compliant pods. `audit` allows deployments to proceed without disruption while logging violations for compliance analysis.
+
+</details>
+
+**Q5: Under the `baseline` Pod Security Standard profile, which of the following container configurations is permitted?**
+
+- [ ] A) Running in privileged mode (`securityContext.privileged: true`).
+- [ ] B) Sharing the host network namespace (`spec.hostNetwork: true`).
+- [ ] C) Running as root (`runAsUser: 0`) without privileged capabilities.
+- [ ] D) Sharing the host PID namespace (`spec.hostPID: true`).
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** C) Running as root (`runAsUser: 0`) without privileged capabilities.
+
+**Explanation:** The `baseline` profile prevents known privilege escalations (forbidding `privileged: true`, `hostPID`, `hostIPC`, `hostNetwork`), but intentionally allows running as root to support off-the-shelf container images that have not yet been refactored for rootless execution.
+
+</details>
+
+**Q6: Why is namespace labeling preferred over custom third-party admission webhooks for basic pod hardening in standard Kubernetes?**
+
+- [ ] A) Because namespace labels do not require any external controllers, webhooks, or latency overhead; PSA is compiled directly into kube-apiserver.
+- [ ] B) Because third-party webhooks cannot inspect container manifests.
+- [ ] C) Because PSA automatically encrypts all container disk storage.
+- [ ] D) Because namespace labels work even if the API server is turned off.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** A) Because namespace labels do not require any external controllers, webhooks, or latency overhead; PSA is compiled directly into kube-apiserver.
+
+**Explanation:** PSA is a built-in admission plugin in `kube-apiserver`. Enabling it via namespace labels incurs zero network webhook roundtrips and zero external dependencies, providing deterministic baseline security out of the box.
+
+</details>
+
+## 45. CustomResourceDefinitions (CRDs) & Operators
+
+**Part 1 — Technical Discussion:** Kubernetes is engineered as a fully extensible platform. A **CustomResourceDefinition (CRD)** (`apiextensions.k8s.io/v1`) registers new resource endpoints in the Kubernetes API, allowing developers to define domain-specific abstractions (e.g. `PostgreSQLCluster`, `KafkaTopic`, `BackupSchedule`) that behave identically to native primitives.
+
+### The Operator Pattern
+A CRD defines only the **schema** (desired state); it has no operational intelligence. An **Operator** pairs a CRD with a **Custom Controller** that runs a continuous **Reconcile Loop**:
+1. **Observe:** The controller watches Custom Resources and dependent child resources using `client-go` Informers and Watch streams.
+2. **Analyze:** Compares the actual observed cluster state against the desired state declared in `.spec`.
+3. **Act:** Executes corrective operations (provisioning StatefulSets, triggering automated database backups, executing failover promotions).
+
+```yaml
+# postgres-crd.yaml
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: postgresclusters.database.example.com
+spec:
+  group: database.example.com
+  names:
+    kind: PostgresCluster
+    listKind: PostgresClusterList
+    plural: postgresclusters
+    singular: postgrescluster
+    shortNames:
+    - pg
+  scope: Namespaced
+  versions:
+  - name: v1alpha1
+    served: true
+    storage: true
+    schema:
+      openAPIV3Schema:
+        type: object
+        properties:
+          spec:
+            type: object
+            required: ["replicas", "storageSize"]
+            properties:
+              replicas:
+                type: integer
+                minimum: 1
+                maximum: 5
+              storageSize:
+                type: string
+                pattern: "^[0-9]+(Gi|Mi)$"
+    subresources:
+      status: {}
+```
+
+```yaml
+# my-database-instance.yaml
+apiVersion: database.example.com/v1alpha1
+kind: PostgresCluster
+metadata:
+  name: production-db
+  namespace: data
+spec:
+  replicas: 3
+  storageSize: 50Gi
+```
+
+![CustomResourceDefinitions & Operators technical illustration](generated/kubernetes-apartment-complex/45-technical.png)
+
+**Technical perspective:** Operators encode domain-specific human operational knowledge into self-healing software. Using the `/status` subresource allows operators to record cluster conditions and health metrics without triggering incrementing updates to `.metadata.generation`, preventing infinite reconciliation loops.
+
+
+### Component architecture flow
+
+<iframe src="diagrams/topic-45.html" width="100%" height="560" style="border:none;"></iframe>
+
+> [!TIP]
+> View the interactive animated diagram in [diagrams/topic-45.html](diagrams/topic-45.html).
+
+**Part 2 — Analogy / Zine:** Specialized external facility contractors: The building installs custom, computerized commercial HVAC refrigeration chillers (Custom Resource). Standard on-site apartment janitors do not know how to rebuild chiller compressors, so management hires a specialized 24/7 HVAC engineering contractor (The Operator). The contractor constantly monitors pressure sensors and coolant levels (Informer) and automatically tunes valves and replaces filters to keep the building chillers operating perfectly (Reconcile Loop).
+
+![CustomResourceDefinitions & Operators zine illustration](generated/kubernetes-apartment-complex/45-zine.png)
+
+**Zine explanation:** Translating Kubernetes custom APIs and autonomous controllers into specialized facility equipment and dedicated maintenance contractors.
+
+* **Zine Text & Layout:**
+* (Top): "CRDs & Operators — Specialized Facility Contractors"
+* (Caption): "CRDs define new building blueprints; Operators continuously tune actual machinery to match specifications."
+
+**Further reading**
+
+- [Custom Resources Documentation](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/)
+- [Operator Pattern Overview](https://kubernetes.io/docs/concepts/extend-kubernetes/operator/)
+- [Kubebuilder Book](https://book.kubebuilder.io/)
+
+### Demo — CustomResourceDefinitions (CRDs) & Operators
+
+<div style="background:#000;color:#fff;border-radius:8px;padding:1rem;overflow:auto;box-shadow:0 2px 8px rgba(0,0,0,.25);"><pre style="background:transparent;color:#fff;margin:0;white-space:pre-wrap;">
+SETUP
+  kubectl create namespace zine-demo
+
+YAML  (crd-demo.yaml)
+  apiVersion: apiextensions.k8s.io/v1
+  kind: CustomResourceDefinition
+  metadata:
+    name: apptenants.apartment.demo
+  spec:
+    group: apartment.demo
+    names:
+      kind: AppTenant
+      plural: apptenants
+      shortNames:
+      - at
+    scope: Namespaced
+    versions:
+    - name: v1
+      served: true
+      storage: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              required: ["plan"]
+              properties:
+                plan:
+                  type: string
+                  enum: ["basic", "premium"]
+  ---
+  apiVersion: apartment.demo/v1
+  kind: AppTenant
+  metadata:
+    name: tenant-suite-401
+    namespace: zine-demo
+  spec:
+    plan: premium
+
+STEPS
+  1. kubectl apply -f crd-demo.yaml
+  2. kubectl get crd apptenants.apartment.demo
+  3. kubectl get apptenant -n zine-demo
+  4. kubectl describe at tenant-suite-401 -n zine-demo
+
+WHAT YOU SHOULD SEE
+  The custom resource is stored and queried via standard kubectl commands just like a native Pod or Deployment, with full schema validation enforced.
+
+CLEANUP
+  kubectl delete crd apptenants.apartment.demo
+  kubectl delete namespace zine-demo
+
+NOTE
+  Deleting a CRD automatically deletes all instances of that resource across all namespaces.
+</pre></div>
+
+
+### Knowledge Check — Quiz
+
+**Q1: What is the primary function of a `CustomResourceDefinition` (CRD) in Kubernetes?**
+
+- [ ] A) It compiles new C++ extensions directly into the Linux kernel on worker nodes.
+- [ ] B) It extends the Kubernetes API by registering new declarative resource types (kinds and API groups) backed by etcd storage without modifying Kubernetes core code.
+- [ ] C) It overrides the etcd consensus algorithm with Paxos.
+- [ ] D) It automatically generates Dockerfiles for container applications.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) It extends the Kubernetes API by registering new declarative resource types (kinds and API groups) backed by etcd storage without modifying Kubernetes core code.
+
+**Explanation:** CRDs allow developers to define custom REST endpoints and schemas in the Kubernetes API. The API server serves and stores them in etcd just like native Pods or Deployments.
+
+</details>
+
+**Q2: In the Kubernetes Operator pattern, what component is responsible for turning declarative Custom Resources into actual running infrastructure?**
+
+- [ ] A) The Linux systemd init system.
+- [ ] B) A Custom Controller executing a continuous Reconcile Loop that watches CR events and brings actual state into alignment with desired state.
+- [ ] C) The DNS resolver inside CoreDNS.
+- [ ] D) The kube-proxy iptables rules generator.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) A Custom Controller executing a continuous Reconcile Loop that watches CR events and brings actual state into alignment with desired state.
+
+**Explanation:** An Operator consists of a CRD plus a custom controller. The controller's reconcile loop continuously compares observed state against the custom resource spec and executes corrective operations (e.g. database backups, clustering).
+
+</details>
+
+**Q3: Which schema validation format is mandatory for defining the structure and data types of fields in a `CustomResourceDefinition` (`apiextensions.k8s.io/v1`)?**
+
+- [ ] A) Protocol Buffers v2
+- [ ] B) OpenAPI v3 JSON Schema (`spec.versions[*].schema.openAPIV3Schema`)
+- [ ] C) SQL DDL Schemas
+- [ ] D) XML Document Type Definitions (DTD)
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) OpenAPI v3 JSON Schema (`spec.versions[*].schema.openAPIV3Schema`)
+
+**Explanation:** Kubernetes requires CRDs in `apiextensions.k8s.io/v1` to define structural schemas using OpenAPI v3 JSON Schema for client-side and server-side validation.
+
+</details>
+
+**Q4: What mechanism does an efficient Kubernetes controller use to watch for resource updates without overwhelming the API server with constant polling?**
+
+- [ ] A) Cron jobs querying `kubectl get` every second.
+- [ ] B) HTTP GET long-polling with chunked transfers.
+- [ ] C) Kubernetes Informers and Watch API (`watch=true`) utilizing HTTP chunked streaming and local caching.
+- [ ] D) Direct SSH connections to worker nodes.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** C) Kubernetes Informers and Watch API (`watch=true`) utilizing HTTP chunked streaming and local caching.
+
+**Explanation:** Controllers use client-go Informers and the API Watch stream. The API server streams resource change events (Added, Modified, Deleted) over an open HTTP connection, and informers store state in an in-memory cache.
+
+</details>
+
+**Q5: What is the purpose of the `/status` subresource in a CustomResourceDefinition definition (`spec.versions[*].subresources.status`)?**
+
+- [ ] A) It logs all pod stdout streams to etcd.
+- [ ] B) It isolates the resource `.status` field so custom controllers can update status without mutating `.spec`, enforcing role-based permissions and preventing generation bumps.
+- [ ] C) It reboots the controller pod whenever a field changes.
+- [ ] D) It makes the resource read-only for all cluster administrators.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) It isolates the resource `.status` field so custom controllers can update status without mutating `.spec`, enforcing role-based permissions and preventing generation bumps.
+
+**Explanation:** Enabling the `/status` subresource splits updates: users modify `.spec`, while controllers update `.status` via `PUT /apis/.../customs/name/status`. This prevents race conditions and avoids incrementing `metadata.generation` on status-only updates.
+
+</details>
+
+**Q6: What occurs when you delete a `CustomResourceDefinition` object using `kubectl delete crd <crd-name>`?**
+
+- [ ] A) Only the schema definition is removed; all existing instances of that custom resource remain in etcd.
+- [ ] B) The API server purges the custom resource endpoint AND immediately deletes all existing custom resource instances of that kind across all namespaces.
+- [ ] C) The worker nodes are drained immediately.
+- [ ] D) The API server rejects the deletion until all controllers are uninstalled.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) The API server purges the custom resource endpoint AND immediately deletes all existing custom resource instances of that kind across all namespaces.
+
+**Explanation:** Deleting a CRD is a destructive operation: the API server unregisters the REST endpoint and cascades the immediate deletion of all custom resource instances across every namespace in the cluster.
+
+</details>
+
+## 46. LimitRange
+
+**Part 1 — Technical Discussion:** While a `ResourceQuota` controls the **macroscopic** total aggregate resource consumption across an entire namespace, a **`LimitRange`** (`v1`) enforces **microscopic** resource boundaries and defaults on individual containers, pods, or PersistentVolumeClaims within that namespace.
+
+### Core Capabilities of LimitRange
+1. **Default Requests & Limits Injection:** If a developer submits a Pod manifest that omits compute requests or limits, the built-in `LimitRanger` admission controller mutates the incoming object to inject configured default values before persisting it to etcd.
+2. **Min & Max Bounds Enforcement:** Enforces minimum and maximum allowable bounds for CPU, memory, and storage. Requests or limits outside these bounds cause the API server to reject pod creation immediately.
+3. **Burst Ratio Enforcement (`maxLimitRequestRatio`):** Limits how aggressively a container can burst beyond its guaranteed request (e.g. `limit / request <= 2`), curbing extreme resource overcommit and safeguarding node stability.
+
+```yaml
+# app-namespace-limits.yaml
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: container-resource-rules
+  namespace: engineering
+spec:
+  limits:
+  - type: Container
+    default: # Default limit injected if omitted
+      cpu: 500m
+      memory: 512Mi
+    defaultRequest: # Default request injected if omitted
+      cpu: 100m
+      memory: 128Mi
+    max: # Maximum allowed container limit
+      cpu: "2"
+      memory: 2Gi
+    min: # Minimum allowed container request
+      cpu: 50m
+      memory: 64Mi
+    maxLimitRequestRatio:
+      cpu: 4
+      memory: 4
+  - type: PersistentVolumeClaim
+    min:
+      storage: 1Gi
+    max:
+      storage: 50Gi
+```
+
+![LimitRange technical illustration](generated/kubernetes-apartment-complex/46-technical.png)
+
+**Technical perspective:** A `LimitRange` is mandatory when paired with compute `ResourceQuotas`. If a namespace has a ResourceQuota on `requests.cpu`, Kubernetes rejects any Pod that omits CPU requests; configuring a `LimitRange` ensures default requests are automatically injected, allowing unconfigured pods to run smoothly without manual boilerplate.
+
+
+### Component architecture flow
+
+<iframe src="diagrams/topic-46.html" width="100%" height="560" style="border:none;"></iframe>
+
+> [!TIP]
+> View the interactive animated diagram in [diagrams/topic-46.html](diagrams/topic-46.html).
+
+**Part 2 — Analogy / Zine:** Apartment appliance power draw caps and breaker panel fuses: While the utility company monitors the whole building's monthly electrical bill (ResourceQuota), each apartment suite has its own circuit breaker panel (LimitRange). You cannot plug in an industrial plasma cutter that draws 50 amps (Max Limit), and if you plug in an unbranded microwave without stating its power consumption, the building assumes a baseline 5 amp draw (Default Request).
+
+![LimitRange zine illustration](generated/kubernetes-apartment-complex/46-zine.png)
+
+**Zine explanation:** Translating per-container compute constraints and default request injection into apartment circuit breaker limits.
+
+* **Zine Text & Layout:**
+* (Top): "LimitRange — Appliance Power Draw Limits"
+* (Caption): "Sets min/max boundaries and injects default CPU/memory requests to prevent noisy neighbors."
+
+**Further reading**
+
+- [Configure Default Memory and CPU Requests and Limits](https://kubernetes.io/docs/tasks/administer-cluster/manage-resources/memory-default-namespace/)
+- [Limit Ranges Resource Guide](https://kubernetes.io/docs/concepts/policy/limit-range/)
+- [CKA Study Notes: Scheduling & Resource Limits](../CKA_Study_Notes/02-scheduling.md)
+
+### Demo — LimitRange
+
+<div style="background:#000;color:#fff;border-radius:8px;padding:1rem;overflow:auto;box-shadow:0 2px 8px rgba(0,0,0,.25);"><pre style="background:transparent;color:#fff;margin:0;white-space:pre-wrap;">
+SETUP
+  kubectl create namespace zine-demo
+
+YAML  (limitrange-demo.yaml)
+  apiVersion: v1
+  kind: LimitRange
+  metadata:
+    name: demo-limits
+    namespace: zine-demo
+  spec:
+    limits:
+    - type: Container
+      default:
+        cpu: 250m
+        memory: 256Mi
+      defaultRequest:
+        cpu: 100m
+        memory: 128Mi
+  ---
+  apiVersion: v1
+  kind: Pod
+  metadata:
+    name: unconfigured-pod
+    namespace: zine-demo
+  spec:
+    containers:
+    - name: web
+      image: nginx:alpine
+
+STEPS
+  1. kubectl apply -f limitrange-demo.yaml
+  2. kubectl get pod unconfigured-pod -n zine-demo -o yaml | grep -A 5 resources:
+
+WHAT YOU SHOULD SEE
+  Although the submitted Pod omitted resources, the LimitRanger admission controller injected requests (100m CPU, 128Mi RAM) and limits (250m CPU, 256Mi RAM) automatically.
+
+CLEANUP
+  kubectl delete namespace zine-demo
+
+NOTE
+  Essential for multi-tenant clusters to prevent rogue containers from consuming unlimited host resources.
+</pre></div>
+
+
+### Knowledge Check — Quiz
+
+**Q1: What is the primary difference in purpose between a `ResourceQuota` and a `LimitRange` in Kubernetes?**
+
+- [ ] A) ResourceQuota limits the aggregate resource consumption of an entire namespace, while LimitRange enforces constraints and default values on individual containers/Pods within that namespace.
+- [ ] B) ResourceQuota limits network bandwidth; LimitRange limits disk storage.
+- [ ] C) ResourceQuota is configured on nodes; LimitRange is configured on the control plane.
+- [ ] D) There is no difference; they are aliases for the same object.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** A) ResourceQuota limits the aggregate resource consumption of an entire namespace, while LimitRange enforces constraints and default values on individual containers/Pods within that namespace.
+
+**Explanation:** ResourceQuota sets a macroscopic ceiling for total resources (e.g. max 10 CPUs total across the whole namespace). LimitRange sets microscopic policies on individual containers (e.g. min 100m CPU, max 2 CPU, and default 500m CPU if omitted).
+
+</details>
+
+**Q2: If a developer submits a Pod manifest that does NOT specify `resources.requests` or `resources.limits`, and the namespace contains a `LimitRange` with `default` and `defaultRequest` values, what happens?**
+
+- [ ] A) The Pod creation is rejected with an HTTP 400 Bad Request error.
+- [ ] B) The LimitRanger admission controller automatically mutates the Pod manifest to inject the configured default requests and limits before persisting it to etcd.
+- [ ] C) The Pod is scheduled with unbounded CPU and RAM access.
+- [ ] D) The node kills the container after 10 seconds.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) The LimitRanger admission controller automatically mutates the Pod manifest to inject the configured default requests and limits before persisting it to etcd.
+
+**Explanation:** The built-in `LimitRanger` admission controller mutates incoming pods that lack resource specifications, injecting the namespace's `default` (limits) and `defaultRequest` (requests) values.
+
+</details>
+
+**Q3: What happens if a user submits a Pod specifying `resources.limits.memory: 8Gi`, but the namespace has an active `LimitRange` specifying `max.memory: 4Gi` for containers?**
+
+- [ ] A) The pod is accepted, but the container's memory is capped at 4Gi at runtime by cgroups.
+- [ ] B) The API server rejects the Pod creation with an admission error stating that the requested limit exceeds the maximum allowable container limit.
+- [ ] C) The API server automatically adds a second worker node.
+- [ ] D) The Pod is scheduled but permanently placed in Pending state.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) The API server rejects the Pod creation with an admission error stating that the requested limit exceeds the maximum allowable container limit.
+
+**Explanation:** LimitRange validation occurs during the admission phase. If any container request or limit violates `min`, `max`, or `maxLimitRequestRatio`, the API server rejects the creation request immediately with a validation error.
+
+</details>
+
+**Q4: Why is configuring a `LimitRange` with default requests especially critical in a namespace governed by a `ResourceQuota` that tracks compute resources?**
+
+- [ ] A) Because ResourceQuotas cannot function without a CNI plugin.
+- [ ] B) Because if a namespace has a CPU/memory ResourceQuota, any Pod submitted without explicit resource requests will be rejected by the Quota controller unless a LimitRange injects default requests.
+- [ ] C) Because LimitRange encrypts Secret keys used by ResourceQuotas.
+- [ ] D) Because ResourceQuota requires LimitRange to calculate billing costs.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** B) Because if a namespace has a CPU/memory ResourceQuota, any Pod submitted without explicit resource requests will be rejected by the Quota controller unless a LimitRange injects default requests.
+
+**Explanation:** When a ResourceQuota tracks compute resources (like `requests.cpu`), every container in that namespace MUST declare requests. If users omit them, the quota controller rejects the pod unless a LimitRange is present to provide default requests automatically.
+
+</details>
+
+**Q5: What constraint does the `maxLimitRequestRatio` field in a `LimitRange` object enforce on a container?**
+
+- [ ] A) It limits the maximum allowable ratio between a container's limit and its request (e.g. limit cannot be more than 2x the request), preventing excessive overcommit.
+- [ ] B) It enforces the ratio between CPU cores and memory in gigabytes.
+- [ ] C) It controls the ratio between pod replicas and worker node count.
+- [ ] D) It limits the ratio between TCP and UDP traffic.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** A) It limits the maximum allowable ratio between a container's limit and its request (e.g. limit cannot be more than 2x the request), preventing excessive overcommit.
+
+**Explanation:** `maxLimitRequestRatio` caps how aggressively a container can burst beyond its guaranteed request (e.g. `limit / request <= 2`), protecting nodes from sudden resource starvation due to high overcommitment.
+
+</details>
+
+**Q6: Which types of resources can a `LimitRange` restrict within a namespace?**
+
+- [ ] A) `Container`, `Pod`, and `PersistentVolumeClaim` (storage min/max requests).
+- [ ] B) Only CPU and Memory on Docker daemons.
+- [ ] C) Only API server network bandwidth.
+- [ ] D) Only physical server rack temperatures.
+
+<details>
+<summary>Reveal Answer &amp; Explanation</summary>
+
+**Correct Answer:** A) `Container`, `Pod`, and `PersistentVolumeClaim` (storage min/max requests).
+
+**Explanation:** A LimitRange can enforce constraints across three resource types: `Container` (min/max/default CPU and memory), `Pod` (total min/max across all containers), and `PersistentVolumeClaim` (min/max storage request sizes).
 
 </details>

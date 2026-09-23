@@ -5,7 +5,7 @@ runtime, networking, storage, RBAC, workload controllers, and autoscaling.
 
 ## Contents
 
-- [Complete demo guide](demos-complete.md) — 41 runnable topics with technical
+- [Complete demo guide](demos-complete.md) — 46 runnable topics with technical
   explanations, zine illustrations, realtime observations, and kind demos.
 - [`kind-multinode.yaml`](kind-multinode.yaml) — one control-plane and two
   worker nodes, with local Ingress mapped to ports 8080 and 8443.
@@ -16,6 +16,24 @@ runtime, networking, storage, RBAC, workload controllers, and autoscaling.
 - [Generated illustrations](generated/kubernetes-apartment-complex/) — one
   technical image and one apartment-complex zine image per topic.
 - [Zine prompt pack](kubernetes-full-controllers-zine-prompts.fixed.md)
+- [CKA Study Notes (10 Modules)](CKA_Study_Notes/README.md) — comprehensive companion study modules with 430+ diagrams, architecture flows, command reference, and exam notes.
+
+## 📚 CKA Study Notes (Companion Modules)
+
+The companion modules in [`CKA_Study_Notes/`](CKA_Study_Notes/README.md) provide in-depth theory, diagrams, and CLI commands mapped to the 46 apartment complex topics:
+
+| Module | Title | Key Concepts & Coverage |
+| --- | --- | --- |
+| [01](CKA_Study_Notes/01-core-concepts.md) | [Core Concepts](CKA_Study_Notes/01-core-concepts.md) | Cluster Architecture, etcd, API Server, Controller Manager, Scheduler, Kubelet, Kube-Proxy, Pods, ReplicaSets, Deployments, Services, Namespaces, Imperative Commands |
+| [02](CKA_Study_Notes/02-scheduling.md) | [Scheduling](CKA_Study_Notes/02-scheduling.md) | Manual Scheduling, Labels/Selectors, Taints/Tolerations, Node Affinity, Resource Requirements/Limits, DaemonSets, Static Pods, Custom Schedulers, Topology Spread Constraints, PriorityClass & Pod Preemption, Pod Disruption Budgets (PDB) |
+| [03](CKA_Study_Notes/03-logging-and-monitoring.md) | [Logging & Monitoring](CKA_Study_Notes/03-logging-and-monitoring.md) | Metrics Server, Cluster Monitoring (`top node`/`top pod`), Advanced `kubectl logs` streaming/timestamps/previous, JSONPath expressions, Custom Columns, Sorting, Cluster Events, `journalctl` Kubelet Logs |
+| [04](CKA_Study_Notes/04-application-lifecycle-management.md) | [Application Lifecycle Management](CKA_Study_Notes/04-application-lifecycle-management.md) | Rolling Updates, Rollbacks, Commands/Args, ConfigMaps, Secrets, Multi-Container Pods & Native Sidecars, Init Containers |
+| [05](CKA_Study_Notes/05-cluster-maintenance.md) | [Cluster Maintenance](CKA_Study_Notes/05-cluster-maintenance.md) | OS Upgrades (`drain`/`cordon`/`uncordon`), Version Lifecycle, Step-by-Step Kubeadm Cluster Upgrade Playbook (Control Plane & Worker Nodes), Kubeadm Certificate Expiry & Renewal, etcd Backup & Snapshot Restore |
+| [06](CKA_Study_Notes/06-security.md) | [Security](CKA_Study_Notes/06-security.md) | Security Primitives, TLS Bootstrapping & Certificates API, KubeConfig, RBAC (Roles & ClusterRoles), Projected ServiceAccount Tokens (`TokenRequest` API), Image Security, SecurityContexts, NetworkPolicies, Admission Controllers |
+| [07](CKA_Study_Notes/07-networking.md) | [Networking](CKA_Study_Notes/07-networking.md) | Linux Networking (netns, iptables, routing), CNI Plugins, ClusterIP & NodePort Services, CoreDNS, Modern Ingress v1 Spec (TLS termination, path types), Gateway API, `kubectl port-forward` Debugging |
+| [08](CKA_Study_Notes/08-storage.md) | [Storage](CKA_Study_Notes/08-storage.md) | Docker Storage Drivers, CSI Architecture, PersistentVolumes (PV), PersistentVolumeClaims (PVC), StorageClasses, Live PVC Volume Expansion (`allowVolumeExpansion`), CSI Volume Snapshots & VolumeSnapshotClasses |
+| [09](CKA_Study_Notes/09-cluster-design-and-installation.md) | [Design & Install Cluster](CKA_Study_Notes/09-cluster-design-and-installation.md) | HA Topologies, Stacked vs External etcd, Automated Kubeadm Cluster Deployment |
+| [10](CKA_Study_Notes/10-troubleshooting.md) | [Troubleshooting](CKA_Study_Notes/10-troubleshooting.md) | Application Failures, Service Routing Diagnosis, Control Plane Static Pod Diagnosis, Worker Node NotReady Triage (cgroups, containerd, swap), Network Troubleshooting, Interactive `kubectl debug` (ephemeral containers, pod copies, node chroot) |
 
 ## Runtime model
 

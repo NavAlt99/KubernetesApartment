@@ -74,6 +74,12 @@ def get_topics_and_header():
             cat = "Workload Controllers"
         elif num in [39, 40, 41]:
             cat = "Autoscaling & Disruption"
+        elif num in [42, 43]:
+            cat = "Workload & Pod Lifecycle"
+        elif num in [44, 46]:
+            cat = "Security & Governance"
+        elif num == 45:
+            cat = "Extensibility & Operators"
 
         topics.append({
             "num": num,
@@ -88,14 +94,32 @@ def get_topics_and_header():
             "tech_img": f"generated/kubernetes-apartment-complex/{num:02d}-technical.png",
             "zine_img": f"generated/kubernetes-apartment-complex/{num:02d}-zine.png",
             "diagram": f"diagrams/topic-{num:02d}.html",
-            "quiz": QUIZZES.get(num, [])
+            "quiz": QUIZZES.get(num) or QUIZZES.get(str(num), [])
         })
 
     return header, topics
 
 
 def generate_index_html(topics):
+    total_topics = len(topics)
     topics_json = json.dumps(topics)
+
+    category_counts = {}
+    for t in topics:
+        c = t["category"]
+        category_counts[c] = category_counts.get(c, 0) + 1
+
+    pills_html = ['<div class="cat-pill active" onclick="setCategoryFilter(\'All\', this)">All (' + str(total_topics) + ')</div>']
+    for cat_name, count in category_counts.items():
+        short_name = cat_name.split()[0]
+        if "Lifecycle" in cat_name:
+            short_name = "Lifecycle"
+        elif "Governance" in cat_name:
+            short_name = "Governance"
+        elif "Operators" in cat_name:
+            short_name = "Operators"
+        pills_html.append('<div class="cat-pill" onclick="setCategoryFilter(\'' + cat_name + '\', this)">' + short_name + ' (' + str(count) + ')</div>')
+    category_pills_str = "\n        ".join(pills_html)
 
     html = f"""<!DOCTYPE html>
 <html lang="en">
@@ -199,6 +223,73 @@ def generate_index_html(topics):
     background: #7dd3fc;
     color: #0b1120;
     box-shadow: 0 0 16px var(--accent-glow);
+  }}
+
+  /* Markdown Dropdown Menu */
+  .dropdown {{
+    position: relative;
+    display: inline-block;
+  }}
+  .dropdown-toggle {{
+    user-select: none;
+  }}
+  .dropdown-menu {{
+    display: none;
+    position: absolute;
+    right: 0;
+    top: calc(100% + 8px);
+    background: #0d1527;
+    border: 1px solid var(--panel-border);
+    border-radius: 8px;
+    min-width: 320px;
+    max-height: 480px;
+    overflow-y: auto;
+    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.7), 0 0 20px rgba(56, 189, 248, 0.15);
+    z-index: 1000;
+    padding: 8px 0;
+    backdrop-filter: blur(8px);
+  }}
+  .dropdown-menu.show {{
+    display: block;
+    animation: fadeInDown 0.18s ease-out;
+  }}
+  @keyframes fadeInDown {{
+    from {{ opacity: 0; transform: translateY(-6px); }}
+    to {{ opacity: 1; transform: translateY(0); }}
+  }}
+  .dropdown-header {{
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--accent);
+    padding: 8px 16px 4px;
+    font-weight: 700;
+  }}
+  .dropdown-divider {{
+    height: 1px;
+    background: var(--panel-border);
+    margin: 6px 0;
+  }}
+  .dropdown-item {{
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 16px;
+    font-size: 12px;
+    color: var(--text-main);
+    text-decoration: none;
+    transition: background 0.15s, color 0.15s;
+  }}
+  .dropdown-item:hover {{
+    background: rgba(56, 189, 248, 0.12);
+    color: #fff;
+    text-decoration: none;
+  }}
+  .dropdown-item .icon {{
+    font-size: 13px;
+    min-width: 22px;
+    font-weight: 700;
+    color: var(--accent);
   }}
 
   /* Container */
@@ -656,7 +747,52 @@ def generate_index_html(topics):
     </div>
     <div class="header-actions">
       <button class="btn" onclick="showHome()">🗺 Architecture Map</button>
-      <a href="demos-complete.md" class="btn" target="_blank">📄 View Markdown</a>
+      <div class="dropdown">
+        <button class="btn dropdown-toggle" id="markdownDropdownBtn" onclick="toggleMarkdownMenu(event)">
+          📄 View Markdown ▾
+        </button>
+        <div class="dropdown-menu" id="markdownDropdownMenu">
+          <div class="dropdown-header">Apartment Demos</div>
+          <a href="demos-complete.md" class="dropdown-item" target="_blank">
+            <span class="icon">🏢</span> Complete Apartment Demos ({total_topics} Topics)
+          </a>
+          <div class="dropdown-divider"></div>
+          <div class="dropdown-header">CKA Exam Study Notes</div>
+          <a href="CKA_Study_Notes/README.md" class="dropdown-item" target="_blank">
+            <span class="icon">📚</span> CKA Notes Overview &amp; Curriculum
+          </a>
+          <a href="CKA_Study_Notes/01-core-concepts.md" class="dropdown-item" target="_blank">
+            <span class="icon">01</span> Core Concepts &amp; Architecture
+          </a>
+          <a href="CKA_Study_Notes/02-scheduling.md" class="dropdown-item" target="_blank">
+            <span class="icon">02</span> Scheduling, Topology Spread &amp; PDB
+          </a>
+          <a href="CKA_Study_Notes/03-logging-and-monitoring.md" class="dropdown-item" target="_blank">
+            <span class="icon">03</span> Logging, Metrics &amp; JSONPath
+          </a>
+          <a href="CKA_Study_Notes/04-application-lifecycle-management.md" class="dropdown-item" target="_blank">
+            <span class="icon">04</span> Application Lifecycle &amp; Config
+          </a>
+          <a href="CKA_Study_Notes/05-cluster-maintenance.md" class="dropdown-item" target="_blank">
+            <span class="icon">05</span> Cluster Upgrades &amp; Maintenance
+          </a>
+          <a href="CKA_Study_Notes/06-security.md" class="dropdown-item" target="_blank">
+            <span class="icon">06</span> Security, Projected Tokens &amp; RBAC
+          </a>
+          <a href="CKA_Study_Notes/07-networking.md" class="dropdown-item" target="_blank">
+            <span class="icon">07</span> Networking, Ingress v1 &amp; Gateway
+          </a>
+          <a href="CKA_Study_Notes/08-storage.md" class="dropdown-item" target="_blank">
+            <span class="icon">08</span> Storage, PVC Expansion &amp; Snapshots
+          </a>
+          <a href="CKA_Study_Notes/09-cluster-design-and-installation.md" class="dropdown-item" target="_blank">
+            <span class="icon">09</span> Cluster Design &amp; Installation
+          </a>
+          <a href="CKA_Study_Notes/10-troubleshooting.md" class="dropdown-item" target="_blank">
+            <span class="icon">10</span> Troubleshooting &amp; kubectl debug
+          </a>
+        </div>
+      </div>
     </div>
   </header>
 
@@ -731,14 +867,14 @@ def generate_index_html(topics):
 
           <g class="interactive-node" id="mWorkload" onclick="goToTopic(33)">
             <rect class="node-box cp" x="50" y="352" width="410" height="54" rx="10"/>
-            <text class="node-title" x="255" y="374" text-anchor="middle">Workload Controllers</text>
-            <text class="node-sub" x="255" y="392" text-anchor="middle">Topics 32-38 · Deployments, StatefulSets, DaemonSets, Jobs</text>
+            <text class="node-title" x="255" y="374" text-anchor="middle">Workload Controllers &amp; Operators</text>
+            <text class="node-sub" x="255" y="392" text-anchor="middle">Topics 32-38, 45 · Deployments, StatefulSets, Jobs, Operators</text>
           </g>
 
           <g class="interactive-node" id="mRbac" onclick="goToTopic(23)">
             <rect class="node-box cp" x="50" y="426" width="410" height="54" rx="10"/>
-            <text class="node-title" x="255" y="448" text-anchor="middle">RBAC &amp; Governance</text>
-            <text class="node-sub" x="255" y="466" text-anchor="middle">Topics 23-31 · Roles, Quotas, GC, ServiceAccounts</text>
+            <text class="node-title" x="255" y="448" text-anchor="middle">Security, RBAC &amp; Governance</text>
+            <text class="node-sub" x="255" y="466" text-anchor="middle">Topics 23-31, 44, 46 · Roles, Quotas, PSA, LimitRanges</text>
           </g>
 
           <!-- Worker Node Components -->
@@ -768,8 +904,8 @@ def generate_index_html(topics):
 
           <g class="interactive-node" id="mPods" onclick="goToTopic(12)">
             <rect class="node-box wn" x="540" y="274" width="410" height="56" rx="10"/>
-            <text class="node-title" x="745" y="298" text-anchor="middle">Pods, Sidecars &amp; Init Containers</text>
-            <text class="node-sub" x="745" y="316" text-anchor="middle">Topics 08, 12, 13 · Application Runtime Sandboxes</text>
+            <text class="node-title" x="745" y="298" text-anchor="middle">Pods, Sidecars &amp; Health Probes</text>
+            <text class="node-sub" x="745" y="316" text-anchor="middle">Topics 08, 12, 13, 42 · Application Sandboxes &amp; Probes</text>
           </g>
 
           <g class="interactive-node" id="mStorage" onclick="goToTopic(20)">
@@ -793,8 +929,8 @@ def generate_index_html(topics):
 
           <g class="interactive-node" id="mServices" onclick="goToTopic(16)">
             <rect class="node-box neutral" x="360" y="560" width="280" height="64" rx="10"/>
-            <text class="node-title" x="500" y="586" text-anchor="middle">Services &amp; Endpoints</text>
-            <text class="node-sub" x="500" y="606" text-anchor="middle">Topics 16, 17 · ClusterIP &amp; EndpointSlices</text>
+            <text class="node-title" x="500" y="586" text-anchor="middle">Services &amp; EndpointSlices</text>
+            <text class="node-sub" x="500" y="606" text-anchor="middle">Topics 16, 17, 43 · ClusterIP, Headless &amp; Slices</text>
           </g>
 
           <g class="interactive-node" id="mCoreDns" onclick="goToTopic(15)">
@@ -831,21 +967,13 @@ def generate_index_html(topics):
 
       <!-- Topics Directory & Search Filter -->
       <div class="section-title">
-        <span>Topic Reference Catalog (41 Topics)</span>
+        <span>Topic Reference Catalog ({total_topics} Topics)</span>
         <span style="font-size: 11px; color: var(--text-dim); font-weight: normal;">Search or filter by category</span>
       </div>
 
       <div class="filter-controls">
         <input type="text" id="topicSearch" class="search-input" placeholder="Search topic by name, component, or keyword..." oninput="filterTopics()">
-        <div class="cat-pill active" onclick="setCategoryFilter('All', this)">All (41)</div>
-        <div class="cat-pill" onclick="setCategoryFilter('Cluster Architecture', this)">Cluster (2)</div>
-        <div class="cat-pill" onclick="setCategoryFilter('Control Plane Core', this)">Control Plane (5)</div>
-        <div class="cat-pill" onclick="setCategoryFilter('Nodes & Runtime', this)">Nodes (6)</div>
-        <div class="cat-pill" onclick="setCategoryFilter('Networking & Ingress', this)">Networking (6)</div>
-        <div class="cat-pill" onclick="setCategoryFilter('Storage Subsystem', this)">Storage (3)</div>
-        <div class="cat-pill" onclick="setCategoryFilter('Security & RBAC', this)">RBAC (5)</div>
-        <div class="cat-pill" onclick="setCategoryFilter('Workload Controllers', this)">Workloads (7)</div>
-        <div class="cat-pill" onclick="setCategoryFilter('Autoscaling & Disruption', this)">Autoscaling (3)</div>
+        {category_pills_str}
       </div>
 
       <div class="topics-grid" id="topicsGrid">
@@ -1062,7 +1190,7 @@ def generate_index_html(topics):
       document.getElementById('homeView').style.display = 'none';
       document.getElementById('topicView').style.display = 'block';
 
-      document.getElementById('topicBadge').textContent = 'Topic ' + String(topic.num).padStart(2, '0') + ' / 41';
+      document.getElementById('topicBadge').textContent = 'Topic ' + String(topic.num).padStart(2, '0') + ' / ' + TOPICS.length;
       document.getElementById('topicTitle').textContent = topic.title;
       document.getElementById('topicMeta').textContent = topic.category + ' · Technical Reference & Apartment Zine';
 
@@ -1084,7 +1212,7 @@ def generate_index_html(topics):
       renderQuiz(topic.quiz || []);
 
       document.getElementById('prevTopicBtn').disabled = (num <= 1);
-      document.getElementById('nextTopicBtn').disabled = (num >= 41);
+      document.getElementById('nextTopicBtn').disabled = (num >= TOPICS.length);
 
       window.scrollTo(0, 0);
     }}
@@ -1160,7 +1288,7 @@ def generate_index_html(topics):
 
     function navigateTopic(delta) {{
       const target = currentTopicNum + delta;
-      if (target >= 1 && target <= 41) {{
+      if (target >= 1 && target <= TOPICS.length) {{
         goToTopic(target);
       }}
     }}
@@ -1307,6 +1435,23 @@ def generate_index_html(topics):
       }}
     }});
 
+    // Markdown Dropdown Toggle
+    function toggleMarkdownMenu(event) {{
+      event.stopPropagation();
+      const menu = document.getElementById('markdownDropdownMenu');
+      if (menu) {{
+        menu.classList.toggle('show');
+      }}
+    }}
+
+    document.addEventListener('click', (e) => {{
+      const menu = document.getElementById('markdownDropdownMenu');
+      const btn = document.getElementById('markdownDropdownBtn');
+      if (menu && menu.classList.contains('show') && !menu.contains(e.target) && e.target !== btn) {{
+        menu.classList.remove('show');
+      }}
+    }});
+
     // Initial load
     window.addEventListener('DOMContentLoaded', () => {{
       renderTopicsGrid(TOPICS);
@@ -1370,7 +1515,7 @@ def update_demos_complete_markdown(header, topics):
             sec = sec.split("### Knowledge Check — Quiz")[0].rstrip()
 
         # Build quiz markdown
-        q_list = QUIZZES.get(num, [])
+        q_list = QUIZZES.get(num) or QUIZZES.get(str(num), [])
         if q_list:
             quiz_md_lines = ["\n\n### Knowledge Check — Quiz\n"]
             for q_idx, q in enumerate(q_list, 1):
@@ -1392,7 +1537,7 @@ def update_demos_complete_markdown(header, topics):
     with open("demos-complete.md", "w", encoding="utf-8") as f:
         f.write(updated_content)
 
-    print("Updated demos-complete.md with embedded diagrams and quizzes for all 41 topics.")
+    print(f"Updated demos-complete.md with embedded diagrams and quizzes for all {len(new_topics)} topics.")
 
 
 def create_server_script():

@@ -43,3 +43,8 @@
 | 39 | `39-technical.png` | `39-zine.png` | Entry 39 |
 | 40 | `40-technical.png` | `40-zine.png` | Entry 40 |
 | 41 | `41-technical.png` | `41-zine.png` | Entry 41 |
+| 42 | `42-technical.png` | `42-zine.png` | Entry 42 |
+| 43 | `43-technical.png` | `43-zine.png` | Entry 43 |
+| 44 | `44-technical.png` | `44-zine.png` | Entry 44 |
+| 45 | `45-technical.png` | `45-zine.png` | Entry 45 |
+| 46 | `46-technical.png` | `46-zine.png` | Entry 46 |

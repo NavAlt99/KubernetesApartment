@@ -13,6 +13,60 @@ import sys
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from quiz_data import QUIZZES
+from topic_enrichment import CKA_TASKS, TOPIC_DISCUSSIONS, TOPIC_ZINE_EXTENSIONS
+
+# A short operational answer to the question every learner eventually asks:
+# "Which part of Kubernetes is responsible for this?"  These are deliberately
+# rendered beside every lesson so the catalog teaches the management graph, not
+# just isolated object definitions.
+CONTROLLER_ROLES = {
+    1: "The API server records intent, the scheduler places Pods, and workload controllers keep the requested replicas running.",
+    2: "The node controller watches heartbeats and marks failed Nodes; the scheduler and ReplicaSet/Deployment controllers recover workloads on healthy Nodes.",
+    3: "The API server is the control-plane front door: it authenticates, authorizes, admits, validates, persists, and broadcasts changes to controllers through watches.",
+    4: "etcd is the durable source of truth that lets every controller resume from current state after restarts or missed events.",
+    5: "The scheduler filters and scores Nodes, then binds unscheduled Pods; the kubelet takes over execution after the binding is written.",
+    6: "kube-controller-manager hosts independent reconciliation loops that turn API objects into a convergent, self-healing cluster.",
+    7: "cloud-controller-manager translates Kubernetes objects into cloud load balancers, routes, disks, and Node metadata, then writes provider status back.",
+    8: "The kubelet creates and reports node-local static Pods, while the API server and controllers observe the resulting status when available.",
+    9: "The kubelet owns Pod-level execution and status, while the runtime starts the containers that share the Pod's namespaces and lifecycle.",
+    10: "kube-proxy watches Services and EndpointSlices and programs the Node datapath so virtual Service addresses reach healthy Pod backends.",
+    11: "The CRI runtime performs the kubelet's requested image, sandbox, container, resource, and log operations; it does not decide desired state.",
+    12: "The kubelet supervises the coupled containers; workload controllers manage the Pod as one unit while sidecars provide supporting behavior.",
+    13: "The kubelet runs init containers in order and reports failure; the owning workload controller retries or replaces the Pod when needed.",
+    14: "The CNI plugin is invoked by the runtime/kubelet to allocate Pod IPs and wire interfaces; controllers supply the Pod placement and network policy intent.",
+    15: "CoreDNS watches Service and EndpointSlice data and turns API state into DNS answers; the kubelet keeps the DNS Pods running.",
+    16: "The Service and EndpointSlice controllers maintain the stable backend set; kube-proxy or an eBPF dataplane makes the virtual IP routable.",
+    17: "The Service and EndpointSlice controllers maintain the current backend membership as Pods become ready, unready, added, or removed; kube-proxy consumes that state to route traffic.",
+    18: "An Ingress or Gateway controller watches routing objects and Services, configures a proxy, and reports addresses and readiness back to the API.",
+    19: "The API server stores policy; the CNI enforcement layer applies it to packets, while controllers keep the selected Pods and namespaces discoverable.",
+    20: "The PV/attach-mount controllers and CSI driver coordinate volume lifecycle; the kubelet mounts the selected volume into the Pod.",
+    21: "The PV controller binds claims, and a CSI provisioner may create a volume; the scheduler considers storage topology before the Pod runs.",
+    22: "A CSI provisioner watches StorageClasses and PVCs, creates matching volumes, and updates binding/status for the PV controller to observe.",
+    23: "The API server stores ConfigMaps and admission applies defaults; the kubelet projects the data into Pods, while workload controllers recreate Pods when templates change.",
+    24: "The API server and admission enforce Secret access; RBAC controls readers, kubelet projects the value, and encryption providers protect stored data.",
+    25: "The API server's authorization layer evaluates RoleBindings and Roles on every request; no controller grants access merely because a Pod is in a namespace.",
+    26: "The API server evaluates cluster-wide bindings and aggregated ClusterRoles, allowing platform operators to manage permissions across namespaces.",
+    27: "The ServiceAccount controller creates identities; the token controller/API issues projected tokens; RBAC and admission determine what workloads may do.",
+    28: "The node controller consumes Node heartbeats, adds failure taints, and requests evictions; the scheduler and workload controllers restore replicas elsewhere.",
+    29: "The namespace controller establishes the lifecycle boundary, discovers and deletes namespaced contents, waits on finalizers, then removes the namespace from etcd.",
+    30: "Admission enforces ResourceQuota and LimitRange at request time; the scheduler uses resulting requests, while controllers react to accepted objects.",
+    31: "The garbage collector follows ownerReferences and finalizers to remove dependents safely without confusing ownership with labels or human intent.",
+    32: "The ReplicaSet controller compares desired and observed Pod counts, adopts matching unowned Pods, and creates or deletes replicas to converge.",
+    33: "The Deployment controller creates and scales ReplicaSets, gates rollout progress on readiness, and records revisions for rollback.",
+    34: "The StatefulSet controller preserves ordinal identity, stable network names, and PVC associations while coordinating ordered rollout and recovery.",
+    35: "The DaemonSet controller maintains the required Pod coverage on eligible Nodes as Nodes join, leave, taint, or change labels.",
+    36: "The Job controller tracks completion and retries failed Pods until completions/backoff limits are satisfied, then records terminal status.",
+    37: "The CronJob controller creates Jobs from a schedule, handles missed starts and concurrency policy, and lets the Job controller execute each run.",
+    38: "The legacy ReplicationController reconciles a replica count like a ReplicaSet, but lacks modern selectors and Deployment rollout orchestration.",
+    39: "The HPA controller reads metrics and patches replica counts; the Deployment/ReplicaSet controller then creates or removes Pods and the scheduler places them.",
+    40: "The VPA recommender proposes resources, the updater may evict Pods, and admission injects recommendations when the owning workload recreates them.",
+    41: "The Eviction API checks PDBs during voluntary disruption; workload controllers create replacements while the scheduler finds capacity without violating availability goals.",
+    42: "The kubelet executes probes and reports Pod conditions; EndpointSlice/Service controllers remove unready backends while workload controllers replace failed containers or Pods.",
+    43: "The EndpointSlice controller partitions ready backends and the Service controller maintains membership; CoreDNS publishes headless records and kube-proxy consumes endpoint state.",
+    44: "Pod Security Admission evaluates namespace labels during API admission and rejects non-compliant Pods before they reach etcd, scheduling, or the kubelet.",
+    45: "The API extensions layer serves the custom resource; an Operator's custom controller watches it and reconciles domain-specific child resources and status.",
+    46: "The LimitRanger admission controller injects defaults and rejects per-container or PVC values outside bounds before the scheduler and workload controllers act.",
+}
 
 def get_topics_and_header():
     with open("demos-complete.md", "r", encoding="utf-8") as f:
@@ -31,11 +85,11 @@ def get_topics_and_header():
         title = m.group(2).strip()
 
         # Extract Technical Discussion
-        tech_disc_m = re.search(r"\*\*Part 1 — Technical Discussion:\*\*(.*?)(?=\!\[|\*\*Technical perspective:\*\*)", sec, re.S)
+        tech_disc_m = re.search(r"\*\*Part 1 — Technical Discussion:\*\*(.*?)(?=\!\[)", sec, re.S)
         tech_disc = tech_disc_m.group(1).strip() if tech_disc_m else ""
 
         # Extract Technical Perspective
-        tech_persp_m = re.search(r"\*\*Technical perspective:\*\*(.*?)(?=\*\*Part 2 — Analogy / Zine:\*\*|\!\[.*?zine|### Component architecture flow)", sec, re.S)
+        tech_persp_m = re.search(r"\!\[.*?technical\.png\)\n\n(.*?)(?=### Component architecture flow|\*\*Part 2 — Analogy / Zine:\*\*)", sec, re.S)
         tech_persp = tech_persp_m.group(1).strip() if tech_persp_m else ""
 
         # Extract Zine Analogy
@@ -85,6 +139,7 @@ def get_topics_and_header():
             "num": num,
             "title": title,
             "category": cat,
+            "management_role": CONTROLLER_ROLES.get(num, "The API server, scheduler, kubelet, and relevant controllers cooperate through the reconciliation loop."),
             "tech_disc": tech_disc,
             "tech_persp": tech_persp,
             "zine_analogy": zine_analogy,
@@ -566,6 +621,8 @@ def generate_index_html(topics):
     align-items: center;
     gap: 4px;
   }}
+  .role-card {{ background: rgba(236,72,153,.08); border: 1px solid rgba(236,72,153,.32); border-left: 3px solid var(--accent-pink); border-radius: 8px; padding: 12px 14px; margin: 12px 0 24px; font-size: 12px; line-height: 1.6; }}
+  .role-card strong {{ display: block; color: var(--accent-pink); font-size: 10px; letter-spacing: .08em; text-transform: uppercase; margin-bottom: 4px; }}
 
   /* Topic View */
   .topic-view-wrap {{ display: none; }}
@@ -718,6 +775,10 @@ def generate_index_html(topics):
   .demo-section-label:first-child {{
     margin-top: 0;
   }}
+  .demo-section-label.declarative {{ color: #a78bfa; }}
+  .demo-section-label.imperative {{ color: #fb923c; }}
+  .demo-management-note {{ margin-top: 16px; padding: 10px 12px; border-radius: 6px; background: rgba(56,189,248,.08); border-left: 3px solid #38bdf8; color: #cbd5e1; font-size: 11px; line-height: 1.55; }}
+  .demo-management-note strong {{ display: block; color: #7dd3fc; font-size: 10px; letter-spacing: .08em; text-transform: uppercase; margin-bottom: 3px; }}
   .demo-yaml-subcard {{
     margin: 10px 0 14px;
     border: 1px solid #3d1b32;
@@ -1232,6 +1293,7 @@ def generate_index_html(topics):
       <div class="topic-heading-block">
         <h1 id="topicTitle">Topic Title</h1>
         <div class="meta" id="topicMeta">Category · Minimalist Tech Deep-Dive</div>
+        <div class="role-card"><strong>How this contributes to Kubernetes management</strong><span id="topicManagementRole">The API server, scheduler, kubelet, and relevant controllers cooperate through the reconciliation loop.</span></div>
       </div>
 
       <!-- PART 1: Technical Perspective & Technical Illustration -->
@@ -1241,7 +1303,7 @@ def generate_index_html(topics):
         <div class="illustration-wrap">
           <img id="topicTechImg" src="" alt="Technical illustration" loading="lazy">
         </div>
-        <div class="part-persp" id="topicTechPersp">Technical perspective analysis...</div>
+        <div class="part-persp" id="topicTechPersp">Technical discussion continues...</div>
       </section>
 
       <!-- PART 2: Embedded Component Architecture Diagram -->
@@ -1510,6 +1572,7 @@ def generate_index_html(topics):
       document.getElementById('topicBadge').textContent = 'Topic ' + String(topic.num).padStart(2, '0') + ' / ' + TOPICS.length;
       document.getElementById('topicTitle').textContent = topic.title;
       document.getElementById('topicMeta').textContent = topic.category + ' · Technical Reference & Apartment Zine';
+      document.getElementById('topicManagementRole').textContent = topic.management_role;
 
       document.getElementById('topicTechDisc').innerHTML = formatRichMarkdown(topic.tech_disc);
       document.getElementById('topicTechPersp').innerHTML = formatRichMarkdown(topic.tech_persp);
@@ -1523,7 +1586,7 @@ def generate_index_html(topics):
       document.getElementById('topicZineExp').textContent = topic.zine_exp;
 
       document.getElementById('topicReading').innerHTML = formatMarkdownLinks(topic.reading);
-      renderDemoBlock(topic.demo);
+      renderDemoBlock(topic.demo, topic.management_role);
 
       // Render Quiz
       renderQuiz(topic.quiz || []);
@@ -1696,10 +1759,11 @@ def generate_index_html(topics):
       }}
     }}
 
-    function renderDemoBlock(demoText) {{
+    function renderDemoBlock(demoText, managementRole) {{
       const container = document.getElementById('topicDemoParsed');
       const rawPre = document.getElementById('topicDemo');
       rawPre.textContent = demoText || '';
+      const managementNote = managementRole ? `<div class="demo-management-note"><strong>Controller trace</strong>${{escapeHtml(managementRole)}}<br><span style="color:#94a3b8;">While running the steps, watch <code>kubectl get events -A --sort-by=.lastTimestamp -w</code> and inspect object <code>status</code> and <code>ownerReferences</code> to see this hand-off.</span></div>` : '';
       
       if (!demoText) {{
         container.innerHTML = '<span style="color:var(--text-dim)">No demo experiment available.</span>';
@@ -1738,11 +1802,11 @@ def generate_index_html(topics):
             `</div>` +
             `<pre class="demo-yaml-pre"><code>${{escapeHtml(unindentedYaml)}}</code></pre>` +
           `</div>` +
-          formatDemoSectionText(after);
+          formatDemoSectionText(after) + managementNote;
       }} else {{
         currentDemoYamlContent = null;
         document.getElementById('copyDemoYamlBtn').style.display = 'none';
-        container.innerHTML = formatDemoSectionText(demoText);
+        container.innerHTML = formatDemoSectionText(demoText) + managementNote;
       }}
     }}
 
@@ -1750,8 +1814,9 @@ def generate_index_html(topics):
       if (!text) return '';
       return text.split('\\n').map(line => {{
         const trimmed = line.trim();
-        if (['SETUP', 'STEPS', 'WHAT YOU SHOULD SEE', 'CLEANUP', 'NOTE'].includes(trimmed)) {{
-          return `<div class="demo-section-label">▸ ${{escapeHtml(trimmed)}}</div>`;
+        if (['DECLARATIVE PATH', 'IMPERATIVE PATH', 'SETUP', 'YAML  (', 'STEPS', 'WHAT YOU SHOULD SEE', 'CLEANUP', 'NOTE'].some(label => trimmed === label || (label === 'YAML  (' && trimmed.startsWith('YAML  (')))) {{
+          const modeClass = trimmed.startsWith('DECLARATIVE') ? ' declarative' : (trimmed.startsWith('IMPERATIVE') ? ' imperative' : '');
+          return `<div class="demo-section-label${{modeClass}}">▸ ${{escapeHtml(trimmed)}}</div>`;
         }}
         return escapeHtml(line);
       }}).join('\\n');
@@ -1906,6 +1971,7 @@ def generate_index_html(topics):
         showHome();
       }}
     }});
+
 
     // Markdown Reader Modal Logic
     let originalModalHtml = '';
@@ -2110,8 +2176,53 @@ def generate_index_html(topics):
     return html
 
 
+def apply_topic_enrichment(sec, num):
+    """Add the cross-cutting engineering discussion and CKA task to a topic."""
+    sec = re.sub(
+        r"\n+<!-- ENGINEERING DISCUSSION -->.*?<!-- /ENGINEERING DISCUSSION -->",
+        "",
+        sec,
+        flags=re.S,
+    )
+    discussion = TOPIC_DISCUSSIONS.get(num)
+    if discussion:
+        block = f"\n\n<!-- ENGINEERING DISCUSSION -->\n\n{discussion}\n\n<!-- /ENGINEERING DISCUSSION -->"
+        technical_image = re.search(r"\n!\[.*?technical\.png\)\n", sec)
+        if technical_image:
+            sec = sec[:technical_image.start()] + block + sec[technical_image.start():]
+        else:
+            sec = sec.rstrip() + block
+
+    sec = re.sub(
+        r"\n+<!-- ZINE ENGINEERING CONNECTION -->.*?<!-- /ZINE ENGINEERING CONNECTION -->",
+        "",
+        sec,
+        flags=re.S,
+    )
+    zine_extension = TOPIC_ZINE_EXTENSIONS.get(num)
+    if zine_extension:
+        zine_block = f"\n\n<!-- ZINE ENGINEERING CONNECTION -->\n\n{zine_extension}\n\n<!-- /ZINE ENGINEERING CONNECTION -->"
+        zine_text = re.search(r"\n\* \*\*Zine Text & Layout:\*\*", sec)
+        if zine_text:
+            sec = sec[:zine_text.start()] + zine_block + sec[zine_text.start():]
+        else:
+            reading = re.search(r"\n\*\*Further reading\*\*", sec)
+            if reading:
+                sec = sec[:reading.start()] + zine_block + sec[reading.start():]
+
+    # CKA task blocks are regenerated along with the quiz so edits remain
+    # idempotent when the site is rebuilt.
+    sec = re.sub(
+        r"\n+### CKA Practical Task & Solution\n.*?(?=\n### Knowledge Check — Quiz|\Z)",
+        "",
+        sec,
+        flags=re.S,
+    )
+    return sec
+
+
 def update_demos_complete_markdown(header, topics):
-    """Updates demos-complete.md by inserting the diagram iframe and quiz for all 41 topics."""
+    """Updates demos-complete.md by inserting the diagram iframe and quiz for all catalog topics."""
     with open("demos-complete.md", "r", encoding="utf-8") as f:
         content = f.read()
 
@@ -2149,6 +2260,38 @@ def update_demos_complete_markdown(header, topics):
                 else:
                     sec = sec + "\n" + diagram_block
 
+        sec = apply_topic_enrichment(sec, num)
+
+        # Make the demo explain the management hand-off, not just the final
+        # output. Keep this in the Markdown source as well as the interactive
+        # card so the standalone guide teaches the same control-loop model.
+        sec = add_demo_mode_sections(sec)
+        sec = re.sub(r"\n+### Controller management trace\n.*?(?=\n### Knowledge Check — Quiz|\Z)", "", sec, flags=re.S)
+        role = CONTROLLER_ROLES.get(
+            num,
+            "The API server, scheduler, kubelet, and relevant controllers cooperate through the reconciliation loop.",
+        )
+        trace_block = f"""
+
+### Controller management trace
+
+**What this demo shows in the wider Kubernetes management loop:** {role}
+
+While running the steps, observe the hand-off instead of checking only the final object:
+
+```bash
+kubectl get events -A --sort-by=.lastTimestamp -w
+kubectl get pods,svc -A -o wide
+kubectl get <resource> <name> -o yaml  # inspect status and ownerReferences
+```
+
+The API server persists each accepted change, the responsible controller reconciles it, and the next component acts on the updated object. Status, Events, `ownerReferences`, and generated child resources are the evidence that the loop progressed.
+"""
+        if "### Knowledge Check — Quiz" in sec:
+            sec = sec.split("### Knowledge Check — Quiz", 1)[0].rstrip() + trace_block + "\n### Knowledge Check — Quiz" + sec.split("### Knowledge Check — Quiz", 1)[1]
+        else:
+            sec = sec.rstrip() + trace_block
+
         # Check if quiz already present in section
         if "### Knowledge Check — Quiz" in sec:
             # Remove previous quiz to allow update
@@ -2167,6 +2310,14 @@ def update_demos_complete_markdown(header, topics):
                 quiz_md_lines.append(f"**Correct Answer:** {opt_letters[q['answer']]}) {q['options'][q['answer']]}\n")
                 quiz_md_lines.append(f"**Explanation:** {q['explanation']}\n")
                 quiz_md_lines.append("</details>\n")
+            cka = CKA_TASKS.get(num)
+            if cka:
+                cka_question, cka_solution = cka
+                quiz_md_lines.extend([
+                    "### CKA Practical Task & Solution\n",
+                    f"**Task:** {cka_question}\n",
+                    f"**Solution:** {cka_solution}\n",
+                ])
             quiz_block = "\n".join(quiz_md_lines)
             sec = sec.rstrip() + "\n" + quiz_block
 
@@ -2178,6 +2329,145 @@ def update_demos_complete_markdown(header, topics):
         f.write(updated_content)
 
     print(f"Updated demos-complete.md with embedded diagrams and quizzes for all {len(new_topics)} topics.")
+
+
+def _demo_sections(body):
+    """Split the text inside a terminal demo into its named sections."""
+    headings = list(re.finditer(
+        r"(?m)^(SETUP|YAML  \([^)]+\)|STEPS|WHAT YOU SHOULD SEE|CLEANUP|NOTE)\s*$",
+        body,
+    ))
+    sections = []
+    for idx, match in enumerate(headings):
+        end = headings[idx + 1].start() if idx + 1 < len(headings) else len(body)
+        value = body[match.end():end].strip("\n")
+        sections.append((match.group(1), value))
+    return sections
+
+
+def _imperative_create_from_manifest(yaml_heading, steps):
+    """Return a one-shot imperative create command for a YAML-backed demo."""
+    filename = re.search(r"YAML  \(([^)]+)\)", yaml_heading).group(1)
+    for line in steps.splitlines():
+        command = re.sub(r"^\s*\d+\.\s*", "", line).strip()
+        if command.startswith("kubectl apply -f "):
+            command = command.replace("kubectl apply -f ", "kubectl create -f ", 1)
+            return command
+    return f"kubectl create -f {filename}"
+
+
+def _declarative_equivalents(setup, steps):
+    """Convert safe kubectl create-style commands into applyable manifests."""
+    candidates = []
+    for line in (setup + "\n" + steps).splitlines():
+        command = re.sub(r"^\s*\d+\.\s*", "", line).strip()
+        if not command.startswith("kubectl ") or "#" in command:
+            continue
+        if " --dry-run=" in command or " | " in command or " -- " in command:
+            continue
+        if not re.match(r"kubectl (create (namespace|deployment|serviceaccount|role|rolebinding|clusterrole|clusterrolebinding)|run|expose|autoscale)\b", command):
+            continue
+        command = re.sub(r"\s+-o\s+yaml\s*$", "", command)
+        candidates.append(command + " --dry-run=client -o yaml | kubectl apply -f -")
+    # Keep the generated guidance readable when setup contains repeated commands.
+    unique = []
+    for command in candidates:
+        if command not in unique:
+            unique.append(command)
+    return unique[:5]
+
+
+def add_demo_mode_sections(sec):
+    """Make declarative and imperative paths explicit inside each terminal demo."""
+    demo_match = re.search(
+        r"(### Demo — .*?\n\n<div style=\"background:#000;.*?\"><pre style=\".*?\">)(.*?)(</pre></div>)",
+        sec,
+        re.S,
+    )
+    if not demo_match:
+        return sec
+
+    body = demo_match.group(2)
+    if "DECLARATIVE PATH" in body or "IMPERATIVE PATH" in body:
+        # Remove mode text generated by an earlier build so the source remains
+        # idempotent and newly added guidance is reflected on the next build.
+        body = re.sub(
+            r"^DECLARATIVE PATH\n.*?(?=\n(?:YAML  \([^)]+\)|SETUP)\n)",
+            "",
+            body,
+            count=1,
+            flags=re.S,
+        )
+        body = re.sub(
+            r"\nIMPERATIVE PATH\n(?:  .*\n)*?(?=\nSETUP\n)",
+            "\n",
+            body,
+            count=1,
+        )
+
+    sections = _demo_sections(body)
+    if not sections:
+        return sec
+    section_map = {heading: value for heading, value in sections}
+    setup = section_map.get("SETUP", "")
+    steps = section_map.get("STEPS", "")
+    yaml_sections = [(heading, value) for heading, value in sections if heading.startswith("YAML  (")]
+
+    rebuilt = []
+    if yaml_sections:
+        yaml_heading, yaml_body = yaml_sections[0]
+        apply_command = next(
+            (re.sub(r"^\s*\d+\.\s*", "", line).strip()
+             for line in steps.splitlines()
+             if re.sub(r"^\s*\d+\.\s*", "", line).strip().startswith("kubectl apply -f ")),
+            f"kubectl apply -f {re.search(r'YAML  \(([^)]+)\)', yaml_heading).group(1)}",
+        )
+        imperative_command = _imperative_create_from_manifest(yaml_heading, steps)
+        rebuilt.extend([
+            "DECLARATIVE PATH",
+            "  The desired state is written as a YAML manifest. Re-running apply is safe and reconciles changes:",
+            "  " + apply_command,
+            "",
+            yaml_heading,
+            yaml_body,
+            "",
+            "IMPERATIVE PATH",
+            "  For a one-time create from the same definition, use the imperative create command:",
+            "  " + imperative_command,
+            "",
+        ])
+        # Keep setup, verification, cleanup, and notes in their original order.
+        for heading, value in sections:
+            if heading.startswith("YAML  ("):
+                continue
+            rebuilt.append(heading)
+            rebuilt.append(value)
+            rebuilt.append("")
+    else:
+        equivalents = _declarative_equivalents(setup, steps)
+        rebuilt.extend([
+            "DECLARATIVE PATH",
+        ])
+        if equivalents:
+            rebuilt.extend([
+                "  This topic creates Kubernetes objects, so you can generate desired-state YAML and apply it instead of issuing direct mutations:",
+                *["  " + command for command in equivalents],
+            ])
+        else:
+            rebuilt.append("  This is an observation or node-runtime experiment; it does not create a Kubernetes object that needs a declarative manifest.")
+        rebuilt.extend([
+            "",
+            "IMPERATIVE PATH",
+            "  The runnable experiment below uses direct commands and live inspection:",
+            "",
+        ])
+        for heading, value in sections:
+            rebuilt.append(heading)
+            rebuilt.append(value)
+            rebuilt.append("")
+
+    new_body = "\n".join(rebuilt).strip("\n") + "\n"
+    return sec[:demo_match.start(2)] + new_body + sec[demo_match.end(2):]
 
 
 def create_server_script():
@@ -2238,14 +2528,16 @@ if __name__ == "__main__":
     header, topics = get_topics_and_header()
     print(f"Extracted {len(topics)} topics from demos-complete.md.")
 
+    # Normalize the standalone guide first so the generated topic data and the
+    # interactive site expose the same declarative/imperative demo sections.
+    update_demos_complete_markdown(header, topics)
+    header, topics = get_topics_and_header()
+
     # Generate index.html
     html = generate_index_html(topics)
     with open("index.html", "w", encoding="utf-8") as f:
         f.write(html)
     print("Generated index.html with interactive quizzes successfully.")
-
-    # Update demos-complete.md
-    update_demos_complete_markdown(header, topics)
 
     # Create serve.py
     create_server_script()

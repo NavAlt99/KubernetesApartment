@@ -148,7 +148,7 @@ docker exec -it zine-worker bash
 docker exec zine-worker crictl ps
 ```
 
-Read [demos-complete.md](demos-complete.md) for the 41 exercises. Each demo
+Read [demos-complete.md](demos-complete.md) for the 46 exercises. Each demo
 has setup, live steps, expected observations, and cleanup. Optional add-ons
 include ingress-nginx, a policy-enforcing CNI, metrics-server, and VPA; the
 guide calls out the demos that require each one.

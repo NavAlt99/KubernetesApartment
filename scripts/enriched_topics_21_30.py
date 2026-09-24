@@ -23,6 +23,12 @@ ENRICHED_21_30 = {
 
 ```yaml
 # pvc-workload-claim.yaml
+# WHY THIS YAML: Shows the full PVC consumption lifecycle in one manifest.
+# PVC 'accessModes: ReadWriteOnce': binds only to PVs supporting single-node mounting.
+# PVC 'resources.requests.storage: 20Gi': minimum capacity required for binding.
+# Pod 'persistentVolumeClaim.claimName: database-storage': Pod references PVC by name;
+#   kubelet instructs the CSI driver to mount the volume at mountPath.
+# The PVC remains bound even if the Pod is deleted -- data persists across Pod restarts.
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -71,6 +77,13 @@ spec:
 
 ```yaml
 # dynamic-storage-class.yaml
+# WHY THIS YAML: This StorageClass drives the dynamic provisioning workflow.
+# 'provisioner: ebs.csi.aws.com': the CSI plugin receiving CreateVolume gRPC calls
+#   when a PVC referencing this class is created -- calls the AWS EBS API.
+# 'volumeBindingMode: WaitForFirstConsumer': provisioning DELAYED until a Pod is scheduled.
+#   Ensures the EBS volume is created in the same AZ as the node -- avoids AZ failures.
+# 'allowVolumeExpansion: true': operators can increase PVC size post-creation; no migration.
+# 'reclaimPolicy: Delete': PVC deletion automatically destroys the EBS volume.
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
@@ -101,6 +114,12 @@ parameters:
 
 ```yaml
 # namespaced-developer-role.yaml
+# WHY THIS YAML: A Role defines the permission boundary within a single Namespace.
+# 'namespace: development': Role ONLY applies to this namespace -- cannot grant cross-namespace access.
+# 'resources: ["pods", "pods/log"]': access to Pod objects AND their log subresource.
+#   Without 'pods/log', kubectl logs is denied even with pod get permissions.
+# 'verbs: ["get", "list", "watch"]': read-only access -- satisfies least-privilege.
+# This Role has ZERO effect until a RoleBinding attaches it to a subject.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
@@ -136,6 +155,13 @@ rules:
 
 ```yaml
 # role-binding-spec.yaml
+# WHY THIS YAML: A RoleBinding ACTIVATES a Role by connecting it to specific subjects.
+# 'roleRef.kind: Role': references a namespace-scoped Role (not cluster-wide).
+# 'subjects': the identities receiving the permissions.
+#   'kind: User / name: alice': a human user identified by their kubeconfig credential.
+#   'kind: ServiceAccount': a Pod's identity -- allows in-cluster processes to use this role.
+# A RoleBinding cannot grant permissions beyond what is in the referenced Role.
+# Changing subjects is the fastest way to grant/revoke access without modifying the Role.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
@@ -172,6 +198,12 @@ roleRef:
 
 ```yaml
 # node-viewer-clusterrole.yaml
+# WHY THIS YAML: A ClusterRole grants permissions to cluster-scoped resources.
+# 'resources: ["nodes"]': Nodes have no namespace -- a regular Role CANNOT grant this.
+#   Only ClusterRole can grant access to non-namespaced API objects.
+# 'resources: ["nodes/metrics", "nodes/stats"]': subresources for kubelet metric endpoints.
+# ClusterRoles can also be used in namespace-scoped RoleBindings to reuse
+#   permission templates across namespaces without granting cluster-wide access.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
@@ -201,6 +233,12 @@ rules:
 
 ```yaml
 # sre-clusterrolebinding.yaml
+# WHY THIS YAML: A ClusterRoleBinding grants cluster-wide permissions -- use with caution.
+# 'roleRef.kind: ClusterRole': must reference a ClusterRole for cluster-wide binding.
+# 'subjects.kind: Group': binds an entire OIDC/LDAP group, not just one user.
+#   Group membership changes in the identity provider automatically update K8s access.
+# ClusterRoleBindings don't expire -- treat cluster-admin bindings as critical security assets.
+# Prefer namespace-scoped RoleBindings when cluster-wide access is not required.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
@@ -236,6 +274,13 @@ roleRef:
 
 ```yaml
 # secure-serviceaccount-pod.yaml
+# WHY THIS YAML: Shows secure ServiceAccount usage for in-cluster API access.
+# 'serviceAccountName: metrics-reader': kubelet mounts a projected SA token at
+#   /var/run/secrets/kubernetes.io/serviceaccount/token inside the container.
+#   The app uses this bearer token to authenticate to kube-apiserver as this SA identity.
+# 'automountServiceAccountToken: false': when set on the SA, no token is mounted --
+#   best practice for Pods that don't need API access (prevents credential exposure).
+# RBAC RoleBindings determine what the SA can DO with the token after authenticating.
 apiVersion: v1
 kind: ServiceAccount
 metadata:
@@ -273,6 +318,13 @@ spec:
 
 ```yaml
 # toleration-node-failure.yaml
+# WHY THIS YAML: This toleration governs the Node Controller's eviction interaction.
+# 'key: node.kubernetes.io/unreachable' and 'node.kubernetes.io/not-ready':
+#   these taints are automatically added by the Node Lifecycle Controller when a node
+#   fails its heartbeat check and is marked NotReady.
+# 'effect: NoExecute': triggers immediate eviction of Pods without this toleration.
+# 'tolerationSeconds: 300': this Pod tolerates the taint for 5 minutes before eviction.
+#   Longer windows prevent false-positive evictions during transient network blips.
 apiVersion: v1
 kind: Pod
 metadata:
@@ -308,6 +360,12 @@ spec:
 
 ```yaml
 # labeled-namespace-spec.yaml
+# WHY THIS YAML: A Namespace is the primary isolation boundary and RBAC scope.
+# 'labels.pod-security.kubernetes.io/enforce: restricted': activates Pod Security Admission
+#   for this namespace -- every Pod creation is validated against security standards.
+# Labels on Namespaces are used by NetworkPolicies ('namespaceSelector')
+#   to target specific namespaces for ingress/egress rules.
+# ResourceQuotas and LimitRanges are also Namespace-scoped, applying only within this boundary.
 apiVersion: v1
 kind: Namespace
 metadata:
@@ -339,6 +397,13 @@ metadata:
 
 ```yaml
 # team-resource-quota.yaml
+# WHY THIS YAML: ResourceQuota enforces aggregate resource governance at Namespace level.
+# 'requests.cpu: "8"': SUM of all Pod resource requests in this namespace cannot exceed 8 CPU.
+#   If a new Pod would push total over the limit, API server's admission controller rejects it.
+# 'limits.cpu: "16"': prevents namespace from claiming unlimited burst capacity.
+# 'count/pods: "50"': caps the number of Pod objects, not just CPU/memory.
+# Once quota is enabled, EVERY Pod MUST declare 'resources.requests' or it is rejected.
+#   The quota system cannot account for undeclared resource consumption.
 apiVersion: v1
 kind: ResourceQuota
 metadata:

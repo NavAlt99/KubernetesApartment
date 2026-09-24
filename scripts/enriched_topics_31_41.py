@@ -24,6 +24,13 @@ ENRICHED_31_41 = {
 
 ```yaml
 # pod-with-owner-reference.yaml
+# WHY THIS YAML: The ownerReference field is the Garbage Collector's dependency graph.
+# 'ownerReferences.apiVersion/kind/name/uid': links this Pod to a specific ReplicaSet.
+#   The uid is unique per object instance -- not just per name -- preventing stale refs.
+# 'controller: true': marks this as the controlling owner (only one allowed per object).
+# 'blockOwnerDeletion: true': Pod must be deleted before the owning ReplicaSet finalizes.
+# When a Deployment is deleted, GC traces: Deployment -> ReplicaSet -> Pods, deleting each.
+# Without ownerReferences, orphaned Pods keep running indefinitely after parent deletion.
 apiVersion: v1
 kind: Pod
 metadata:
@@ -56,6 +63,13 @@ spec:
 
 ```yaml
 # set-based-replicaset.yaml
+# WHY THIS YAML: Shows the label selector matching that drives ReplicaSet reconciliation.
+# 'replicas: 3': the controller watches this number and creates/deletes Pods to match it.
+#   The moment a Pod terminates, the controller creates a replacement -- no human needed.
+# 'selector.matchExpressions': set-based selectors -- the improvement over ReplicationController.
+#   'In: [nginx, nginx-proxy]' matches Pods with either label value, not just exact equality.
+# 'template.metadata.labels': MUST match the selector or the API server rejects the spec.
+# Use Deployments, not raw ReplicaSets -- Deployments add versioning and rolling updates.
 apiVersion: apps/v1
 kind: ReplicaSet
 metadata:
@@ -107,6 +121,13 @@ spec:
 
 ```yaml
 # zero-downtime-deployment.yaml
+# WHY THIS YAML: Governs the rolling update strategy enabling zero-downtime releases.
+# 'strategy.type: RollingUpdate': scales up new ReplicaSet while scaling down old one.
+# 'maxSurge: 1': allows 1 extra Pod above replicas count during rollout.
+#   New ReplicaSet scales to 4 before old ReplicaSet starts shrinking.
+# 'maxUnavailable: 0': zero Pods may be below desired count during rollout.
+#   Guarantees full capacity throughout update -- at the cost of extra resources.
+# 'readinessProbe': each new Pod must pass readiness before an old Pod is terminated.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -154,6 +175,13 @@ spec:
 
 ```yaml
 # clustered-statefulset.yaml
+# WHY THIS YAML: StatefulSet's ordered identity guarantees are configured here.
+# 'serviceName: "db-cluster"': creates a Headless Service for stable DNS per Pod.
+#   'db-0.db-cluster.<ns>.svc.cluster.local' persists across Pod restarts.
+#   This stable DNS identity is essential for distributed peers (Cassandra, Kafka).
+# 'podManagementPolicy: OrderedReady': Pods created 0, 1, 2 in sequence; each must be
+#   Ready before next starts. Scale-down reverses order (2, 1, 0).
+# 'volumeClaimTemplates': each Pod gets its OWN PVC that persists even if StatefulSet is deleted.
 apiVersion: v1
 kind: Service
 metadata:
@@ -218,6 +246,14 @@ spec:
 
 ```yaml
 # node-exporter-daemonset.yaml
+# WHY THIS YAML: DaemonSet guarantees one Pod per node -- node-exporter needs this.
+# 'tolerations: node-role.kubernetes.io/control-plane: NoSchedule': without this,
+#   DaemonSet skips control plane nodes. This toleration ensures ALL nodes are covered.
+# 'hostPID: true' and 'hostNetwork: true': required to read host-level metrics
+#   from /proc and /sys -- these are node-level capabilities normal apps avoid.
+# 'resources.requests': DaemonSet Pods consume resources on EVERY node.
+#   500m CPU on 100 nodes = 50 CPUs cluster-wide. Size very carefully.
+# 'updateStrategy.type: RollingUpdate': updates node by node, preserving metric coverage.
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
@@ -267,6 +303,13 @@ spec:
 
 ```yaml
 # batch-processing-job.yaml
+# WHY THIS YAML: Job's completion tracking and retry semantics are configured here.
+# 'completions: 4': Job must run 4 successful Pod completions to be considered Done.
+#   Useful for parallelizing data processing across 4 independent dataset chunks.
+# 'parallelism: 2': at most 2 Pods run simultaneously -- controls resource usage.
+# 'backoffLimit: 3': after 3 failed Pod attempts, Job is marked Failed, no more Pods.
+# 'restartPolicy: Never': failed containers get a NEW Pod, not an in-place restart.
+# 'ttlSecondsAfterFinished: 600': auto-deletes Job and Pods 10 minutes after completion.
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -302,6 +345,14 @@ spec:
 
 ```yaml
 # nightly-backup-cronjob.yaml
+# WHY THIS YAML: CronJob's schedule and concurrency controls are configured here.
+# 'schedule: "0 2 * * *"': runs at 2:00 AM UTC daily. The CronJob controller
+#   compares this against cluster time and creates a Job object at each trigger.
+# 'concurrencyPolicy: Forbid': if 2am Job is still running at 3am, 3am trigger is SKIPPED.
+#   Prevents overlapping backup jobs from corrupting the same backup target.
+# 'startingDeadlineSeconds: 300': if cluster was down at 2am, only schedules within
+#   5 minutes of the missed trigger -- older missed runs are discarded.
+# 'successfulJobsHistoryLimit: 3': limits retained completed Job objects for history inspection.
 apiVersion: batch/v1
 kind: CronJob
 metadata:
@@ -343,6 +394,12 @@ spec:
 
 ```yaml
 # legacy-replication-controller.yaml
+# WHY THIS YAML: Historical reference only -- do NOT use in new deployments.
+# 'selector: app: legacy-app': only supports equality-based selectors (key=value).
+#   Cannot express 'app in [v1, v2]' or 'env != prod' -- ReplicaSet can.
+# NO 'strategy' field: ReplicationController has no rolling update support.
+#   Updates require manual Pod deletion or blue/green swap -- Deployment automates this.
+# Migration: delete RC, create Deployment with same selector -- it adopts existing Pods.
 apiVersion: v1
 kind: ReplicationController
 metadata:
@@ -382,6 +439,13 @@ $$\\text{desiredReplicas} = \\left\\lceil \\text{currentReplicas} \\times \\left
 
 ```yaml
 # hpa-v2-production.yaml
+# WHY THIS YAML: HPA v2 spec shows the metrics and scaling behavior configuration.
+# 'scaleTargetRef': HPA controller watches this Deployment and adjusts 'spec.replicas'.
+# 'metrics.type: Resource / averageUtilization: 60': scales when avg CPU exceeds 60%.
+#   Formula: desiredReplicas = ceil(currentReplicas x currentCPU / 60).
+# 'minReplicas: 2 / maxReplicas: 20': HPA never goes below 2 (availability) or above 20 (cost).
+# 'stabilizationWindowSeconds: 300': prevents scale-down for 5 min after a spike (anti-flapping).
+# REQUIRES 'resources.requests.cpu' on every Pod -- without it, utilization is undefined.
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
@@ -428,6 +492,14 @@ spec:
 
 ```yaml
 # vpa-auto-spec.yaml
+# WHY THIS YAML: VPA's update mode determines how recommendations are applied.
+# 'updateMode: Auto': VPA evicts and recreates Pods with updated resource requests.
+#   In-place resize (no eviction) requires K8s 1.27+ InPlacePodVerticalScaling feature.
+# 'containerPolicies.minAllowed.cpu: 100m / maxAllowed.cpu: "4"': VPA recommendations
+#   are bounded -- never below 100m (starvation floor) or above 4 CPU (cost ceiling).
+# VPA Recommender samples CPU/memory usage over history (default 8 days) and computes
+#   p50 recommendations for requests and p95 for limits.
+# WARNING: VPA and HPA targeting the same metric on the same Deployment WILL conflict.
 apiVersion: autoscaling.k8s.io/v1
 kind: VerticalPodAutoscaler
 metadata:
@@ -471,6 +543,14 @@ spec:
 
 ```yaml
 # pdb-high-availability.yaml
+# WHY THIS YAML: PDB protects workload availability during planned (voluntary) disruptions.
+# 'selector.matchLabels: app: critical-api': PDB applies to all Pods with this label.
+# 'minAvailable: 2': the Eviction API (used by 'kubectl drain') REFUSES to evict
+#   a Pod if doing so would drop available Pod count below 2. Drain pauses and waits.
+# PDB ONLY protects against voluntary disruptions: drain, rolling updates, cluster upgrades.
+#   A node CRASH bypasses PDB -- it is not a voluntary disruption.
+# Critical rule: 'minAvailable' must be less than total replicas.
+#   minAvailable: 3 with replicas: 3 = drain blocks forever -- never undrained.
 apiVersion: policy/v1
 kind: PodDisruptionBudget
 metadata:

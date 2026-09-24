@@ -153,6 +153,12 @@ Quick reference - demos that need something extra:
 
 ```yaml
 # cluster-workload-foundation.yaml
+# WHY THIS YAML: Demonstrates the cluster's declarative model in action.
+# 'replicas: 3' is the desired state the Controller Manager reconciles against.
+#   If a pod dies, it creates a replacement — no human intervention needed.
+# 'resources.requests' is what the Scheduler reads to decide which Node fits.
+# 'resources.limits' is enforced at runtime by kernel cgroups on the Worker Node.
+# The cluster unifies scheduling, execution, and healing into one declarative API.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -189,7 +195,6 @@ spec:
 - **Kernel & Driver Compatibility:** Worker nodes depend on consistent Linux kernel configurations (`sysctl` network forwarding, overlayfs modules, and container runtime socket stability).
 - **Control Plane Sizing:** As cluster object count grows, etcd memory footprint and kube-apiserver serialization latency scale non-linearly, requiring strict resource quotas and API rate limiting.
 
-
 ### Component architecture flow
 
 <iframe src="diagrams/topic-01.html" width="100%" height="560" style="border:none;"></iframe>
@@ -201,7 +206,7 @@ spec:
 
 ![The Cluster (Why Kubernetes?) zine illustration](generated/kubernetes-apartment-complex/01-zine.png)
 
-**Zine explanation:** The illustration translates the Kubernetes mechanism into the apartment-complex metaphor so the operational relationship is easier to remember.
+**Zine explanation:** The zine image shows isolated standalone buildings transforming into a unified apartment complex — and this is precisely how Kubernetes changes workload management. Just as managing separate buildings means separate keys, separate managers, and separate problems, running containers on individual VMs requires SSH access, manual restarts, and per-host configuration. The cluster metaphor captures Kubernetes' core value: you stop talking to individual machines and instead declare intent to the API server, which distributes and reconciles workloads across all nodes. The "single entity" in the image directly maps to the kube-apiserver acting as the sole gateway — one front desk for the entire complex.
 
 * **Zine Text & Layout:**
 * (Top): "Why Kubernetes? Because managing buildings one at a time is exhausting."
@@ -211,7 +216,7 @@ spec:
 **Further reading**
 
 - [Kubernetes concepts](https://kubernetes.io/docs/concepts/)
-- [CKA Study Notes: Core Concepts](CKA_Study_Notes/01-core-concepts.md)
+- [CKA Study Notes: Core Concepts](../CKA_Study_Notes/01-core-concepts.md)
 
 ### Demo — The Cluster (Why Kubernetes?)
 
@@ -222,15 +227,24 @@ SETUP
 STEPS
   1. kubectl cluster-info
   2. kubectl get nodes -o wide
+  3. kubectl get pods -A -o wide --field-selector status.phase=Running | head -20
+  4. kubectl get namespaces
 
 WHAT YOU SHOULD SEE
-  cluster-info prints the control plane and CoreDNS URLs. get nodes lists every node with ROLES, STATUS, INTERNAL-IP.
+  cluster-info prints the control-plane and CoreDNS API URLs — the single
+  management endpoint for the entire cluster.
+  get nodes shows every node with ROLES (control-plane vs <none>), STATUS,
+  INTERNAL-IP, and which container runtime version is running.
+  get pods -A shows all running workloads across all namespaces — the
+  cluster's unified view of every running container.
+  This is the 'one complex' — one command, all nodes, all pods.
 
 CLEANUP
   (nothing to clean up)
 
 NOTE
-  One command shows the whole 'complex' instead of logging into each machine.
+  Compare this to the alternative: SSH into each machine and run
+  'docker ps' manually. That is the pre-Kubernetes world.
 </pre></div>
 
 
@@ -348,6 +362,12 @@ NOTE
 
 ```yaml
 # node-affinity-spec.yaml
+# WHY THIS YAML: Enforces the Control Plane / Worker Node separation boundary.
+# 'DoesNotExist' for 'node-role.kubernetes.io/control-plane' tells the Scheduler:
+#   never place this workload on a control plane node during the Filtering phase.
+# This is how you prevent application Pods from competing with etcd, kube-apiserver,
+#   or kube-scheduler for CPU/RAM on control plane nodes.
+# Worker Nodes are the execution layer — this affinity rule enforces that boundary.
 apiVersion: v1
 kind: Pod
 metadata:
@@ -371,7 +391,6 @@ spec:
 - **Control Plane Taints:** Control plane nodes are tainted with `node-role.kubernetes.io/control-plane:NoSchedule` by default so business workloads never consume control plane CPU or memory.
 - **Split-Brain Scenarios:** If network partitions sever worker nodes from the control plane, local workloads continue running under kubelet supervision, but after the controller-manager `node-monitor-grace-period` (default 40s), the node is marked `NotReady`, and pod eviction scheduling begins after `pod-eviction-timeout` (default 5m).
 
-
 ### Component architecture flow
 
 <iframe src="diagrams/topic-02.html" width="100%" height="560" style="border:none;"></iframe>
@@ -383,7 +402,7 @@ spec:
 
 ![Control Plane vs. Worker Nodes zine illustration](generated/kubernetes-apartment-complex/02-zine.png)
 
-**Zine explanation:** The illustration translates the Kubernetes mechanism into the apartment-complex metaphor so the operational relationship is easier to remember.
+**Zine explanation:** The two-panel split in the image maps exactly to Kubernetes' architectural separation of concerns. The Leasing Office (left) represents the Control Plane — it holds records, makes decisions, and issues instructions, but never physically lifts anything. The Buildings (right) represent Worker Nodes — they do the actual execution, running containers on hardware. The critical Kubernetes insight the image encodes is failure isolation: if a building collapses, the office dispatches the workload elsewhere; if the office goes dark, buildings keep existing tenants running (containers continue) but no new work can be assigned. This separation is why etcd, kube-apiserver, and kube-scheduler must never be co-located with application workloads.
 
 * **Zine Text & Layout:**
 * (Top): "Two halves of the complex: the office that thinks, and the buildings that work."
@@ -393,7 +412,7 @@ spec:
 **Further reading**
 
 - [Cluster architecture](https://kubernetes.io/docs/concepts/architecture/)
-- [CKA Study Notes: Core Concepts](CKA_Study_Notes/01-core-concepts.md) & [Cluster Design](CKA_Study_Notes/09-cluster-design-and-installation.md)
+- [CKA Study Notes: Core Concepts](../CKA_Study_Notes/01-core-concepts.md) & [Cluster Design](../CKA_Study_Notes/09-cluster-design-and-installation.md)
 
 ### Demo — Control Plane vs. Worker Nodes
 
@@ -404,15 +423,24 @@ SETUP
 STEPS
   1. kubectl get nodes --show-labels | grep -E 'control-plane|NAME'
   2. kubectl get pods -n kube-system -o wide
+  3. kubectl describe node zine-control-plane | grep -E 'Taints|Roles|Conditions' | head -10
+  4. kubectl get lease -n kube-node-lease
 
 WHAT YOU SHOULD SEE
-  The control-plane node is labelled node-role.kubernetes.io/control-plane. kube-system shows the api-server, etcd, scheduler and controller-manager Pods on that node.
+  Step 1: control-plane node is labelled node-role.kubernetes.io/control-plane.
+  Step 2: kube-system shows api-server, etcd, scheduler, controller-manager Pods
+    all running on the control-plane node — not on worker nodes.
+  Step 3: the control-plane node shows Taint: node-role.kubernetes.io/control-plane:NoSchedule
+    — this is what prevents application Pods from landing on it.
+  Step 4: each node has a Lease object it renews every 10 seconds — the lightweight
+    heartbeat mechanism replacing heavy Node status updates in modern Kubernetes.
 
 CLEANUP
   (nothing to clean up)
 
 NOTE
-  This guide assumes the three-node kind cluster above, so the control plane and workers are separate Docker containers.
+  The Taint/NoSchedule confirms the two-region split: control plane components
+  run on dedicated nodes, application workloads run on worker nodes.
 </pre></div>
 
 
@@ -531,7 +559,13 @@ NOTE
 - **HTTP/2 Streaming & Watch API:** Uses HTTP/2 persistent streaming multiplexing to support `watch` calls, pushing asynchronous state change notifications instantly to subscribed controllers without polling.
 
 ```yaml
-# /etc/kubernetes/manifests/kube-apiserver.yaml (Static Pod excerpt)
+# /etc/kubernetes/manifests/kube-apiserver.yaml -- Static Pod excerpt
+# WHY THIS YAML: kube-apiserver itself runs as a Static Pod — its own manifest.
+# '--secure-port=6443': the single front door; ALL kubectl, controller, and kubelet
+#   traffic hits this port. No component bypasses it.
+# '--etcd-servers': proves kube-apiserver is the ONLY component that talks to etcd.
+# '--authorization-mode=Node,RBAC': every request traverses this AuthZ chain.
+# '--enable-admission-plugins': defines what mutation/validation runs before etcd write.
 apiVersion: v1
 kind: Pod
 metadata:
@@ -559,7 +593,6 @@ spec:
 - **Production Vulnerabilities:** Unbounded watch queries (`kubectl get pods -A --watch`) from high numbers of controllers or CI/CD pipelines can exhaust API server memory.
 - **Priority and Fairness (APF):** Modern clusters employ API Priority and Fairness to classify traffic into distinct priority queues (`workload-high`, `workload-low`, `system`), guaranteeing administrative access even during DDoS surges.
 
-
 ### Component architecture flow
 
 <iframe src="diagrams/topic-03.html" width="100%" height="560" style="border:none;"></iframe>
@@ -571,7 +604,7 @@ spec:
 
 ![kube-apiserver zine illustration](generated/kubernetes-apartment-complex/03-zine.png)
 
-**Zine explanation:** The illustration translates the Kubernetes mechanism into the apartment-complex metaphor so the operational relationship is easier to remember.
+**Zine explanation:** The Front Desk metaphor in the image captures kube-apiserver's defining property: it is the only entry point and the sole component that speaks directly to etcd. Just as every request at a hotel front desk gets logged, authenticated (ID check), and either approved or rejected before anything happens, every kubectl command, controller watch, and kubelet status update goes through the API server's pipeline: AuthN → AuthZ → Mutation → Validation → etcd write → Watch notification. The "nobody bypasses it" caption reflects the security architecture — even internal components like the scheduler and controllers cannot write to etcd directly; they must go through the API server's admission pipeline.
 
 * **Zine Text & Layout:**
 * (Top): "kube-apiserver — The Front Desk"
@@ -581,7 +614,7 @@ spec:
 
 - [API server reference](https://kubernetes.io/docs/reference/command-line-tools-reference/kube-apiserver/)
 - [Kubernetes API concepts](https://kubernetes.io/docs/concepts/overview/kubernetes-api/)
-- [CKA Study Notes: Core Concepts (API Server)](CKA_Study_Notes/01-core-concepts.md) & [Security](CKA_Study_Notes/06-security.md)
+- [CKA Study Notes: Core Concepts (API Server)](../CKA_Study_Notes/01-core-concepts.md) & [Security](../CKA_Study_Notes/06-security.md)
 
 ### Demo — kube-apiserver
 
@@ -722,6 +755,12 @@ NOTE
 
 ```yaml
 # etcd-backup-cronjob.yaml
+# WHY THIS YAML: etcd is the single source of truth for ALL cluster state.
+# This CronJob automates the critical disaster recovery operation: etcdctl snapshot save.
+# 'schedule: "0 */4 * * *"': every 4 hours — data written since the last snapshot
+#   is unrecoverable if etcd loses quorum and all members fail simultaneously.
+# '--endpoints=https://127.0.0.1:2379': etcd is only reachable locally (by design).
+# '--cacert/--cert/--key': etcd requires mTLS — the cluster CA chain in action.
 apiVersion: batch/v1
 kind: CronJob
 metadata:
@@ -751,7 +790,6 @@ spec:
 - **CKA Disaster Recovery Drill:** Administrators must master taking snapshots with `ETCDCTL_API=3 etcdctl snapshot save <file>` and restoring via `etcdctl snapshot restore <file> --data-dir=/var/lib/etcd-from-backup`.
 - **Space Quotas:** etcd enforces a default 2GB storage quota (expandable to 8GB). Exceeding this quota triggers an `NOSPACE` alarm that locks the cluster into read-only mode until compaction and defragmentation are completed.
 
-
 ### Component architecture flow
 
 <iframe src="diagrams/topic-04.html" width="100%" height="560" style="border:none;"></iframe>
@@ -763,7 +801,7 @@ spec:
 
 ![etcd zine illustration](generated/kubernetes-apartment-complex/04-zine.png)
 
-**Zine explanation:** The illustration translates the Kubernetes mechanism into the apartment-complex metaphor so the operational relationship is easier to remember.
+**Zine explanation:** The Locked Records Room image illustrates etcd's role as the only source of truth in the entire cluster. In the apartment metaphor, every lease, tenant record, and maintenance log lives in this one room — if it burns down, nobody knows who lives where or what rules apply. This mirrors etcd's position in Kubernetes: all object definitions (Pods, Services, Deployments), all cluster state, and all controller metadata are stored here. The "locked" aspect reflects that only the kube-apiserver holds the key — no other component writes to etcd directly. The "highly available" quality maps to the Raft quorum requirement: you need at least 2 of 3 rooms to agree before any record is considered committed.
 
 * **Zine Text & Layout:**
 * (Top): "etcd — The Locked Records Room"
@@ -773,7 +811,7 @@ spec:
 
 - [etcd: why etcd](https://etcd.io/docs/v3.5/learning/why/)
 - [Kubernetes etcd guidance](https://kubernetes.io/docs/tasks/administer-cluster/configure-upgrade-etcd/)
-- [CKA Study Notes: Core Concepts (etcd)](CKA_Study_Notes/01-core-concepts.md) & [Cluster Maintenance (etcd Backup/Restore)](CKA_Study_Notes/05-cluster-maintenance.md)
+- [CKA Study Notes: Core Concepts (etcd)](../CKA_Study_Notes/01-core-concepts.md) & [Cluster Maintenance (etcd Backup/Restore)](../CKA_Study_Notes/05-cluster-maintenance.md)
 
 ### Demo — etcd
 
@@ -917,6 +955,12 @@ NOTE
 
 ```yaml
 # advanced-pod-scheduling.yaml
+# WHY THIS YAML: Demonstrates both phases of kube-scheduler's pipeline.
+# FILTERING: 'tolerations' removes nodes that have the 'dedicated=high-compute:NoSchedule'
+#   taint — without matching, the Scheduler discards those nodes before scoring.
+# FILTERING + SCORING: 'requiredDuringScheduling' eliminates nodes outside allowed zones.
+# 'resources.requests': the Scheduler checks NodeResourcesFit using these values —
+#   nodes without 250m CPU or 256Mi free allocatable capacity are filtered out.
 apiVersion: v1
 kind: Pod
 metadata:
@@ -950,7 +994,6 @@ spec:
 - **Custom Schedulers:** Multiple schedulers can run concurrently. A pod declares a specific scheduler via `spec.schedulerName: custom-scheduler`.
 - **Pending Pod Diagnosis:** If all nodes fail the filtering stage, the Pod remains stuck in `Pending`. Engineers troubleshoot this via `kubectl describe pod <name>` to view scheduler predicate events (e.g., `0/3 nodes available: 3 Insufficient memory`).
 
-
 ### Component architecture flow
 
 <iframe src="diagrams/topic-05.html" width="100%" height="560" style="border:none;"></iframe>
@@ -962,7 +1005,7 @@ spec:
 
 ![kube-scheduler zine illustration](generated/kubernetes-apartment-complex/05-zine.png)
 
-**Zine explanation:** The illustration translates the Kubernetes mechanism into the apartment-complex metaphor so the operational relationship is easier to remember.
+**Zine explanation:** The Unit Assigner image represents kube-scheduler's two-phase decision process. Just as a housing coordinator doesn't just pick any vacant unit but evaluates floor capacity, existing tenants, and accessibility requirements, kube-scheduler first filters out nodes that lack sufficient CPU/RAM, violate taints/tolerations, or fail topology constraints (Filtering Phase), then scores the remaining candidates based on resource balance, image locality, and affinity preferences (Scoring Phase). The image's assignment arrow from coordinator to node captures the Binding call — a PATCH to `pod.spec.nodeName` — which is the atomic moment a Pod is committed to a specific Worker Node.
 
 * **Zine Text & Layout:**
 * (Top): "kube-scheduler — The Unit Assigner"
@@ -972,7 +1015,7 @@ spec:
 
 - [Kubernetes scheduler](https://kubernetes.io/docs/concepts/scheduling-eviction/kube-scheduler/)
 - [Scheduling framework](https://kubernetes.io/docs/concepts/scheduling-eviction/scheduling-framework/)
-- [CKA Study Notes: Scheduling](CKA_Study_Notes/02-scheduling.md)
+- [CKA Study Notes: Scheduling](../CKA_Study_Notes/02-scheduling.md)
 
 ### Demo — kube-scheduler
 
@@ -1111,7 +1154,12 @@ NOTE
 - Active leadership is acquired via a distributed lease lock stored as a `Lease` object in `kube-system` (`coordination.k8s.io/v1`). Standby instances continuously poll the lease, taking over immediately if the leader fails to renew within the renewal interval.
 
 ```yaml
-# /etc/kubernetes/manifests/kube-controller-manager.yaml (Flags excerpt)
+# /etc/kubernetes/manifests/kube-controller-manager.yaml -- Flags excerpt
+# WHY THIS YAML: These flags configure the controller loops inside kube-controller-manager.
+# '--leader-elect=true': only ONE active instance in HA; others watch the Lease lock.
+# '--node-monitor-grace-period=40s': how long before a silent node is marked NotReady.
+# '--pod-eviction-timeout=5m0s': after NotReady, pods wait this long before rescheduling.
+# '--cluster-cidr=10.244.0.0/16': the Pod IP block; the controller assigns per-node CIDRs.
 apiVersion: v1
 kind: Pod
 metadata:
@@ -1137,7 +1185,6 @@ spec:
 - **Rate-Limiting & Backoff:** If a controller repeatedly fails an operation (such as failing to create a Pod due to quota exhaustion), it applies exponential backoff to protect the API server from request flooding.
 - **Cascading Deletions:** The Garbage Collector controller tracks parent-child hierarchies via `ownerReferences` on objects, ensuring that deleting a Deployment automatically cascades down to delete its managed ReplicaSets and Pods.
 
-
 ### Component architecture flow
 
 <iframe src="diagrams/topic-06.html" width="100%" height="560" style="border:none;"></iframe>
@@ -1149,7 +1196,7 @@ spec:
 
 ![kube-controller-manager zine illustration](generated/kubernetes-apartment-complex/06-zine.png)
 
-**Zine explanation:** The illustration translates the Kubernetes mechanism into the apartment-complex metaphor so the operational relationship is easier to remember.
+**Zine explanation:** The Looping Inspectors image captures kube-controller-manager's defining behavior: it runs dozens of independent control loops that continuously patrol cluster state. Just as building inspectors walk the floors on a schedule, detect vacant units, and trigger the leasing process — without being asked each time — controllers like ReplicaSet Controller, Node Lifecycle Controller, and EndpointSlice Controller watch for drift between desired state (etcd) and actual state (node reports), then issue corrective API calls. The "looping" aspect is critical: controllers are event-driven and level-triggered, meaning they reconcile even if events are missed, ensuring eventual convergence without manual intervention.
 
 * **Zine Text & Layout:**
 * (Top): "kube-controller-manager — The Looping Inspectors"
@@ -1158,7 +1205,7 @@ spec:
 **Further reading**
 
 - [Controllers](https://kubernetes.io/docs/concepts/architecture/controller/)
-- [CKA Study Notes: Core Concepts (Controller Manager)](CKA_Study_Notes/01-core-concepts.md)
+- [CKA Study Notes: Core Concepts (Controller Manager)](../CKA_Study_Notes/01-core-concepts.md)
 
 ### Demo — kube-controller-manager
 
@@ -1296,6 +1343,12 @@ NOTE
 
 ```yaml
 # cloud-loadbalancer-service.yaml
+# WHY THIS YAML: This Service spec triggers the cloud-controller-manager's Service Controller.
+# 'type: LoadBalancer': when the API server persists this, CCM's Service Controller
+#   calls the cloud provider API (AWS/GCP/Azure) to provision an actual load balancer.
+# 'annotations': cloud-specific parameters passed to the CCM for LB configuration.
+# 'aws-load-balancer-type: external' tells CCM to create an AWS NLB, not an ALB.
+# This proves 'type: LoadBalancer' is a Kubernetes intent — CCM translates it to infra.
 apiVersion: v1
 kind: Service
 metadata:
@@ -1320,7 +1373,6 @@ spec:
 - **Cloud IAM Identity:** The CCM requires explicit cloud IAM roles and credentials (or Workload Identity/IRSA) with permissions to provision network interfaces, load balancers, and route tables.
 - **Orphaned Cloud Costs:** If a namespace containing a LoadBalancer Service is deleted forcefully while CCM is malfunctioning, the external cloud load balancer may remain active in the cloud account, incurring silent billing costs.
 
-
 ### Component architecture flow
 
 <iframe src="diagrams/topic-07.html" width="100%" height="560" style="border:none;"></iframe>
@@ -1332,7 +1384,7 @@ spec:
 
 ![cloud-controller-manager zine illustration](generated/kubernetes-apartment-complex/07-zine.png)
 
-**Zine explanation:** The illustration translates the Kubernetes mechanism into the apartment-complex metaphor so the operational relationship is easier to remember.
+**Zine explanation:** The Outside Vendor Liaison image represents cloud-controller-manager's role as the bridge between Kubernetes' internal API model and external cloud provider APIs. Just as a complex might hire an external property management firm to handle parking structures, utility connections, and city permits — things beyond the building's own walls — cloud-controller-manager handles resources that exist in the cloud platform: provisioning AWS NLBs when Services of type LoadBalancer are created, updating VPC routing tables for Pod CIDR blocks, and removing cloud node entries when VMs are terminated. This decoupling keeps core Kubernetes cloud-agnostic while allowing per-cloud integrations.
 
 * **Zine Text & Layout:**
 * (Top): "cloud-controller-manager — Outside Vendor Liaison"
@@ -1341,7 +1393,7 @@ spec:
 **Further reading**
 
 - [Cloud controller manager](https://kubernetes.io/docs/concepts/architecture/cloud-controller/)
-- [CKA Study Notes: Core Concepts & Cloud Controller](CKA_Study_Notes/01-core-concepts.md)
+- [CKA Study Notes: Core Concepts & Cloud Controller](../CKA_Study_Notes/01-core-concepts.md)
 
 ### Demo — cloud-controller-manager
 
@@ -1480,6 +1532,12 @@ NOTE
 
 ```yaml
 # /etc/kubernetes/manifests/node-diagnostics.yaml
+# WHY THIS YAML: Placed in the Static Pod directory — kubelet reads via inotify.
+# The kubelet starts this container WITHOUT consulting kube-apiserver, etcd, or scheduler.
+# 'hostNetwork: true': shares the node's network namespace — needed before CNI is ready.
+# 'hostPID: true': shares the node's PID namespace — needed for node-level diagnostics.
+# 'hostPath /var/log': mounts the node's actual log directory into the container.
+# This is the exact pattern kubeadm uses to bootstrap etcd and kube-apiserver.
 apiVersion: v1
 kind: Pod
 metadata:
@@ -1506,7 +1564,6 @@ spec:
 - **CKA Troubleshooting Pattern:** If `kubectl get nodes` fails because the API server is down, check `/etc/kubernetes/manifests/` on the control plane node. Inspect the manifest files and review container logs via `crictl ps` and `crictl logs <container-id>` or `/var/log/pods/`.
 - **Name Appending:** The kubelet automatically appends the node hostname as a suffix to the static pod name (e.g., `kube-apiserver-control-plane-01`).
 
-
 ### Component architecture flow
 
 <iframe src="diagrams/topic-08.html" width="100%" height="560" style="border:none;"></iframe>
@@ -1518,7 +1575,7 @@ spec:
 
 ![Static Pods zine illustration](generated/kubernetes-apartment-complex/08-zine.png)
 
-**Zine explanation:** The illustration translates the Kubernetes mechanism into the apartment-complex metaphor so the operational relationship is easier to remember.
+**Zine explanation:** The Bootstrapping Crew image shows workers setting up the building's infrastructure before any tenants arrive — and this is exactly what Static Pods do for the Kubernetes control plane. Static Pods are defined as YAML manifests in `/etc/kubernetes/manifests/` on the control plane node, read directly by the kubelet via inotify file watches, with no dependency on the kube-apiserver or etcd. They are how kubeadm bootstraps the cluster: etcd, kube-apiserver, kube-scheduler, and kube-controller-manager all run as Static Pods before any cluster API is available. The Mirror Pod mechanic — a read-only reflection visible in `kubectl get pods -n kube-system` — explains why you see these pods in the API even though the API didn't create them.
 
 * **Zine Text & Layout:**
 * (Top): "Static Pods — The Bootstrapping Crew"
@@ -1527,7 +1584,7 @@ spec:
 **Further reading**
 
 - [Static Pods](https://kubernetes.io/docs/tasks/configure-pod-container/static-pod/)
-- [CKA Study Notes: Scheduling (Static Pods & Kubelet)](CKA_Study_Notes/02-scheduling.md)
+- [CKA Study Notes: Scheduling (Static Pods & Kubelet)](../CKA_Study_Notes/02-scheduling.md)
 
 ### Demo — Static Pods
 
@@ -1670,6 +1727,13 @@ NOTE
 
 ```yaml
 # pod-with-probes.yaml
+# WHY THIS YAML: These probes are the kubelet's health monitoring directives.
+# 'startupProbe': kubelet will NOT run livenessProbe until this succeeds.
+#   'failureThreshold: 30 x periodSeconds: 10' = up to 300s for slow startup.
+#   Without this, slow-starting apps are killed by liveness checks prematurely.
+# 'livenessProbe': failure causes kubelet to instruct the CRI to restart the container.
+# 'readinessProbe': failure removes the Pod from the Service's EndpointSlice.
+#   The kubelet -- not the API server -- executes these probes on the node locally.
 apiVersion: v1
 kind: Pod
 metadata:
@@ -1702,7 +1766,6 @@ spec:
 - **Systemd Service Troubleshooting:** Kubelet runs as a native systemd unit (`systemctl status kubelet`, `journalctl -u kubelet -f`). Misconfigured cgroup drivers (`cgroupfs` vs `systemd`) are the #1 cause of kubelet boot failure.
 - **Port 10250 Security:** Kubelet exposes an HTTPS API on port 10250 for `kubectl logs` and `kubectl exec`. This endpoint must be secured with `--anonymous-auth=false` and `--authorization-mode=Webhook` to prevent unauthenticated remote code execution.
 
-
 ### Component architecture flow
 
 <iframe src="diagrams/topic-09.html" width="100%" height="560" style="border:none;"></iframe>
@@ -1714,7 +1777,7 @@ spec:
 
 ![kubelet zine illustration](generated/kubernetes-apartment-complex/09-zine.png)
 
-**Zine explanation:** The illustration translates the Kubernetes mechanism into the apartment-complex metaphor so the operational relationship is easier to remember.
+**Zine explanation:** The Superintendent image captures the kubelet's position as the node-level agent that translates API-level Pod specs into actual running containers. Just as a building superintendent manages day-to-day operations — ensuring units are properly maintained, heating is working, and problems are reported to the office — the kubelet watches for Pods assigned to its node, instructs the container runtime (via CRI gRPC) to start/stop containers, mounts volumes, runs liveness and readiness probes, and reports node status back to the control plane. The kubelet is the only Kubernetes component that runs as a native systemd service rather than a container — because it must exist before any container infrastructure is available.
 
 * **Zine Text & Layout:**
 * (Top): "kubelet — The Superintendent"
@@ -1723,7 +1786,7 @@ spec:
 **Further reading**
 
 - [Nodes and kubelet](https://kubernetes.io/docs/concepts/architecture/nodes/)
-- [CKA Study Notes: Networking (Kube-Proxy & iptables)](CKA_Study_Notes/07-networking.md)
+- [CKA Study Notes: Networking (Kube-Proxy & iptables)](../CKA_Study_Notes/07-networking.md)
 
 ### Demo — kubelet
 
@@ -1868,6 +1931,13 @@ NOTE
 
 ```yaml
 # service-network-spec.yaml
+# WHY THIS YAML: This ClusterIP Service triggers kube-proxy's iptables/IPVS programming.
+# 'type: ClusterIP': creates a virtual IP that exists nowhere physically.
+#   It works ONLY because kube-proxy programs iptables DNAT rules on every node.
+# 'selector: app: backend-api': kube-proxy reads the matching EndpointSlice to know
+#   which Pod IPs to include in the DNAT rules. Rules update as Pods come and go.
+# 'port: 80 -> targetPort: 8080': iptables rewrites BOTH destination IP and port.
+# Without kube-proxy's rules, this ClusterIP would be completely unreachable.
 apiVersion: v1
 kind: Service
 metadata:
@@ -1888,7 +1958,6 @@ spec:
 - **Virtual IP Non-Routability:** ClusterIPs are virtual synthetic IPs that do not belong to any physical or virtual network interface (`ip addr show` will never display a ClusterIP). Ping (`ICMP`) to a ClusterIP will fail by design unless explicitly answered by iptables.
 - **Conntrack Table Exhaustion:** High-volume UDP workloads (such as DNS floods) can fill `/proc/sys/net/netfilter/nf_conntrack_max`, leading to dropped connections across the entire node.
 
-
 ### Component architecture flow
 
 <iframe src="diagrams/topic-10.html" width="100%" height="560" style="border:none;"></iframe>
@@ -1900,7 +1969,7 @@ spec:
 
 ![kube-proxy zine illustration](generated/kubernetes-apartment-complex/10-zine.png)
 
-**Zine explanation:** The illustration translates the Kubernetes mechanism into the apartment-complex metaphor so the operational relationship is easier to remember.
+**Zine explanation:** The Lobby Directory image represents kube-proxy's role as the network translation layer that makes virtual Service IPs functional. Just as a lobby directory tells you which apartment number maps to which resident — and keeps that directory current as tenants move in and out — kube-proxy programs iptables/IPVS rules on every node so that traffic destined for a ClusterIP (a virtual, non-routable IP) is NAT-translated to the real Pod IP of a healthy backend. The directory is always current: when EndpointSlices change because Pods are added or removed, kube-proxy re-programs the rules. Without kube-proxy, the ClusterIP is just an IP address that goes nowhere.
 
 * **Zine Text & Layout:**
 * (Top): "kube-proxy — The Lobby Directory"
@@ -1910,7 +1979,7 @@ spec:
 
 - [kube-proxy](https://kubernetes.io/docs/reference/command-line-tools-reference/kube-proxy/)
 - [Service proxying](https://kubernetes.io/docs/concepts/services-networking/service-traffic-policies/)
-- [CKA Study Notes: Core Concepts (Container Runtime & CRI)](CKA_Study_Notes/01-core-concepts.md)
+- [CKA Study Notes: Core Concepts (Container Runtime & CRI)](../CKA_Study_Notes/01-core-concepts.md)
 
 ### Demo — kube-proxy
 
@@ -2050,6 +2119,12 @@ NOTE
 
 ```yaml
 # oci-security-pod.yaml
+# WHY THIS YAML: These security fields are translated by containerd into OCI runtime spec,
+#   which runc passes to Linux kernel syscalls when creating the container sandbox.
+# 'runAsNonRoot: true': containerd verifies UID != 0 before starting the container.
+# 'seccompProfile: RuntimeDefault': containerd loads a BPF filter blocking dangerous syscalls.
+# 'allowPrivilegeEscalation: false': sets the no_new_privs prctl flag via runc.
+# 'capabilities.drop: ALL': runc calls cap_set_proc() stripping all Linux capabilities.
 apiVersion: v1
 kind: Pod
 metadata:
@@ -2076,7 +2151,6 @@ spec:
 - **cgroup Driver Alignment:** Both containerd (`SystemdCgroup = true` in `/etc/containerd/config.toml`) and kubelet (`cgroupDriver: systemd`) must match systemd. Mismatched drivers cause node instability and crash loops.
 - **Image Garbage Collection:** Kubelet instructs CRI to clean up unused image layers when disk utilization passes `imageGCHighThresholdPercent` (default 85%).
 
-
 ### Component architecture flow
 
 <iframe src="diagrams/topic-11.html" width="100%" height="560" style="border:none;"></iframe>
@@ -2088,17 +2162,17 @@ spec:
 
 ![Container Runtime & CRI zine illustration](generated/kubernetes-apartment-complex/11-zine.png)
 
-**Zine explanation:** The illustration translates the Kubernetes mechanism into the apartment-complex metaphor so the operational relationship is easier to remember.
+**Zine explanation:** The Maintenance Staff image depicts the Container Runtime's (CRI) role as the operational layer between Kubernetes' orchestration decisions and the actual Linux kernel mechanics of running processes. Just as maintenance staff in a building don't design apartments but are essential for physically making them livable — hooking up plumbing, power, and walls — containerd (or CRI-O) translates kubelet instructions into kernel-level calls: creating cgroup hierarchies for resource limits, configuring Linux namespaces for isolation, mounting OverlayFS layers for the container filesystem, and invoking runc to spawn the actual process. Without the CRI layer, kubelet's PodSpec has no way to become a running process.
 
 * **Zine Text & Layout:**
-* (Top): "Container Runtime & CRI — The Moving Crew & Contract"
-* (Caption): "containerd or CRI-O pulls the image and runs the process; CRI ensures Kubernetes can swap runtimes seamlessly."
+* (Top): "Container Runtime & CRI — The Maintenance Staff"
+* (Caption): "Runs the actual containers via a standardized gRPC interface, handling image pulls, sandbox creation, and cgroup isolation."
 
 **Further reading**
 
 - [Container runtimes](https://kubernetes.io/docs/setup/production-environment/container-runtimes/)
 - [CRI specification](https://github.com/kubernetes/cri-api)
-- [CKA Study Notes: Core Concepts (Pods)](CKA_Study_Notes/01-core-concepts.md)
+- [CKA Study Notes: Core Concepts (Pods)](../CKA_Study_Notes/01-core-concepts.md)
 
 ### Demo — Container Runtime & CRI
 
@@ -2233,6 +2307,12 @@ NOTE
 
 ```yaml
 # native-sidecar-pod.yaml
+# WHY THIS YAML: Demonstrates the native sidecar pattern (Kubernetes 1.28+).
+# 'initContainers' with 'restartPolicy: Always': this is what makes it a native sidecar.
+#   It starts BEFORE application containers but does NOT exit -- stays running alongside.
+# 'shared-logs emptyDir volume': both containers mount the SAME Linux tmpfs directory.
+#   The sidecar reads logs written by web-app because they share the same volume mount
+#   -- enabled by the Pod's shared mount namespace (all containers share Pod volumes).
 apiVersion: v1
 kind: Pod
 metadata:
@@ -2262,7 +2342,6 @@ spec:
 - **Resource Summation:** Pod resource requests and limits equal the sum of all primary containers plus sidecar containers. Excessive sidecars reduce node scheduling density.
 - **Shutdown Race Conditions:** With legacy sidecars, if the application container finishes but the sidecar keeps running, the Pod never terminates, causing Job failures. Native sidecars (`restartPolicy: Always`) solve this problem natively.
 
-
 ### Component architecture flow
 
 <iframe src="diagrams/topic-12.html" width="100%" height="560" style="border:none;"></iframe>
@@ -2274,16 +2353,16 @@ spec:
 
 ![Sidecar Containers zine illustration](generated/kubernetes-apartment-complex/12-zine.png)
 
-**Zine explanation:** The illustration translates the Kubernetes mechanism into the apartment-complex metaphor so the operational relationship is easier to remember.
+**Zine explanation:** The Roommate image perfectly captures sidecar containers' shared-namespace model. Just as two roommates share the same apartment (same address, same front door, same mailbox), sidecar containers in a Pod share the same Linux network namespace — meaning they communicate over `localhost` without crossing any network boundary — and share volumes declared in the Pod spec. The Envoy proxy sidecar in a service mesh intercepts all of the app container's traffic on localhost because they share the same network stack. The native sidecar (Kubernetes 1.28+) in `initContainers` with `restartPolicy: Always` starts before the app and stays alive, solving the Job-termination race condition that plagued legacy sidecar patterns.
 
 * **Zine Text & Layout:**
 * (Top): "Sidecar Containers — The Roommate"
-* (Caption): "Secondary containers in a Pod that share network/storage to handle logging, proxies (like Istio), or metrics."
+* (Caption): "A helper container that shares the Pod's network namespace and volumes, running alongside the main container without coupling their code."
 
 **Further reading**
 
 - [Sidecar containers](https://kubernetes.io/docs/concepts/workloads/pods/sidecar-containers/)
-- [CKA Study Notes: Application Lifecycle (Multi-Container Pods)](CKA_Study_Notes/04-application-lifecycle-management.md)
+- [CKA Study Notes: Application Lifecycle (Multi-Container Pods)](../CKA_Study_Notes/04-application-lifecycle-management.md)
 
 ### Demo — Sidecar Containers
 
@@ -2435,6 +2514,12 @@ NOTE
 
 ```yaml
 # init-container-dependency.yaml
+# WHY THIS YAML: Init containers enforce startup prerequisites before the main app starts.
+# The kubelet runs init containers IN ORDER, each must exit code 0 before the next starts.
+# Common pattern: init container runs 'until nc -z postgres 5432; do sleep 2; done'
+#   -- the main app container will not start until the DB port is confirmed open.
+# Init containers share Pod volumes (emptyDir, PVCs), allowing pre-seeding of config
+#   files, DB migrations, or secrets into shared storage before the app reads them.
 apiVersion: v1
 kind: Pod
 metadata:
@@ -2467,7 +2552,6 @@ spec:
 - **Resource Computation:** The effective resource request of a Pod is `max(max(init_containers), sum(app_containers))`. An init container requesting 4 CPU cores will cause the entire Pod to require 4 cores during scheduling, even if it runs for only 5 seconds.
 - **Debugging Blocked Pods:** When a Pod is stuck in `Init:0/1`, run `kubectl logs <pod-name> -c <init-container-name>` to inspect why the preflight check is stalling.
 
-
 ### Component architecture flow
 
 <iframe src="diagrams/topic-13.html" width="100%" height="560" style="border:none;"></iframe>
@@ -2479,16 +2563,16 @@ spec:
 
 ![Init Containers zine illustration](generated/kubernetes-apartment-complex/13-zine.png)
 
-**Zine explanation:** The illustration translates the Kubernetes mechanism into the apartment-complex metaphor so the operational relationship is easier to remember.
+**Zine explanation:** The Pre-Move Checklist image maps directly to init containers' sequential, gate-keeping role. Just as a property manager runs through a mandatory checklist before handing over apartment keys — verify utilities are connected, locks are changed, inspection is signed — init containers run to completion in declared order before any application container starts. They enforce startup dependencies: the app container does not start until all init containers exit with code 0. An init container can wait for a database (`nc -z postgres 5432`), seed a ConfigMap file into a shared emptyDir volume, or configure iptables rules (with elevated privileges) that the unprivileged app container then benefits from.
 
 * **Zine Text & Layout:**
-* (Top): "Init Containers — The Prep Crew"
-* (Caption): "Setup scripts that must run to completion (e.g. running DB migrations) before the main app container starts."
+* (Top): "Init Containers — The Pre-Move Checklist"
+* (Caption): "Runs prerequisite setup tasks to completion before any application container starts — verifying dependencies and seeding data."
 
 **Further reading**
 
 - [Init containers](https://kubernetes.io/docs/concepts/workloads/pods/init-containers/)
-- [CKA Study Notes: Application Lifecycle (Init Containers)](CKA_Study_Notes/04-application-lifecycle-management.md)
+- [CKA Study Notes: Application Lifecycle (Init Containers)](../CKA_Study_Notes/04-application-lifecycle-management.md)
 
 ### Demo — Init Containers
 
@@ -2643,6 +2727,12 @@ NOTE
 
 ```yaml
 # calico-ippool-spec.yaml
+# WHY THIS YAML: This Calico IPPool defines the CIDR range for Pod IP allocation.
+# 'cidr: 192.168.0.0/16': every Pod gets an IP from this block via CNI IPAM.
+#   When kubelet calls the CNI ADD command for a new Pod, Calico allocates from here.
+# 'ipipMode: Always': cross-node Pod traffic is IP-in-IP encapsulated, enabling
+#   pod-to-pod routing across nodes without BGP routing support.
+# 'natOutgoing: true': enables SNAT so Pod traffic leaving the cluster uses the node IP.
 apiVersion: projectcalico.org/v3
 kind: IPPool
 metadata:
@@ -2661,7 +2751,6 @@ spec:
 - **MTU Sizing:** VXLAN encapsulation adds a 50-byte outer header. If host MTU is 1500, CNI interface MTU must be configured to 1450. MTU mismatches result in silent packet dropping for packets larger than the threshold.
 - **eBPF Acceleration:** Modern CNIs (Cilium, Calico eBPF) bypass iptables entirely, programming eBPF programs directly into Linux kernel socket filters (`tc` / `xdp`), cutting network latency by up to 40%.
 
-
 ### Component architecture flow
 
 <iframe src="diagrams/topic-14.html" width="100%" height="560" style="border:none;"></iframe>
@@ -2673,17 +2762,17 @@ spec:
 
 ![CNI (Container Network Interface) zine illustration](generated/kubernetes-apartment-complex/14-zine.png)
 
-**Zine explanation:** The illustration translates the Kubernetes mechanism into the apartment-complex metaphor so the operational relationship is easier to remember.
+**Zine explanation:** The Wiring Crew image represents the CNI plugin's role in building the physical network fabric that Pods rely on. Just as a wiring crew installs the electrical and network cabling that makes apartments functional before tenants arrive — and that work is invisible once done — CNI plugins (Calico, Cilium, Flannel) run when a Pod is scheduled, create a virtual ethernet pair (veth), assign an IP address from the Pod CIDR, configure routing rules, and attach the interface to the Pod's network namespace. Once done, the Pod can communicate on the cluster network just like a properly wired apartment can plug in any device. NetworkPolicy enforcement is the CNI's equivalent of circuit breakers — selectively controlling which connections are allowed.
 
 * **Zine Text & Layout:**
-* (Top): "CNI — The Road Crew"
-* (Caption): "Plugins (Calico, Cilium) that provide the actual Pod-to-Pod IP networking."
+* (Top): "CNI — The Wiring Crew"
+* (Caption): "Configures Pod networking on each node — assigning IPs, creating virtual interfaces, and establishing routes between Pods across nodes."
 
 **Further reading**
 
 - [Network plugins and CNI](https://kubernetes.io/docs/concepts/extend-kubernetes/compute-storage-net/network-plugins/)
 - [CNI project](https://github.com/containernetworking/cni)
-- [CKA Study Notes: Networking (CNI & Pod Networking)](CKA_Study_Notes/07-networking.md)
+- [CKA Study Notes: Networking (CNI & Pod Networking)](../CKA_Study_Notes/07-networking.md)
 
 ### Demo — CNI (Container Network Interface)
 
@@ -2826,6 +2915,13 @@ NOTE
 
 ```yaml
 # coredns-configmap.yaml
+# WHY THIS YAML: This ConfigMap IS the CoreDNS Corefile -- its runtime configuration.
+# 'cluster.local': the cluster domain. Services resolve as:
+#   <service>.<namespace>.svc.cluster.local -> ClusterIP address.
+# 'kubernetes cluster.local': uses the Kubernetes API as the DNS backend,
+#   watching Service and EndpointSlice objects to answer queries in real time.
+# 'forward . /etc/resolv.conf': external domain queries forwarded to node DNS.
+# Every Pod's /etc/resolv.conf is auto-configured to use this CoreDNS ClusterIP.
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -2859,7 +2955,6 @@ data:
 - **NodeLocal DNSCache:** In high-concurrency clusters, deploying `NodeLocal DNSCache` (a DaemonSet running CoreDNS on `169.254.20.10`) avoids conntrack UDP race conditions and eliminates DNS latency.
 - **CoreDNS Autoscaling:** CoreDNS must be scaled proportionally using `cluster-proportional-autoscaler` based on the number of nodes and cores in the cluster.
 
-
 ### Component architecture flow
 
 <iframe src="diagrams/topic-15.html" width="100%" height="560" style="border:none;"></iframe>
@@ -2871,17 +2966,17 @@ data:
 
 ![CoreDNS zine illustration](generated/kubernetes-apartment-complex/15-zine.png)
 
-**Zine explanation:** The illustration translates the Kubernetes mechanism into the apartment-complex metaphor so the operational relationship is easier to remember.
+**Zine explanation:** The Internal Phone Directory image maps CoreDNS' service discovery function precisely. Just as an apartment complex's internal directory lets you call "Front Desk" instead of memorizing the desk's extension number — and the directory updates automatically when staff change — CoreDNS resolves `my-service.my-namespace.svc.cluster.local` to a ClusterIP without requiring callers to know the IP directly. When Services or Endpoints change, CoreDNS's in-memory cache (backed by the API server watch) reflects the update within the TTL window. Every Pod is automatically configured with CoreDNS as its nameserver (`/etc/resolv.conf`), making service-to-service discovery work seamlessly within the cluster.
 
 * **Zine Text & Layout:**
-* (Top): "CoreDNS — The Building Directory"
-* (Caption): "Internal DNS that resolves Service names to cluster IPs."
+* (Top): "CoreDNS — The Internal Phone Directory"
+* (Caption): "Resolves Service names to cluster IPs, so Pods find each other by name instead of tracking ephemeral IP addresses."
 
 **Further reading**
 
 - [DNS for Services and Pods](https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/)
 - [CoreDNS project](https://coredns.io/)
-- [CKA Study Notes: Networking (CoreDNS)](CKA_Study_Notes/07-networking.md)
+- [CKA Study Notes: Networking (CoreDNS)](../CKA_Study_Notes/07-networking.md)
 
 ### Demo — CoreDNS
 
@@ -3020,6 +3115,12 @@ NOTE
 
 ```yaml
 # nodeport-service-spec.yaml
+# WHY THIS YAML: This Service shows the ClusterIP + NodePort layered model.
+# 'type: NodePort' creates BOTH a ClusterIP (internal) AND a NodePort (external).
+# 'selector: app: web-frontend': EndpointSlice controller populates backends;
+#   kube-proxy reads EndpointSlices to program its iptables rules.
+# 'port: 80 -> targetPort: 8080': stable interface -> actual container port.
+# 'nodePort: 30080': kube-proxy opens this port on every node's iptables chain.
 apiVersion: v1
 kind: Service
 metadata:
@@ -3047,7 +3148,6 @@ spec:
   - `Cluster` (default): Routes traffic to any node, potentially forwarding across nodes with SNAT (hiding client real IP).
   - `Local`: Only routes to pods on the node receiving the packet. Preserves the real client IP and avoids extra network hops, but risks uneven load distribution if nodes have unequal pod replicas.
 
-
 ### Component architecture flow
 
 <iframe src="diagrams/topic-16.html" width="100%" height="560" style="border:none;"></iframe>
@@ -3059,16 +3159,16 @@ spec:
 
 ![Services zine illustration](generated/kubernetes-apartment-complex/16-zine.png)
 
-**Zine explanation:** The illustration translates the Kubernetes mechanism into the apartment-complex metaphor so the operational relationship is easier to remember.
+**Zine explanation:** The Reception Desk image represents how a Kubernetes Service provides a stable virtual endpoint that decouples callers from the constantly-changing set of backend Pods. Just as a reception desk has one extension number that rings through to whichever staff member is available — even as staff come and go — a ClusterIP Service has one stable IP and port that load-balances traffic to matching Pods, selected by label selectors. When a Pod restarts and gets a new IP, the EndpointSlice controller updates the routing table; callers never need to know. The Service is a permanent address for an ephemeral population, which is why Deployments and Services are always created in pairs.
 
 * **Zine Text & Layout:**
-* (Top): "Services — The Permanent Mailbox"
-* (Caption): "Provides a stable internal IP and load balancing for a shifting set of ephemeral Pods."
+* (Top): "Services & ClusterIP — The Reception Desk"
+* (Caption): "A stable virtual IP that load-balances traffic across matching Pods — decoupling callers from the constantly-changing Pod IP addresses."
 
 **Further reading**
 
 - [Service networking](https://kubernetes.io/docs/concepts/services-networking/service/)
-- [CKA Study Notes: Networking (Services & ClusterIP)](CKA_Study_Notes/07-networking.md)
+- [CKA Study Notes: Networking (Services & ClusterIP)](../CKA_Study_Notes/07-networking.md)
 
 ### Demo — Services
 
@@ -3207,6 +3307,12 @@ NOTE
 
 ```yaml
 # custom-manual-endpoints.yaml
+# WHY THIS YAML: Manual Endpoints/EndpointSlices route a Service to non-Pod backends.
+# A Service WITHOUT a 'selector' tells the controller NOT to auto-manage backends.
+# The Endpoints object lists IP:port pairs that kube-proxy uses to program
+#   its iptables/IPVS rules, exactly as it would for Pod-backed endpoints.
+# This lets Kubernetes Services act as stable internal DNS names for external systems
+#   (legacy VMs, managed databases), enabling transparent migration to in-cluster Pods.
 apiVersion: v1
 kind: Service
 metadata:
@@ -3239,7 +3345,6 @@ endpoints:
 **Technical perspective:** Endpoint management is the heartbeat of zero-downtime rolling deployments:
 - **Graceful Termination Drain:** When a pod is deleted, the EndpointSlice controller asynchronously removes it from endpoints while the kubelet sends `SIGTERM` to the container. If the application terminates immediately without waiting for endpoint propagation, in-flight TCP requests receive connection resets (`RST`). Always implement a `preStop` hook (`sleep 5`) in the container spec to allow endpoint propagation before stopping server listeners.
 
-
 ### Component architecture flow
 
 <iframe src="diagrams/topic-17.html" width="100%" height="560" style="border:none;"></iframe>
@@ -3251,16 +3356,16 @@ endpoints:
 
 ![Endpoints zine illustration](generated/kubernetes-apartment-complex/17-zine.png)
 
-**Zine explanation:** The illustration translates the Kubernetes mechanism into the apartment-complex metaphor so the operational relationship is easier to remember.
+**Zine explanation:** The Building Address + Buzzer Panel image illustrates how NodePort and LoadBalancer Services extend the internal ClusterIP to be reachable from outside the cluster. Just as an apartment's external-facing buzzer panel (NodePort) lets visitors ring specific units from the street — even though internally residents call each other by apartment number — a NodePort Service opens a high-numbered port on every node, forwarding external traffic to the ClusterIP. A LoadBalancer Service adds a cloud-provisioned load balancer (the building's main lobby entrance) in front of those NodePorts, providing a single stable public IP. The trade-off: NodePort exposes a high-numbered port on every node; LoadBalancer incurs cloud costs per service.
 
 * **Zine Text & Layout:**
-* (Top): "Endpoints — The Forwarding List"
-* (Caption): "Maps a Service to the current set of Pod IPs actually backing it."
+* (Top): "NodePort & LoadBalancer — The Street-Facing Entrance"
+* (Caption): "Opens the cluster's internal Services to external traffic — NodePort via host ports, LoadBalancer via a cloud-provisioned IP."
 
 **Further reading**
 
 - [EndpointSlices](https://kubernetes.io/docs/concepts/services-networking/endpoint-slices/)
-- [CKA Study Notes: Networking (NodePort & LoadBalancer)](CKA_Study_Notes/07-networking.md)
+- [CKA Study Notes: Networking (NodePort & LoadBalancer)](../CKA_Study_Notes/07-networking.md)
 
 ### Demo — Endpoints
 
@@ -3401,6 +3506,13 @@ NOTE
 
 ```yaml
 # tls-ingress-spec.yaml
+# WHY THIS YAML: This Ingress resource is processed by the Ingress Controller,
+#   NOT by kube-apiserver or kube-proxy directly.
+# 'ingressClassName: nginx': selects which controller watches this object.
+#   Multiple controllers can coexist; className routes to the right one.
+# 'tls.secretName: tls-cert': the controller reads this Secret and configures
+#   its virtual host to terminate HTTPS -- Layer 7, impossible with raw kube-proxy.
+# 'rules.host / path': HTTP Host header and URL-path-based routing to backend Services.
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -3432,7 +3544,6 @@ spec:
 - **TLS Secret Management:** TLS certificates are stored in `kubernetes.io/tls` Secrets containing `tls.crt` and `tls.key`. Automatic certificate issuance and renewal are standardly delegated to `cert-manager` via ACME/Let's Encrypt.
 - **Controller Reload Penalties:** Older ingress-nginx setups reloaded the NGINX master process upon any backend endpoint change, causing transient client latency spikes. Modern controllers use dynamic Lua shared-memory routing to update backends without process reloads.
 
-
 ### Component architecture flow
 
 <iframe src="diagrams/topic-18.html" width="100%" height="560" style="border:none;"></iframe>
@@ -3444,16 +3555,16 @@ spec:
 
 ![Ingress zine illustration](generated/kubernetes-apartment-complex/18-zine.png)
 
-**Zine explanation:** The illustration translates the Kubernetes mechanism into the apartment-complex metaphor so the operational relationship is easier to remember.
+**Zine explanation:** The Guest Concierge image captures how an Ingress controller acts as an intelligent HTTP/HTTPS router that fronts multiple Services with a single entry point. Just as a hotel concierge receives all guest requests at one desk and routes them to the right floor or department based on the request type — "conference room requests go left, restaurant reservations go right" — an Ingress controller (nginx, Traefik) inspects HTTP Host headers and URL paths, then forwards traffic to the appropriate backend Service. TLS termination at the concierge (Ingress) means backend Services don't need their own certificates. A single LoadBalancer IP can serve dozens of Services through host/path routing rules.
 
 * **Zine Text & Layout:**
-* (Top): "Ingress — The Main Gate"
-* (Caption): "HTTP/S reverse proxy routing external domain traffic into your internal Services."
+* (Top): "Ingress — The Guest Concierge"
+* (Caption): "Routes external HTTP/HTTPS traffic to backend Services by hostname or URL path, with TLS termination at one central point."
 
 **Further reading**
 
 - [Ingress](https://kubernetes.io/docs/concepts/services-networking/ingress/)
-- [CKA Study Notes: Networking (Ingress)](CKA_Study_Notes/07-networking.md)
+- [CKA Study Notes: Networking (Ingress)](../CKA_Study_Notes/07-networking.md)
 
 ### Demo — Ingress
 
@@ -3616,6 +3727,13 @@ NOTE
 
 ```yaml
 # strict-backend-network-policy.yaml
+# WHY THIS YAML: Enforces namespace-level network segmentation via the CNI plugin.
+# 'podSelector: app: backend': once ANY NetworkPolicy selects this Pod,
+#   default becomes deny-all -- only explicitly allowed traffic flows.
+# 'policyTypes: [Ingress, Egress]': both directions are now controlled.
+# 'ingress.from.namespaceSelector: frontend': ONLY the frontend namespace may connect.
+# 'egress.ports.port: 5432': Pods may only make outbound connections to PostgreSQL.
+# WARNING: Must explicitly allow DNS (port 53) or DNS resolution breaks.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -3652,7 +3770,6 @@ spec:
 - **Flannel Gotcha:** Flannel does NOT enforce NetworkPolicies! Clusters using pure Flannel will silently ignore NetworkPolicy manifests, leaving workloads completely unisolated. Canal (Flannel + Calico policy engine) or Calico must be used.
 - **DNS Egress Lockdown:** When configuring an Egress default-deny policy, workloads immediately lose the ability to resolve names because port 53 UDP/TCP to CoreDNS is blocked. Always include an explicit egress rule permitting DNS traffic.
 
-
 ### Component architecture flow
 
 <iframe src="diagrams/topic-19.html" width="100%" height="560" style="border:none;"></iframe>
@@ -3664,16 +3781,16 @@ spec:
 
 ![NetworkPolicy zine illustration](generated/kubernetes-apartment-complex/19-zine.png)
 
-**Zine explanation:** The illustration translates the Kubernetes mechanism into the apartment-complex metaphor so the operational relationship is easier to remember.
+**Zine explanation:** The Security Door image maps NetworkPolicy's role as a namespace-level firewall that controls which Pods may communicate with which other Pods. Just as an apartment complex installs keycard-access doors between sections — so residents can't wander from the parking garage into the residential floors without authorization — NetworkPolicy rules restrict ingress and egress traffic between Pods at the kernel netfilter level (enforced by the CNI plugin). Without a NetworkPolicy, all Pods in a cluster can reach each other by default (flat network). Once any NetworkPolicy selects a Pod, the default behavior becomes deny-all for that Pod, and only explicitly allowed traffic flows. DNS traffic to port 53 must be explicitly allowed or DNS resolution breaks.
 
 * **Zine Text & Layout:**
-* (Top): "NetworkPolicy — The Guest List"
-* (Caption): "Restricts which Pods can talk to which other Pods — without one, every door is unlocked to everyone."
+* (Top): "NetworkPolicy — The Security Door"
+* (Caption): "Controls which Pods can communicate with which other Pods — enforcing namespace-level network segmentation at the kernel level."
 
 **Further reading**
 
 - [Network Policies](https://kubernetes.io/docs/concepts/services-networking/network-policies/)
-- [CKA Study Notes: Security (NetworkPolicies)](CKA_Study_Notes/06-security.md)
+- [CKA Study Notes: Security (NetworkPolicies)](../CKA_Study_Notes/06-security.md)
 
 ### Demo — NetworkPolicy
 
@@ -3832,6 +3949,13 @@ NOTE
 
 ```yaml
 # nfs-persistent-volume.yaml
+# WHY THIS YAML: Demonstrates the administrator-provisioned PV lifecycle.
+# 'capacity.storage: 50Gi': the PV advertises its size -- PVCs requesting >50Gi won't bind.
+# 'accessModes: ReadWriteMany': NFS supports multiple nodes mounting simultaneously.
+#   Block storage (EBS) would be ReadWriteOnce -- one node at a time only.
+# 'persistentVolumeReclaimPolicy: Retain': when PVC is deleted, PV is NOT destroyed.
+#   Moves to 'Released' state; admin must manually reclaim before rebinding.
+# 'storageClassName: ""': empty string means only manual PVC binding (no dynamic provisioning).
 apiVersion: v1
 kind: PersistentVolume
 metadata:
@@ -3854,7 +3978,6 @@ spec:
 - **Multi-Attach Errors:** When a node crashes, cloud block storage (AWS EBS, GCP PD) attached to that node remains locked in the cloud hypervisor. When the pod is rescheduled to another node, it becomes stuck in `ContainerCreating` with `VolumeAttachment` timeout errors until the detachment completes.
 - **Backup Limitations:** PV objects represent storage handles, not backup systems. Snapshots must be scheduled using `VolumeSnapshot` objects and CSI snapshot controllers.
 
-
 ### Component architecture flow
 
 <iframe src="diagrams/topic-20.html" width="100%" height="560" style="border:none;"></iframe>
@@ -3866,16 +3989,16 @@ spec:
 
 ![PersistentVolume (PV) zine illustration](generated/kubernetes-apartment-complex/20-zine.png)
 
-**Zine explanation:** The illustration translates the Kubernetes mechanism into the apartment-complex metaphor so the operational relationship is easier to remember.
+**Zine explanation:** The Pre-Built Storage Unit image represents a PersistentVolume's lifecycle independence from any individual Pod or tenant. Just as a storage unit in a complex exists as physical infrastructure that can be rented to one tenant, vacated, sanitized, and re-rented to another — independently of any specific lease — a PersistentVolume is provisioned by an administrator (or dynamically by a StorageClass) and exists as a cluster-level resource independent of any Pod. The Reclaim Policy (Retain/Delete/Recycle) determines what happens to the PV after a PVC releases it — like deciding whether a storage unit gets cleared out or preserved for the same tenant. AccessModes (ReadWriteOnce, ReadWriteMany) reflect the physical constraint of whether a storage unit can be accessed from one or multiple buildings simultaneously.
 
 * **Zine Text & Layout:**
-* (Top): "PersistentVolume — The Storage Facility"
+* (Top): "PersistentVolume — The Storage Unit"
 * (Caption): "Represents actual cluster storage, provisioned ahead of time or dynamically, independent of any Pod's lifecycle."
 
 **Further reading**
 
 - [Persistent Volumes](https://kubernetes.io/docs/concepts/storage/persistent-volumes/)
-- [CKA Study Notes: Storage (Persistent Volumes)](CKA_Study_Notes/08-storage.md)
+- [CKA Study Notes: Storage (Persistent Volumes)](../CKA_Study_Notes/08-storage.md)
 
 ### Demo — PersistentVolume (PV)
 
@@ -4047,6 +4170,12 @@ NOTE
 
 ```yaml
 # pvc-workload-claim.yaml
+# WHY THIS YAML: Shows the full PVC consumption lifecycle in one manifest.
+# PVC 'accessModes: ReadWriteOnce': binds only to PVs supporting single-node mounting.
+# PVC 'resources.requests.storage: 20Gi': minimum capacity required for binding.
+# Pod 'persistentVolumeClaim.claimName: database-storage': Pod references PVC by name;
+#   kubelet instructs the CSI driver to mount the volume at mountPath.
+# The PVC remains bound even if the Pod is deleted -- data persists across Pod restarts.
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -4084,7 +4213,6 @@ spec:
 - **Pending PVC Diagnosis:** Run `kubectl describe pvc <name>` to inspect events. Common root causes include no available PVs matching the criteria, StorageClass misconfiguration, or quota exhaustion.
 - **In-Use Protection:** Kubernetes applies the `kubernetes.io/pvc-protection` finalizer. If an operator attempts to delete an active PVC currently mounted by a running Pod, the deletion is deferred until the Pod terminates, preventing sudden filesystem corruption.
 
-
 ### Component architecture flow
 
 <iframe src="diagrams/topic-21.html" width="100%" height="560" style="border:none;"></iframe>
@@ -4096,7 +4224,7 @@ spec:
 
 ![PersistentVolumeClaim (PVC) zine illustration](generated/kubernetes-apartment-complex/21-zine.png)
 
-**Zine explanation:** The illustration translates the Kubernetes mechanism into the apartment-complex metaphor so the operational relationship is easier to remember.
+**Zine explanation:** The Rental Agreement image illustrates how a PersistentVolumeClaim is a formal request by a workload for specific storage characteristics — and the binding process that matches it to a suitable PersistentVolume. Just as a rental agreement specifies the storage unit size, access type (shared or exclusive), and duration, a PVC declares `accessModes`, `resources.requests.storage`, and optionally a `storageClassName`. The Kubernetes control plane then finds a PV that satisfies all constraints (capacity ≥ requested, matching access mode, matching StorageClass) and binds the two together. Once bound, the PVC is the Pod's exclusive handle to that storage — other Pods cannot claim the same PV while it's bound. If no PV matches, the PVC stays Pending until one becomes available.
 
 * **Zine Text & Layout:**
 * (Top): "PersistentVolumeClaim — The Rental Agreement"
@@ -4105,7 +4233,7 @@ spec:
 **Further reading**
 
 - [PersistentVolumeClaims](https://kubernetes.io/docs/concepts/storage/persistent-volumes/#persistentvolumeclaims)
-- [CKA Study Notes: Storage (Persistent Volume Claims)](CKA_Study_Notes/08-storage.md)
+- [CKA Study Notes: Storage (Persistent Volume Claims)](../CKA_Study_Notes/08-storage.md)
 
 ### Demo — PersistentVolumeClaim (PVC)
 
@@ -4271,6 +4399,13 @@ NOTE
 
 ```yaml
 # dynamic-storage-class.yaml
+# WHY THIS YAML: This StorageClass drives the dynamic provisioning workflow.
+# 'provisioner: ebs.csi.aws.com': the CSI plugin receiving CreateVolume gRPC calls
+#   when a PVC referencing this class is created -- calls the AWS EBS API.
+# 'volumeBindingMode: WaitForFirstConsumer': provisioning DELAYED until a Pod is scheduled.
+#   Ensures the EBS volume is created in the same AZ as the node -- avoids AZ failures.
+# 'allowVolumeExpansion: true': operators can increase PVC size post-creation; no migration.
+# 'reclaimPolicy: Delete': PVC deletion automatically destroys the EBS volume.
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
@@ -4292,7 +4427,6 @@ parameters:
 - **AZ Placement Conflicts:** Using `volumeBindingMode: Immediate` with cloud block storage often results in `volume node affinity conflict` errors if the cloud disk is created in `us-east-1a` while the scheduler attempts to place the Pod in `us-east-1b`. Always use `WaitForFirstConsumer` in multi-zone clusters.
 - **Default StorageClass:** Marking a class with annotation `storageclass.kubernetes.io/is-default-class: "true"` automatically assigns it to any PVC submitted without an explicit `storageClassName`.
 
-
 ### Component architecture flow
 
 <iframe src="diagrams/topic-22.html" width="100%" height="560" style="border:none;"></iframe>
@@ -4304,7 +4438,7 @@ parameters:
 
 ![StorageClass zine illustration](generated/kubernetes-apartment-complex/22-zine.png)
 
-**Zine explanation:** The illustration translates the Kubernetes mechanism into the apartment-complex metaphor so the operational relationship is easier to remember.
+**Zine explanation:** The Construction Blueprint image captures StorageClass as the template that defines how new storage gets dynamically manufactured on demand, eliminating the need for pre-provisioned PVs. Just as a blueprint specifies the materials, size standards, and construction method for new units — and a construction crew follows it every time a new unit is needed — a StorageClass specifies the provisioner (e.g., `ebs.csi.aws.com`), volume type (`gp3`), and parameters (IOPS, encryption). When a PVC references a StorageClass, the CSI provisioner receives a CreateVolume call, creates the actual disk in the cloud, and returns a PV that gets auto-bound to the PVC. The `volumeBindingMode: WaitForFirstConsumer` setting delays provisioning until a Pod is actually scheduled, ensuring the disk is created in the same availability zone as the node.
 
 * **Zine Text & Layout:**
 * (Top): "StorageClass — The Construction Blueprint"
@@ -4313,27 +4447,45 @@ parameters:
 **Further reading**
 
 - [StorageClasses](https://kubernetes.io/docs/concepts/storage/storage-classes/)
-- [CKA Study Notes: Storage (StorageClasses & Dynamic Provisioning)](CKA_Study_Notes/08-storage.md)
+- [CKA Study Notes: Storage (StorageClasses & Dynamic Provisioning)](../CKA_Study_Notes/08-storage.md)
 
 ### Demo — StorageClass
 
 <div style="background:#000;color:#fff;border-radius:8px;padding:1rem;overflow:auto;box-shadow:0 2px 8px rgba(0,0,0,.25);"><pre style="background:transparent;color:#fff;margin:0;white-space:pre-wrap;">
 SETUP
-  (none: uses what is already in the cluster)
+  kubectl create namespace zine-demo
 
 STEPS
   1. kubectl get storageclass
-  2. SC=$(kubectl get storageclass -o jsonpath='{.items[0].metadata.name}')
-  3. kubectl describe storageclass $SC
+  2. kubectl get storageclass standard -o yaml | grep -E 'provisioner|volumeBindingMode|reclaimPolicy'
+  3. cat <<EOF | kubectl apply -f -
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: sc-demo-pvc
+  namespace: zine-demo
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+  storageClassName: standard
+EOF
+  4. kubectl get pvc sc-demo-pvc -n zine-demo
+  5. kubectl get pv | grep sc-demo-pvc
 
 WHAT YOU SHOULD SEE
-  One StorageClass is marked (default). describe shows its Provisioner, ReclaimPolicy and VolumeBindingMode.
+  Step 1: lists available StorageClasses; one marked (default) is used when
+    no storageClassName is specified in a PVC.
+  Step 2: shows the provisioner (e.g. rancher.io/local-path for kind) and
+    volumeBindingMode — WaitForFirstConsumer means provisioning waits for a Pod.
+  Step 4/5: PVC moves to Bound and a PV is dynamically created matching the class.
+  This proves dynamic provisioning: no admin pre-created the PV — the StorageClass did it.
 
 CLEANUP
-  (nothing to clean up)
-
-NOTE
-  This is the blueprint used automatically when a PVC names no class, which is why the PV in entry 21 appeared with no manual step. The default class in this kind cluster is commonly named 'standard'. Verify with 'kubectl get storageclass' because the name depends on the provisioner installed.
+  kubectl delete pvc sc-demo-pvc -n zine-demo
+  kubectl delete namespace zine-demo
 </pre></div>
 
 
@@ -4447,6 +4599,12 @@ NOTE
 
 ```yaml
 # namespaced-developer-role.yaml
+# WHY THIS YAML: A Role defines the permission boundary within a single Namespace.
+# 'namespace: development': Role ONLY applies to this namespace -- cannot grant cross-namespace access.
+# 'resources: ["pods", "pods/log"]': access to Pod objects AND their log subresource.
+#   Without 'pods/log', kubectl logs is denied even with pod get permissions.
+# 'verbs: ["get", "list", "watch"]': read-only access -- satisfies least-privilege.
+# This Role has ZERO effect until a RoleBinding attaches it to a subject.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
@@ -4470,7 +4628,6 @@ rules:
 - **Principle of Least Privilege:** Avoid granting wildcard (`"*"`) verbs or resources.
 - **Privilege Escalation Risks:** Granting `create` or `patch` on `pods/exec` grants arbitrary command execution inside containers, effectively yielding the privileges of the container process. Similarly, access to `secrets` allows token theft.
 
-
 ### Component architecture flow
 
 <iframe src="diagrams/topic-23.html" width="100%" height="560" style="border:none;"></iframe>
@@ -4482,7 +4639,7 @@ rules:
 
 ![Role zine illustration](generated/kubernetes-apartment-complex/23-zine.png)
 
-**Zine explanation:** The illustration translates the Kubernetes mechanism into the apartment-complex metaphor so the operational relationship is easier to remember.
+**Zine explanation:** The House Rules image maps directly to a Kubernetes Role's definition: a set of permissions scoped to a single Namespace that says what API verbs (get, list, create, delete) are allowed on which resources (pods, services, secrets). Just as house rules posted in a building define what residents may and may not do within that building — but are meaningless until someone agrees to follow them — a Role object does nothing on its own. It is purely a declaration of allowed actions. A Role cannot grant permissions outside its Namespace (that requires ClusterRole). Until a RoleBinding connects a Role to a subject (user, group, ServiceAccount), it has no effect on any entity.
 
 * **Zine Text & Layout:**
 * (Top): "Role — The House Rules"
@@ -4491,7 +4648,7 @@ rules:
 **Further reading**
 
 - [RBAC roles and permissions](https://kubernetes.io/docs/reference/access-authn-authz/rbac/#role-and-clusterrole)
-- [CKA Study Notes: Application Lifecycle (ConfigMaps)](CKA_Study_Notes/04-application-lifecycle-management.md)
+- [CKA Study Notes: Application Lifecycle (ConfigMaps)](../CKA_Study_Notes/04-application-lifecycle-management.md)
 
 ### Demo — Role
 
@@ -4502,16 +4659,20 @@ SETUP
 STEPS
   1. kubectl create role pod-reader --verb=get,list,watch --resource=pods -n zine-demo
   2. kubectl get role pod-reader -n zine-demo -o yaml
-  3. kubectl auth can-i get pods --as=jane -n zine-demo   # no
+  3. kubectl auth can-i list pods -n zine-demo --as system:serviceaccount:zine-demo:default
+  4. kubectl create rolebinding pod-reader-binding --role=pod-reader --serviceaccount=zine-demo:default -n zine-demo
+  5. kubectl auth can-i list pods -n zine-demo --as system:serviceaccount:zine-demo:default
 
 WHAT YOU SHOULD SEE
-  The Role lists the get, list, watch verbs on pods. can-i answers 'no'.
+  Step 2: the Role YAML shows 'verbs', 'resources', and the namespace scope.
+  Step 3: 'no' — the default ServiceAccount has no permissions before binding.
+  Step 5: 'yes' — the RoleBinding activates the Role for the ServiceAccount.
+  This proves the two-step RBAC model: Role defines permissions, RoleBinding activates them.
 
 CLEANUP
+  kubectl delete rolebinding pod-reader-binding -n zine-demo
+  kubectl delete role pod-reader -n zine-demo
   kubectl delete namespace zine-demo
-
-NOTE
-  The house rules are posted, but no name is attached to them yet.
 </pre></div>
 
 
@@ -4628,6 +4789,13 @@ NOTE
 
 ```yaml
 # role-binding-spec.yaml
+# WHY THIS YAML: A RoleBinding ACTIVATES a Role by connecting it to specific subjects.
+# 'roleRef.kind: Role': references a namespace-scoped Role (not cluster-wide).
+# 'subjects': the identities receiving the permissions.
+#   'kind: User / name: alice': a human user identified by their kubeconfig credential.
+#   'kind: ServiceAccount': a Pod's identity -- allows in-cluster processes to use this role.
+# A RoleBinding cannot grant permissions beyond what is in the referenced Role.
+# Changing subjects is the fastest way to grant/revoke access without modifying the Role.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
@@ -4655,7 +4823,6 @@ roleRef:
   ```
 - **Namespace Boundary Leaks:** Accidental assignment of an administrative ClusterRole via a ClusterRoleBinding instead of a RoleBinding grants cluster-wide superuser access across all namespaces.
 
-
 ### Component architecture flow
 
 <iframe src="diagrams/topic-24.html" width="100%" height="560" style="border:none;"></iframe>
@@ -4667,7 +4834,7 @@ roleRef:
 
 ![RoleBinding zine illustration](generated/kubernetes-apartment-complex/24-zine.png)
 
-**Zine explanation:** The illustration translates the Kubernetes mechanism into the apartment-complex metaphor so the operational relationship is easier to remember.
+**Zine explanation:** The Sign-Up Sheet image represents RoleBinding as the object that activates a Role by connecting it to a specific identity. Just as house rules only become binding when a tenant signs the agreement — making them personally accountable to those rules — a RoleBinding is the `subjects:` list that says "these users/groups/ServiceAccounts are bound to this Role in this Namespace." The RoleBinding creates no new permissions itself; it references an existing Role or ClusterRole and binds it. Using a ClusterRole in a RoleBinding (not ClusterRoleBinding) grants only namespace-scoped permissions, which is a useful pattern for reusing permission templates without cluster-wide exposure.
 
 * **Zine Text & Layout:**
 * (Top): "RoleBinding — The Sign-Up Sheet"
@@ -4676,7 +4843,7 @@ roleRef:
 **Further reading**
 
 - [RoleBindings](https://kubernetes.io/docs/reference/access-authn-authz/rbac/#rolebinding-and-clusterrolebinding)
-- [CKA Study Notes: Security (Secrets & Encryption at Rest)](CKA_Study_Notes/06-security.md)
+- [CKA Study Notes: Security (Secrets & Encryption at Rest)](../CKA_Study_Notes/06-security.md)
 
 ### Demo — RoleBinding
 
@@ -4811,6 +4978,12 @@ NOTE
 
 ```yaml
 # node-viewer-clusterrole.yaml
+# WHY THIS YAML: A ClusterRole grants permissions to cluster-scoped resources.
+# 'resources: ["nodes"]': Nodes have no namespace -- a regular Role CANNOT grant this.
+#   Only ClusterRole can grant access to non-namespaced API objects.
+# 'resources: ["nodes/metrics", "nodes/stats"]': subresources for kubelet metric endpoints.
+# ClusterRoles can also be used in namespace-scoped RoleBindings to reuse
+#   permission templates across namespaces without granting cluster-wide access.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
@@ -4832,7 +5005,6 @@ rules:
 - **Built-in Superuser Roles:** Kubernetes ships with built-in ClusterRoles: `cluster-admin` (complete superuser access), `admin`, `edit`, and `view`. Modifying built-in ClusterRoles is discouraged because cluster upgrades will reconcile and overwrite changes.
 - **Node Restriction:** The `Node` authorizer and `NodeRestriction` admission plugin restrict kubelet identities from modifying objects outside their own node, mitigating worker node compromise.
 
-
 ### Component architecture flow
 
 <iframe src="diagrams/topic-25.html" width="100%" height="560" style="border:none;"></iframe>
@@ -4844,7 +5016,7 @@ rules:
 
 ![ClusterRole zine illustration](generated/kubernetes-apartment-complex/25-zine.png)
 
-**Zine explanation:** The illustration translates the Kubernetes mechanism into the apartment-complex metaphor so the operational relationship is easier to remember.
+**Zine explanation:** The Master House Rules image illustrates ClusterRole's scope: unlike a Role that applies within one Namespace, ClusterRole permissions span the entire cluster and can include non-namespaced resources (Nodes, PersistentVolumes, ClusterRoles themselves). Just as master house rules at the complex level govern things that transcend individual buildings — elevator access, parking lot policies, fire safety standards — a ClusterRole can grant access to cluster-wide resources or be reused across Namespaces via RoleBindings. Aggregated ClusterRoles (`aggregationRule`) automatically merge permissions from ClusterRoles matching a label selector, allowing additive plugin-style extension of the admin role without modifying it directly.
 
 * **Zine Text & Layout:**
 * (Top): "ClusterRole — The Master House Rules"
@@ -4853,7 +5025,7 @@ rules:
 **Further reading**
 
 - [RBAC roles and permissions](https://kubernetes.io/docs/reference/access-authn-authz/rbac/#role-and-clusterrole)
-- [CKA Study Notes: Security (Roles & RoleBindings)](CKA_Study_Notes/06-security.md)
+- [CKA Study Notes: Security (Roles & RoleBindings)](../CKA_Study_Notes/06-security.md)
 
 ### Demo — ClusterRole
 
@@ -4862,18 +5034,24 @@ SETUP
   (none: uses what is already in the cluster)
 
 STEPS
-  1. kubectl create clusterrole node-reader --verb=get,list,watch --resource=nodes
-  2. kubectl get clusterrole node-reader -o yaml
-  3. kubectl api-resources --namespaced=false | grep -w nodes
+  1. kubectl get clusterroles | grep -v system: | head -10
+  2. kubectl describe clusterrole view | grep -E 'Name:|Resources:|Verbs:' | head -15
+  3. kubectl auth can-i list nodes --as system:serviceaccount:default:default
+  4. kubectl create clusterrole node-viewer --verb=get,list --resource=nodes
+  5. kubectl auth can-i list nodes --as system:serviceaccount:default:default
+  6. kubectl create clusterrolebinding node-viewer-binding --clusterrole=node-viewer --serviceaccount=default:default
+  7. kubectl auth can-i list nodes --as system:serviceaccount:default:default
 
 WHAT YOU SHOULD SEE
-  The ClusterRole is created with rules for nodes. api-resources shows nodes with NAMESPACED false.
+  Step 2: ClusterRole 'view' shows cluster-scoped resources and their allowed verbs.
+  Step 3: 'no' — default SA cannot list Nodes (cluster-scoped resource).
+  Step 5: still 'no' — ClusterRole alone does nothing without a ClusterRoleBinding.
+  Step 7: 'yes' — ClusterRoleBinding activates the ClusterRole cluster-wide.
+  Nodes are non-namespaced resources; only ClusterRole can grant access to them.
 
 CLEANUP
-  kubectl delete clusterrole node-reader
-
-NOTE
-  Nodes are cluster-scoped, so this had to be a ClusterRole and could not be a plain Role.
+  kubectl delete clusterrolebinding node-viewer-binding
+  kubectl delete clusterrole node-viewer
 </pre></div>
 
 
@@ -4986,6 +5164,12 @@ NOTE
 
 ```yaml
 # sre-clusterrolebinding.yaml
+# WHY THIS YAML: A ClusterRoleBinding grants cluster-wide permissions -- use with caution.
+# 'roleRef.kind: ClusterRole': must reference a ClusterRole for cluster-wide binding.
+# 'subjects.kind: Group': binds an entire OIDC/LDAP group, not just one user.
+#   Group membership changes in the identity provider automatically update K8s access.
+# ClusterRoleBindings don't expire -- treat cluster-admin bindings as critical security assets.
+# Prefer namespace-scoped RoleBindings when cluster-wide access is not required.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
@@ -5010,7 +5194,6 @@ roleRef:
   ```
 - **Default ServiceAccount Hardening:** Never bind a ClusterRole to `system:serviceaccount:<namespace>:default`, as any unprivileged pod created in that namespace inherits cluster-level authority.
 
-
 ### Component architecture flow
 
 <iframe src="diagrams/topic-26.html" width="100%" height="560" style="border:none;"></iframe>
@@ -5022,7 +5205,7 @@ roleRef:
 
 ![ClusterRoleBinding zine illustration](generated/kubernetes-apartment-complex/26-zine.png)
 
-**Zine explanation:** The illustration translates the Kubernetes mechanism into the apartment-complex metaphor so the operational relationship is easier to remember.
+**Zine explanation:** The Master Key image shows ClusterRoleBinding's function: granting a ClusterRole's permissions to a subject across all Namespaces and cluster-scoped resources simultaneously. Just as a master key opens every door in every building of the complex — a single physical key with unrestricted access — a ClusterRoleBinding gives the bound subject cluster-wide authority. This is why cluster-admin ClusterRoleBindings must be reviewed carefully: binding a compromised ServiceAccount or user to cluster-admin is equivalent to giving a stranger the master key to every room. Least-privilege design prefers RoleBindings (scoped to individual Namespaces) over ClusterRoleBindings wherever possible.
 
 * **Zine Text & Layout:**
 * (Top): "ClusterRoleBinding — The Master Key"
@@ -5031,7 +5214,7 @@ roleRef:
 **Further reading**
 
 - [RoleBindings](https://kubernetes.io/docs/reference/access-authn-authz/rbac/#rolebinding-and-clusterrolebinding)
-- [CKA Study Notes: Security (ClusterRoles & ClusterRoleBindings)](CKA_Study_Notes/06-security.md)
+- [CKA Study Notes: Security (ClusterRoles & ClusterRoleBindings)](../CKA_Study_Notes/06-security.md)
 
 ### Demo — ClusterRoleBinding
 
@@ -5170,6 +5353,13 @@ NOTE
 
 ```yaml
 # secure-serviceaccount-pod.yaml
+# WHY THIS YAML: Shows secure ServiceAccount usage for in-cluster API access.
+# 'serviceAccountName: metrics-reader': kubelet mounts a projected SA token at
+#   /var/run/secrets/kubernetes.io/serviceaccount/token inside the container.
+#   The app uses this bearer token to authenticate to kube-apiserver as this SA identity.
+# 'automountServiceAccountToken: false': when set on the SA, no token is mounted --
+#   best practice for Pods that don't need API access (prevents credential exposure).
+# RBAC RoleBindings determine what the SA can DO with the token after authenticating.
 apiVersion: v1
 kind: ServiceAccount
 metadata:
@@ -5196,7 +5386,6 @@ spec:
 - **`automountServiceAccountToken: false`:** Workloads that do not need to call the Kubernetes API should always set `automountServiceAccountToken: false` on either the ServiceAccount or PodSpec, eliminating credentials that attackers could steal via container breakout.
 - **Cloud Workload Identity:** Modern cloud architectures (AWS IRSA, GCP Workload Identity, Azure Workload ID) federate the ServiceAccount OIDC token directly with cloud IAM, eliminating static hardcoded cloud API keys.
 
-
 ### Component architecture flow
 
 <iframe src="diagrams/topic-27.html" width="100%" height="560" style="border:none;"></iframe>
@@ -5208,7 +5397,7 @@ spec:
 
 ![ServiceAccount zine illustration](generated/kubernetes-apartment-complex/27-zine.png)
 
-**Zine explanation:** The illustration translates the Kubernetes mechanism into the apartment-complex metaphor so the operational relationship is easier to remember.
+**Zine explanation:** The Staff ID Badge image represents ServiceAccount as the identity credential that processes running inside Pods use to authenticate to the kube-apiserver — distinct from human users who use kubeconfig certificates or OIDC tokens. Just as a staff ID badge identifies which employee is making a request to the building office (and what they're allowed to access based on their role) — without confusing them with a visiting tenant — a ServiceAccount provides a stable identity for Pods. The kubelet automatically mounts a projected ServiceAccount token as a file inside every container (`/var/run/secrets/kubernetes.io/serviceaccount/token`), which the application uses as a bearer token for API calls. ServiceAccounts are namespace-scoped and bound to RBAC Roles for least-privilege access control.
 
 * **Zine Text & Layout:**
 * (Top): "ServiceAccount — The Staff ID Badge"
@@ -5218,7 +5407,7 @@ spec:
 
 - [ServiceAccounts](https://kubernetes.io/docs/concepts/security/service-accounts/)
 - [RBAC authorization](https://kubernetes.io/docs/reference/access-authn-authz/rbac/)
-- [CKA Study Notes: Security (ServiceAccounts)](CKA_Study_Notes/06-security.md)
+- [CKA Study Notes: Security (ServiceAccounts)](../CKA_Study_Notes/06-security.md)
 
 ### Demo — ServiceAccount
 
@@ -5353,6 +5542,13 @@ NOTE
 
 ```yaml
 # toleration-node-failure.yaml
+# WHY THIS YAML: This toleration governs the Node Controller's eviction interaction.
+# 'key: node.kubernetes.io/unreachable' and 'node.kubernetes.io/not-ready':
+#   these taints are automatically added by the Node Lifecycle Controller when a node
+#   fails its heartbeat check and is marked NotReady.
+# 'effect: NoExecute': triggers immediate eviction of Pods without this toleration.
+# 'tolerationSeconds: 300': this Pod tolerates the taint for 5 minutes before eviction.
+#   Longer windows prevent false-positive evictions during transient network blips.
 apiVersion: v1
 kind: Pod
 metadata:
@@ -5378,7 +5574,6 @@ spec:
 - **`tolerationSeconds` Tuning:** Stateful workloads (databases) often reduce `tolerationSeconds` from 300s down to 30s to initiate faster failover upon node hardware crashes.
 - **Zone Disruption / Eviction Rate Limiting:** To prevent mass eviction storms during large-scale network partitions, the Node Controller monitors the percentage of unhealthy nodes in each zone. If more than 55% of nodes are unhealthy, it throttles eviction rates down to `0.1` nodes/second.
 
-
 ### Component architecture flow
 
 <iframe src="diagrams/topic-28.html" width="100%" height="560" style="border:none;"></iframe>
@@ -5390,7 +5585,7 @@ spec:
 
 ![Node (controller) zine illustration](generated/kubernetes-apartment-complex/28-zine.png)
 
-**Zine explanation:** The illustration translates the Kubernetes mechanism into the apartment-complex metaphor so the operational relationship is easier to remember.
+**Zine explanation:** The Daily Check-In image maps precisely to the Node Controller's heartbeat-monitoring behavior. Just as a building manager does daily rounds to check that every unit superintendent has checked in — and flags a building as "unresponsive" after missed check-ins, then starts relocating tenants — the Node Controller watches `Lease` objects in `kube-node-lease`. If a node fails to renew its Lease within `node-monitor-grace-period` (default 40s), the controller marks it `NotReady`. After `pod-eviction-timeout` (default 5 minutes), eviction begins: pods are marked for rescheduling and the scheduler places them on healthy nodes. This is why redundancy across nodes matters — a single node failure can trigger this cascade.
 
 * **Zine Text & Layout:**
 * (Top): "Node Controller — The Daily Check-In"
@@ -5400,7 +5595,7 @@ spec:
 
 - [Node lifecycle](https://kubernetes.io/docs/concepts/architecture/nodes/#node-lifecycle)
 - [Node controller](https://kubernetes.io/docs/concepts/architecture/nodes/)
-- [CKA Study Notes: Cluster Maintenance (Node Drain & Eviction)](CKA_Study_Notes/05-cluster-maintenance.md)
+- [CKA Study Notes: Cluster Maintenance (Node Drain & Eviction)](../CKA_Study_Notes/05-cluster-maintenance.md)
 
 ### Demo — Node (controller)
 
@@ -5538,6 +5733,12 @@ NOTE
 
 ```yaml
 # labeled-namespace-spec.yaml
+# WHY THIS YAML: A Namespace is the primary isolation boundary and RBAC scope.
+# 'labels.pod-security.kubernetes.io/enforce: restricted': activates Pod Security Admission
+#   for this namespace -- every Pod creation is validated against security standards.
+# Labels on Namespaces are used by NetworkPolicies ('namespaceSelector')
+#   to target specific namespaces for ingress/egress rules.
+# ResourceQuotas and LimitRanges are also Namespace-scoped, applying only within this boundary.
 apiVersion: v1
 kind: Namespace
 metadata:
@@ -5557,7 +5758,6 @@ metadata:
   ```
 - **Custom Resource Finalizer Deadlocks:** Often, an uninstalled Custom Resource Definition (CRD) leaves custom objects with dangling finalizers that block the namespace controller indefinitely.
 
-
 ### Component architecture flow
 
 <iframe src="diagrams/topic-29.html" width="100%" height="560" style="border:none;"></iframe>
@@ -5569,7 +5769,7 @@ metadata:
 
 ![Namespace (controller) zine illustration](generated/kubernetes-apartment-complex/29-zine.png)
 
-**Zine explanation:** The illustration translates the Kubernetes mechanism into the apartment-complex metaphor so the operational relationship is easier to remember.
+**Zine explanation:** The Section Closure image illustrates the Namespace Controller's cleanup responsibility during namespace deletion. Just as closing a wing of the complex requires vacating every apartment, canceling all service contracts, and only then removing the section from the building registry — a Kubernetes Namespace cannot be fully deleted until every resource inside it (Pods, Services, PVCs, ConfigMaps, Secrets) is removed. The Namespace Controller issues deletion requests for all contained resources and sets a `DeletingTimestamp`. If a resource has a finalizer that prevents immediate deletion (e.g., a PVC with protection finalizer), the Namespace gets stuck in `Terminating` until the finalizer is cleared. This is a common operational problem requiring manual finalizer removal.
 
 * **Zine Text & Layout:**
 * (Top): "Namespace Controller — The Section Closure"
@@ -5578,29 +5778,34 @@ metadata:
 **Further reading**
 
 - [Namespaces](https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/)
-- [CKA Study Notes: Core Concepts (Namespaces)](CKA_Study_Notes/01-core-concepts.md)
+- [CKA Study Notes: Core Concepts (Namespaces)](../CKA_Study_Notes/01-core-concepts.md)
 
 ### Demo — Namespace (controller)
 
 <div style="background:#000;color:#fff;border-radius:8px;padding:1rem;overflow:auto;box-shadow:0 2px 8px rgba(0,0,0,.25);"><pre style="background:transparent;color:#fff;margin:0;white-space:pre-wrap;">
 SETUP
-  (none: uses what is already in the cluster)
+  kubectl create namespace zine-demo-ns
 
 STEPS
-  1. kubectl create namespace demo-ns
-  2. kubectl run temp-pod --image=nginx -n demo-ns
-  3. kubectl wait --for=condition=Ready pod/temp-pod -n demo-ns --timeout=60s
-  4. kubectl delete namespace demo-ns --wait=false
-  5. kubectl get namespace demo-ns -w   # shows Terminating, then disappears
+  1. kubectl get namespace zine-demo-ns -o yaml | grep -E 'finalizers|phase|status'
+  2. kubectl run test-pod --image=nginx -n zine-demo-ns
+  3. kubectl get pods -n zine-demo-ns
+  4. kubectl delete namespace zine-demo-ns &
+  5. sleep 2
+  6. kubectl get namespace zine-demo-ns
+  7. kubectl get pods -n zine-demo-ns
 
 WHAT YOU SHOULD SEE
-  The namespace sits in Terminating while temp-pod is cleaned up, then disappears. --wait=false keeps your terminal free so you can watch.
+  Step 1: the namespace has 'kubernetes' finalizer — this must be cleared before deletion.
+  Step 4-6: while deleting, the namespace enters 'Terminating' state. The Namespace
+    controller waits for all resources inside (Pods, Services, PVCs) to be deleted before
+    the namespace object itself is removed from etcd.
+  Step 7: pods are being terminated as part of the cascading namespace cleanup.
+  If a resource has a stuck finalizer, the namespace stays 'Terminating' indefinitely.
 
 CLEANUP
-  (nothing to clean up)
-
-NOTE
-  The fence does not come down until the section is empty.
+  wait   # wait for background delete to complete
+  (namespace auto-cleaned)
 </pre></div>
 
 
@@ -5717,6 +5922,13 @@ NOTE
 
 ```yaml
 # team-resource-quota.yaml
+# WHY THIS YAML: ResourceQuota enforces aggregate resource governance at Namespace level.
+# 'requests.cpu: "8"': SUM of all Pod resource requests in this namespace cannot exceed 8 CPU.
+#   If a new Pod would push total over the limit, API server's admission controller rejects it.
+# 'limits.cpu: "16"': prevents namespace from claiming unlimited burst capacity.
+# 'count/pods: "50"': caps the number of Pod objects, not just CPU/memory.
+# Once quota is enabled, EVERY Pod MUST declare 'resources.requests' or it is rejected.
+#   The quota system cannot account for undeclared resource consumption.
 apiVersion: v1
 kind: ResourceQuota
 metadata:
@@ -5758,7 +5970,6 @@ spec:
   ```
 - **Deployment Rollout Deadlocks:** During a rolling update, a Deployment temporarily runs old replicas plus new replicas (`maxSurge`). If the namespace quota has zero headroom remaining, new pods cannot be created, completely stalling the rollout.
 
-
 ### Component architecture flow
 
 <iframe src="diagrams/topic-30.html" width="100%" height="560" style="border:none;"></iframe>
@@ -5770,7 +5981,7 @@ spec:
 
 ![ResourceQuota zine illustration](generated/kubernetes-apartment-complex/30-zine.png)
 
-**Zine explanation:** The illustration translates the Kubernetes mechanism into the apartment-complex metaphor so the operational relationship is easier to remember.
+**Zine explanation:** The Occupancy Limit Sign image shows how ResourceQuota enforces aggregate consumption caps at the Namespace level, preventing any single team or workload from monopolizing cluster capacity. Just as a section of the complex posts a maximum occupancy sign — "This wing: 50 units, 200 residents" — a ResourceQuota object tracks and limits the sum of CPU requests, memory limits, object counts (Pods, Services, PVCs), and storage requests within a Namespace. When a new Pod would exceed the quota, the API server's LimitRanger admission controller rejects it with a 403 error. LimitRange objects work alongside ResourceQuota by enforcing per-Pod defaults and maximums, ensuring every Pod declares requests/limits (required for quota accounting).
 
 * **Zine Text & Layout:**
 * (Top): "ResourceQuota — The Occupancy Limit Sign"
@@ -5779,7 +5990,7 @@ spec:
 **Further reading**
 
 - [Resource quotas](https://kubernetes.io/docs/concepts/policy/resource-quotas/)
-- [CKA Study Notes: Scheduling (Resource Limits & Quotas)](CKA_Study_Notes/02-scheduling.md)
+- [CKA Study Notes: Scheduling (Resource Limits & Quotas)](../CKA_Study_Notes/02-scheduling.md)
 
 ### Demo — ResourceQuota
 
@@ -5931,6 +6142,13 @@ NOTE
 
 ```yaml
 # pod-with-owner-reference.yaml
+# WHY THIS YAML: The ownerReference field is the Garbage Collector's dependency graph.
+# 'ownerReferences.apiVersion/kind/name/uid': links this Pod to a specific ReplicaSet.
+#   The uid is unique per object instance -- not just per name -- preventing stale refs.
+# 'controller: true': marks this as the controlling owner (only one allowed per object).
+# 'blockOwnerDeletion: true': Pod must be deleted before the owning ReplicaSet finalizes.
+# When a Deployment is deleted, GC traces: Deployment -> ReplicaSet -> Pods, deleting each.
+# Without ownerReferences, orphaned Pods keep running indefinitely after parent deletion.
 apiVersion: v1
 kind: Pod
 metadata:
@@ -5954,7 +6172,6 @@ spec:
 - **CLI Propagation Options:** `kubectl delete deployment <name> --cascade=orphan` deletes the Deployment object while leaving the underlying Pods running without disruption.
 - **Dangling Resources:** If an operator manually edits a Pod and deletes its `ownerReferences`, higher-level workload rollouts and autoscalers lose track of the Pod, causing silent replica drift and orphaned resource consumption.
 
-
 ### Component architecture flow
 
 <iframe src="diagrams/topic-31.html" width="100%" height="560" style="border:none;"></iframe>
@@ -5966,7 +6183,7 @@ spec:
 
 ![Garbage Collector zine illustration](generated/kubernetes-apartment-complex/31-zine.png)
 
-**Zine explanation:** The illustration translates the Kubernetes mechanism into the apartment-complex metaphor so the operational relationship is easier to remember.
+**Zine explanation:** The Cleanup Crew image maps the Garbage Collector controller's owner-reference traversal behavior. Just as a cleanup crew checks whether a storage unit's assigned tenant still has an active lease before clearing the unit — and automatically clears it if the tenant's file is gone — the Garbage Collector watches for objects whose `ownerReferences` point to a non-existent owner. When a Deployment is deleted, it removes its ReplicaSet (owner of Pods), triggering cascading deletion of all managed Pods. The propagation policy controls whether this cascade is `Foreground` (parent waits for children), `Background` (parent deletes immediately, children cleaned asynchronously), or `Orphan` (children kept, ownership reference cleared).
 
 * **Zine Text & Layout:**
 * (Top): "Garbage Collector — The Cleanup Crew"
@@ -5975,7 +6192,7 @@ spec:
 **Further reading**
 
 - [Owners and dependents](https://kubernetes.io/docs/concepts/architecture/garbage-collection/)
-- [CKA Study Notes: Core Concepts (Garbage Collection)](CKA_Study_Notes/01-core-concepts.md)
+- [CKA Study Notes: Core Concepts (Garbage Collection)](../CKA_Study_Notes/01-core-concepts.md)
 
 ### Demo — Garbage Collector
 
@@ -6112,6 +6329,13 @@ NOTE
 
 ```yaml
 # set-based-replicaset.yaml
+# WHY THIS YAML: Shows the label selector matching that drives ReplicaSet reconciliation.
+# 'replicas: 3': the controller watches this number and creates/deletes Pods to match it.
+#   The moment a Pod terminates, the controller creates a replacement -- no human needed.
+# 'selector.matchExpressions': set-based selectors -- the improvement over ReplicationController.
+#   'In: [nginx, nginx-proxy]' matches Pods with either label value, not just exact equality.
+# 'template.metadata.labels': MUST match the selector or the API server rejects the spec.
+# Use Deployments, not raw ReplicaSets -- Deployments add versioning and rolling updates.
 apiVersion: apps/v1
 kind: ReplicaSet
 metadata:
@@ -6145,7 +6369,6 @@ spec:
 - **Label Selector Overlap Hazards:** If two different ReplicaSets define overlapping label selectors, they will enter a violent reconciliation loop, continuously creating and terminating each other's Pods in an infinite fight for target count.
 - **CKA Deployment Rollback Internals:** Every Deployment revision creates a new underlying ReplicaSet. Rolling back a Deployment (`kubectl rollout undo`) simply scales the target historical ReplicaSet back up and the current ReplicaSet down to 0.
 
-
 ### Component architecture flow
 
 <iframe src="diagrams/topic-32.html" width="100%" height="560" style="border:none;"></iframe>
@@ -6157,7 +6380,7 @@ spec:
 
 ![ReplicaSet zine illustration](generated/kubernetes-apartment-complex/32-zine.png)
 
-**Zine explanation:** The illustration translates the Kubernetes mechanism into the apartment-complex metaphor so the operational relationship is easier to remember.
+**Zine explanation:** The Occupancy Enforcer image shows the ReplicaSet's single, relentless job: maintain exactly the declared number of identical Pod replicas at all times. Just as a building occupancy enforcer continuously patrols the wing and immediately lists a vacant unit for re-occupancy the moment someone moves out — without waiting to be asked — the ReplicaSet controller watches its managed Pods' status and creates replacement Pods the moment one terminates, crashes, or fails a readiness probe. Label selectors are the ReplicaSet's matching criteria: it adopts any Pod whose labels match, which is why manually created Pods with matching labels can accidentally be adopted. Deployments are always preferred over raw ReplicaSets because they add versioning and rolling update orchestration.
 
 * **Zine Text & Layout:**
 * (Top): "ReplicaSet — The Occupancy Enforcer"
@@ -6166,7 +6389,7 @@ spec:
 **Further reading**
 
 - [ReplicaSets](https://kubernetes.io/docs/concepts/workloads/controllers/replicaset/)
-- [CKA Study Notes: Core Concepts (ReplicaSets)](CKA_Study_Notes/01-core-concepts.md)
+- [CKA Study Notes: Core Concepts (ReplicaSets)](../CKA_Study_Notes/01-core-concepts.md)
 
 ### Demo — ReplicaSet
 
@@ -6311,6 +6534,13 @@ NOTE
 
 ```yaml
 # zero-downtime-deployment.yaml
+# WHY THIS YAML: Governs the rolling update strategy enabling zero-downtime releases.
+# 'strategy.type: RollingUpdate': scales up new ReplicaSet while scaling down old one.
+# 'maxSurge: 1': allows 1 extra Pod above replicas count during rollout.
+#   New ReplicaSet scales to 4 before old ReplicaSet starts shrinking.
+# 'maxUnavailable: 0': zero Pods may be below desired count during rollout.
+#   Guarantees full capacity throughout update -- at the cost of extra resources.
+# 'readinessProbe': each new Pod must pass readiness before an old Pod is terminated.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -6348,7 +6578,6 @@ spec:
 - **The Broken Image Trap:** If a new container image is pushed with a fatal startup bug and no `readinessProbe` is configured, Kubernetes considers the container "Ready" as soon as the process starts, immediately terminating all healthy old replicas and causing a complete outage!
 - **`maxUnavailable: 0` Requirement:** For critical services, pairing `maxUnavailable: 0` with thorough readiness probes guarantees that an unhealthy rollout stalls automatically without killing a single active serving pod.
 
-
 ### Component architecture flow
 
 <iframe src="diagrams/topic-33.html" width="100%" height="560" style="border:none;"></iframe>
@@ -6360,7 +6589,7 @@ spec:
 
 ![Deployment zine illustration](generated/kubernetes-apartment-complex/33-zine.png)
 
-**Zine explanation:** The illustration translates the Kubernetes mechanism into the apartment-complex metaphor so the operational relationship is easier to remember.
+**Zine explanation:** The Renovation Planner image captures Deployment's role in orchestrating zero-downtime updates by managing transitions between ReplicaSet versions. Just as a renovation planner doesn't demolish all apartments at once but vacates and renovates one floor at a time while residents stay in temporary units — a Deployment rolling update creates a new ReplicaSet (new version), scales it up one Pod at a time, while scaling down the old ReplicaSet — respecting `maxSurge` and `maxUnavailable` to ensure a minimum number of ready replicas always serve traffic. The revision history (`revisionHistoryLimit`) allows rollback to any previous ReplicaSet via `kubectl rollout undo`. Readiness probes gate each step: a new Pod must pass its readiness check before the next old Pod is terminated.
 
 * **Zine Text & Layout:**
 * (Top): "Deployment — The Renovation Planner"
@@ -6369,7 +6598,7 @@ spec:
 **Further reading**
 
 - [Deployments](https://kubernetes.io/docs/concepts/workloads/controllers/deployment/)
-- [CKA Study Notes: Application Lifecycle (Rolling Updates)](CKA_Study_Notes/04-application-lifecycle-management.md)
+- [CKA Study Notes: Application Lifecycle (Rolling Updates)](../CKA_Study_Notes/04-application-lifecycle-management.md)
 
 ### Demo — Deployment
 
@@ -6509,6 +6738,13 @@ NOTE
 
 ```yaml
 # clustered-statefulset.yaml
+# WHY THIS YAML: StatefulSet's ordered identity guarantees are configured here.
+# 'serviceName: "db-cluster"': creates a Headless Service for stable DNS per Pod.
+#   'db-0.db-cluster.<ns>.svc.cluster.local' persists across Pod restarts.
+#   This stable DNS identity is essential for distributed peers (Cassandra, Kafka).
+# 'podManagementPolicy: OrderedReady': Pods created 0, 1, 2 in sequence; each must be
+#   Ready before next starts. Scale-down reverses order (2, 1, 0).
+# 'volumeClaimTemplates': each Pod gets its OWN PVC that persists even if StatefulSet is deleted.
 apiVersion: v1
 kind: Service
 metadata:
@@ -6558,7 +6794,6 @@ spec:
 - **Volume Retention on Scale-Down:** When a StatefulSet is scaled down (e.g., from 3 to 2), the associated PVC (`data-db-cluster-2`) is **not deleted**. This prevents catastrophic accidental data loss.
 - **At-Most-One-Pod Guarantee:** In network partitions, Kubernetes will never create a replacement stateful pod until the previous pod is confirmed terminated. Deleting a partitioned stateful pod with `--force --grace-period=0` can cause dual writes and data corruption if the old node is still alive!
 
-
 ### Component architecture flow
 
 <iframe src="diagrams/topic-34.html" width="100%" height="560" style="border:none;"></iframe>
@@ -6570,7 +6805,7 @@ spec:
 
 ![StatefulSet zine illustration](generated/kubernetes-apartment-complex/34-zine.png)
 
-**Zine explanation:** The illustration translates the Kubernetes mechanism into the apartment-complex metaphor so the operational relationship is easier to remember.
+**Zine explanation:** The Named Units image represents StatefulSet's guarantee of stable, persistent identity per Pod — the opposite of Deployments, where Pods are fungible and interchangeable. Just as specific named apartment units (Unit 4A, 4B, 4C) have stable addresses, dedicated mailboxes, and stored belongings tied to that unit number — even if the same tenant moves back in — StatefulSet Pods retain the same DNS hostname (`pod-0.service`, `pod-1.service`) and the same PersistentVolumeClaim across restarts. Pods are created and deleted in strict ordinal order (0, 1, 2... for scale-up; 2, 1, 0 for scale-down), which is critical for distributed systems like Cassandra, Kafka, and etcd that require ordered peer discovery and quorum membership.
 
 * **Zine Text & Layout:**
 * (Top): "StatefulSet — The Named Units"
@@ -6579,7 +6814,7 @@ spec:
 **Further reading**
 
 - [StatefulSets](https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/)
-- [CKA Study Notes: Storage & StatefulSets](CKA_Study_Notes/08-storage.md)
+- [CKA Study Notes: Storage & StatefulSets](../CKA_Study_Notes/08-storage.md)
 
 ### Demo — StatefulSet
 
@@ -6752,6 +6987,14 @@ NOTE
 
 ```yaml
 # node-exporter-daemonset.yaml
+# WHY THIS YAML: DaemonSet guarantees one Pod per node -- node-exporter needs this.
+# 'tolerations: node-role.kubernetes.io/control-plane: NoSchedule': without this,
+#   DaemonSet skips control plane nodes. This toleration ensures ALL nodes are covered.
+# 'hostPID: true' and 'hostNetwork: true': required to read host-level metrics
+#   from /proc and /sys -- these are node-level capabilities normal apps avoid.
+# 'resources.requests': DaemonSet Pods consume resources on EVERY node.
+#   500m CPU on 100 nodes = 50 CPUs cluster-wide. Size very carefully.
+# 'updateStrategy.type: RollingUpdate': updates node by node, preserving metric coverage.
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
@@ -6789,7 +7032,6 @@ spec:
 - **Node Sizing Footprint:** Because DaemonSets run on every node, their resource requests multiply linearly across the entire cluster. 10 DaemonSets requesting 200m CPU each will consume 2 full CPU cores on every single node before any application workload is scheduled.
 - **Rolling Update Strategy:** Configured via `updateStrategy.type: RollingUpdate` (with optional `maxUnavailable`) or `OnDelete` (updates only when the old pod is manually killed).
 
-
 ### Component architecture flow
 
 <iframe src="diagrams/topic-35.html" width="100%" height="560" style="border:none;"></iframe>
@@ -6801,7 +7043,7 @@ spec:
 
 ![DaemonSet zine illustration](generated/kubernetes-apartment-complex/35-zine.png)
 
-**Zine explanation:** The illustration translates the Kubernetes mechanism into the apartment-complex metaphor so the operational relationship is easier to remember.
+**Zine explanation:** The Fire Extinguisher on Every Floor image captures DaemonSet's defining guarantee: exactly one Pod replica runs on every node in the cluster (or matching nodes). Just as fire safety regulations require an extinguisher on every floor — not "some floors" or "one extinguisher shared by all" — DaemonSets ensure node-level agents (log collectors like Fluent Bit, metrics exporters like Node Exporter, CNI plugins, kube-proxy itself) run on every node. When a new node joins the cluster, the DaemonSet controller automatically schedules the daemon Pod on it. DaemonSet Pods use tolerations to run on control plane nodes (which carry `NoSchedule` taints), allowing monitoring agents to cover every node including the control plane.
 
 * **Zine Text & Layout:**
 * (Top): "DaemonSet — The Fire Extinguisher on Every Floor"
@@ -6810,7 +7052,7 @@ spec:
 **Further reading**
 
 - [DaemonSets](https://kubernetes.io/docs/concepts/workloads/controllers/daemonset/)
-- [CKA Study Notes: Scheduling (DaemonSets)](CKA_Study_Notes/02-scheduling.md)
+- [CKA Study Notes: Scheduling (DaemonSets)](../CKA_Study_Notes/02-scheduling.md)
 
 ### Demo — DaemonSet
 
@@ -6967,6 +7209,13 @@ NOTE
 
 ```yaml
 # batch-processing-job.yaml
+# WHY THIS YAML: Job's completion tracking and retry semantics are configured here.
+# 'completions: 4': Job must run 4 successful Pod completions to be considered Done.
+#   Useful for parallelizing data processing across 4 independent dataset chunks.
+# 'parallelism: 2': at most 2 Pods run simultaneously -- controls resource usage.
+# 'backoffLimit: 3': after 3 failed Pod attempts, Job is marked Failed, no more Pods.
+# 'restartPolicy: Never': failed containers get a NEW Pod, not an in-place restart.
+# 'ttlSecondsAfterFinished: 600': auto-deletes Job and Pods 10 minutes after completion.
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -6991,7 +7240,6 @@ spec:
 - **Completed Pod Garbage Collection:** Completed Job pods remain in the cluster in phase `Completed` so operators can inspect logs (`kubectl logs`). Use `ttlSecondsAfterFinished: 300` to automatically delete completed Job records and prevent etcd object accumulation.
 - **Pod Cleanup on Failure:** If a Job fails and uses `restartPolicy: Never`, multiple failed Pod objects will clutter the namespace until the Job is deleted.
 
-
 ### Component architecture flow
 
 <iframe src="diagrams/topic-36.html" width="100%" height="560" style="border:none;"></iframe>
@@ -7003,7 +7251,7 @@ spec:
 
 ![Job zine illustration](generated/kubernetes-apartment-complex/36-zine.png)
 
-**Zine explanation:** The illustration translates the Kubernetes mechanism into the apartment-complex metaphor so the operational relationship is easier to remember.
+**Zine explanation:** The One-Time Moving Crew image maps to Job's finite-work execution model: unlike a Deployment that keeps Pods running indefinitely, a Job runs Pods until a defined number complete successfully, then stops. Just as a moving crew is hired for a specific job — pack and transport by Friday, then their engagement ends — a Kubernetes Job creates one or more Pods to complete a batch task (database migration, report generation, data transformation) and tracks completion via exit code 0. `completions` sets how many successful Pod runs are required; `parallelism` controls concurrent Pods. `backoffLimit` defines how many retries before the Job is declared Failed. `ttlSecondsAfterFinished` automatically cleans up completed Jobs after a set period.
 
 * **Zine Text & Layout:**
 * (Top): "Job — The One-Time Moving Crew"
@@ -7012,7 +7260,7 @@ spec:
 **Further reading**
 
 - [Jobs](https://kubernetes.io/docs/concepts/workloads/controllers/job/)
-- [CKA Study Notes: Application Lifecycle (Jobs)](CKA_Study_Notes/04-application-lifecycle-management.md)
+- [CKA Study Notes: Application Lifecycle (Jobs)](../CKA_Study_Notes/04-application-lifecycle-management.md)
 
 ### Demo — Job
 
@@ -7162,6 +7410,14 @@ NOTE
 
 ```yaml
 # nightly-backup-cronjob.yaml
+# WHY THIS YAML: CronJob's schedule and concurrency controls are configured here.
+# 'schedule: "0 2 * * *"': runs at 2:00 AM UTC daily. The CronJob controller
+#   compares this against cluster time and creates a Job object at each trigger.
+# 'concurrencyPolicy: Forbid': if 2am Job is still running at 3am, 3am trigger is SKIPPED.
+#   Prevents overlapping backup jobs from corrupting the same backup target.
+# 'startingDeadlineSeconds: 300': if cluster was down at 2am, only schedules within
+#   5 minutes of the missed trigger -- older missed runs are discarded.
+# 'successfulJobsHistoryLimit: 3': limits retained completed Job objects for history inspection.
 apiVersion: batch/v1
 kind: CronJob
 metadata:
@@ -7190,7 +7446,6 @@ spec:
 - **Timezone Awareness:** In Kubernetes 1.27+, CronJobs support explicit timezone specifications (`spec.timeZone: "America/New_York"`). By default, all CronJobs evaluate against the UTC system clock of `kube-controller-manager`.
 - **`concurrencyPolicy: Forbid` Sizing:** Long-running cron tasks with short schedules (e.g., every 5 minutes) must use `concurrencyPolicy: Forbid` to prevent runaway compute resource exhaustion if an execution experiences transient delays.
 
-
 ### Component architecture flow
 
 <iframe src="diagrams/topic-37.html" width="100%" height="560" style="border:none;"></iframe>
@@ -7202,7 +7457,7 @@ spec:
 
 ![CronJob zine illustration](generated/kubernetes-apartment-complex/37-zine.png)
 
-**Zine explanation:** The illustration translates the Kubernetes mechanism into the apartment-complex metaphor so the operational relationship is easier to remember.
+**Zine explanation:** The Scheduled Night Crew image maps CronJob to the building's recurring maintenance schedule. Just as a janitorial crew arrives every night at 2am without anyone having to call them — because the schedule is set in the building's annual contract — a CronJob creates a new Job on a cron expression schedule (e.g., `0 2 * * *` for 2am daily). Each trigger creates a fresh Job object, which spawns its Pod(s). `concurrencyPolicy: Forbid` prevents a new Job from starting if the previous one is still running, while `startingDeadlineSeconds` marks a Job as missed if it doesn't start within that window. CronJobs are stateless triggers — they do not track or aggregate results across runs.
 
 * **Zine Text & Layout:**
 * (Top): "CronJob — The Scheduled Night Crew"
@@ -7211,7 +7466,7 @@ spec:
 **Further reading**
 
 - [CronJobs](https://kubernetes.io/docs/concepts/workloads/controllers/cron-jobs/)
-- [CKA Study Notes: Application Lifecycle (CronJobs)](CKA_Study_Notes/04-application-lifecycle-management.md)
+- [CKA Study Notes: Application Lifecycle (CronJobs)](../CKA_Study_Notes/04-application-lifecycle-management.md)
 
 ### Demo — CronJob
 
@@ -7367,6 +7622,12 @@ NOTE
 
 ```yaml
 # legacy-replication-controller.yaml
+# WHY THIS YAML: Historical reference only -- do NOT use in new deployments.
+# 'selector: app: legacy-app': only supports equality-based selectors (key=value).
+#   Cannot express 'app in [v1, v2]' or 'env != prod' -- ReplicaSet can.
+# NO 'strategy' field: ReplicationController has no rolling update support.
+#   Updates require manual Pod deletion or blue/green swap -- Deployment automates this.
+# Migration: delete RC, create Deployment with same selector -- it adopts existing Pods.
 apiVersion: v1
 kind: ReplicationController
 metadata:
@@ -7391,7 +7652,6 @@ spec:
 - Modern Kubernetes best practices strictly mandate using **Deployments** for all stateless workloads. Never author new ReplicationController manifests in modern environments.
 - Migrating from ReplicationController to Deployment requires deleting the ReplicationController with `--cascade=orphan` and creating a Deployment matching the existing pod labels to adopt the running pods without downtime.
 
-
 ### Component architecture flow
 
 <iframe src="diagrams/topic-38.html" width="100%" height="560" style="border:none;"></iframe>
@@ -7403,7 +7663,7 @@ spec:
 
 ![ReplicationController (legacy) zine illustration](generated/kubernetes-apartment-complex/38-zine.png)
 
-**Zine explanation:** The illustration translates the Kubernetes mechanism into the apartment-complex metaphor so the operational relationship is easier to remember.
+**Zine explanation:** The Retired Enforcer image positions ReplicationController as the predecessor concept that established replica management — now fully superseded by ReplicaSet and Deployment. Just as a retired building superintendent followed the same principle (keep units occupied) but used older methods (paper ledgers, keys on hooks) that lacked the flexibility of modern digital systems — ReplicationController maintained a fixed replica count but only supported equality-based label selectors (`app=nginx`), not set-based ones (`app in [nginx, apache]`). It had no rolling update coordination. Deployments and ReplicaSets are strictly preferred; ReplicationController remains only for historical context and backward compatibility.
 
 * **Zine Text & Layout:**
 * (Top): "ReplicationController — The Retired Enforcer"
@@ -7412,7 +7672,7 @@ spec:
 **Further reading**
 
 - [ReplicationController](https://kubernetes.io/docs/concepts/workloads/controllers/replicationcontroller/)
-- [CKA Study Notes: Core Concepts (ReplicationControllers)](CKA_Study_Notes/01-core-concepts.md)
+- [CKA Study Notes: Core Concepts (ReplicationControllers)](../CKA_Study_Notes/01-core-concepts.md)
 
 ### Demo — ReplicationController (legacy)
 
@@ -7572,6 +7832,13 @@ $$\text{desiredReplicas} = \left\lceil \text{currentReplicas} \times \left( \fra
 
 ```yaml
 # hpa-v2-production.yaml
+# WHY THIS YAML: HPA v2 spec shows the metrics and scaling behavior configuration.
+# 'scaleTargetRef': HPA controller watches this Deployment and adjusts 'spec.replicas'.
+# 'metrics.type: Resource / averageUtilization: 60': scales when avg CPU exceeds 60%.
+#   Formula: desiredReplicas = ceil(currentReplicas x currentCPU / 60).
+# 'minReplicas: 2 / maxReplicas: 20': HPA never goes below 2 (availability) or above 20 (cost).
+# 'stabilizationWindowSeconds: 300': prevents scale-down for 5 min after a spike (anti-flapping).
+# REQUIRES 'resources.requests.cpu' on every Pod -- without it, utilization is undefined.
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
@@ -7605,7 +7872,6 @@ spec:
 - **The Missing Requests Pitfall:** If a container does not declare `resources.requests.cpu`, HPA cannot compute percentage utilization! The HPA status will show `unknown / 60%`, and autoscaling will fail to trigger.
 - **Metrics Server Dependency:** HPA requires `metrics-server` running in `kube-system`. Verify with `kubectl top pods` and `kubectl top nodes` before enabling HPA.
 
-
 ### Component architecture flow
 
 <iframe src="diagrams/topic-39.html" width="100%" height="560" style="border:none;"></iframe>
@@ -7617,7 +7883,7 @@ spec:
 
 ![HorizontalPodAutoscaler (HPA) zine illustration](generated/kubernetes-apartment-complex/39-zine.png)
 
-**Zine explanation:** The illustration translates the Kubernetes mechanism into the apartment-complex metaphor so the operational relationship is easier to remember.
+**Zine explanation:** The Staffing Manager image captures HPA's reactive scaling behavior: it monitors a metric signal and adjusts the number of Pod replicas in a Deployment or StatefulSet to maintain a target utilization level. Just as a staffing manager adds temporary staff during a busy season and sends them home when traffic drops — reading occupancy reports to decide how many people are needed — the HPA controller reads CPU/memory metrics from the Metrics Server (or custom metrics from Prometheus Adapter) every 15 seconds and computes: `desired replicas = ceil(currentReplicas × currentMetricValue / targetMetricValue)`. Scale-up is immediate; scale-down has a stabilization window (default 5 minutes) to prevent flapping. HPA requires Pods to have `resources.requests` declared, or it cannot compute utilization ratios.
 
 * **Zine Text & Layout:**
 * (Top): "HorizontalPodAutoscaler — The Staffing Manager"
@@ -7627,7 +7893,7 @@ spec:
 
 - [Horizontal Pod Autoscaling](https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/)
 - [Autoscaling concepts](https://kubernetes.io/docs/concepts/workloads/autoscaling/)
-- [CKA Study Notes: Logging & Monitoring (Metrics Server & HPA)](CKA_Study_Notes/03-logging-and-monitoring.md)
+- [CKA Study Notes: Logging & Monitoring (Metrics Server & HPA)](../CKA_Study_Notes/03-logging-and-monitoring.md)
 
 ### Demo — HorizontalPodAutoscaler (HPA)
 
@@ -7772,6 +8038,14 @@ NOTE
 
 ```yaml
 # vpa-auto-spec.yaml
+# WHY THIS YAML: VPA's update mode determines how recommendations are applied.
+# 'updateMode: Auto': VPA evicts and recreates Pods with updated resource requests.
+#   In-place resize (no eviction) requires K8s 1.27+ InPlacePodVerticalScaling feature.
+# 'containerPolicies.minAllowed.cpu: 100m / maxAllowed.cpu: "4"': VPA recommendations
+#   are bounded -- never below 100m (starvation floor) or above 4 CPU (cost ceiling).
+# VPA Recommender samples CPU/memory usage over history (default 8 days) and computes
+#   p50 recommendations for requests and p95 for limits.
+# WARNING: VPA and HPA targeting the same metric on the same Deployment WILL conflict.
 apiVersion: autoscaling.k8s.io/v1
 kind: VerticalPodAutoscaler
 metadata:
@@ -7800,7 +8074,6 @@ spec:
 - **VPA + HPA Conflict Hazard:** Do NOT use VPA and HPA simultaneously on the same metric (e.g., both targeting CPU utilization). HPA will add pods to lower CPU usage, while VPA will downscale pod CPU requests, creating destructive feedback loops.
 - **Disruption Planning:** In `Auto` mode, VPA evicts running pods to resize them. Always combine VPA with `PodDisruptionBudgets` and multi-replica Deployments to prevent downtime during vertical resizing.
 
-
 ### Component architecture flow
 
 <iframe src="diagrams/topic-40.html" width="100%" height="560" style="border:none;"></iframe>
@@ -7812,7 +8085,7 @@ spec:
 
 ![VerticalPodAutoscaler (VPA) zine illustration](generated/kubernetes-apartment-complex/40-zine.png)
 
-**Zine explanation:** The illustration translates the Kubernetes mechanism into the apartment-complex metaphor so the operational relationship is easier to remember.
+**Zine explanation:** The Unit Resizer image represents VPA's approach to right-sizing individual Pods' resource requests and limits, as opposed to HPA which adds more Pods. Just as a property manager analyzes how much space each tenant actually uses and offers to move them to a larger or smaller unit — rather than adding more tenants — VPA observes historical CPU and memory consumption, generates recommendations, and (in `Auto` mode) evicts and restarts Pods with updated `resources.requests` values. The trade-off is unavoidable: VPA cannot resize a running container in-place (in most cluster configurations), so it must evict the Pod. VPA and HPA should not both target CPU on the same Deployment, as they will conflict.
 
 * **Zine Text & Layout:**
 * (Top): "VerticalPodAutoscaler — The Unit Resizer"
@@ -7822,7 +8095,7 @@ spec:
 
 - [Vertical Pod Autoscaling](https://github.com/kubernetes/autoscaler/tree/master/vertical-pod-autoscaler)
 - [Autoscaling concepts](https://kubernetes.io/docs/concepts/workloads/autoscaling/)
-- [CKA Study Notes: Logging & Monitoring (Resource Optimization & VPA)](CKA_Study_Notes/03-logging-and-monitoring.md)
+- [CKA Study Notes: Logging & Monitoring (Resource Optimization & VPA)](../CKA_Study_Notes/03-logging-and-monitoring.md)
 
 ### Demo — VerticalPodAutoscaler (VPA)
 
@@ -7980,6 +8253,14 @@ NOTE
 
 ```yaml
 # pdb-high-availability.yaml
+# WHY THIS YAML: PDB protects workload availability during planned (voluntary) disruptions.
+# 'selector.matchLabels: app: critical-api': PDB applies to all Pods with this label.
+# 'minAvailable: 2': the Eviction API (used by 'kubectl drain') REFUSES to evict
+#   a Pod if doing so would drop available Pod count below 2. Drain pauses and waits.
+# PDB ONLY protects against voluntary disruptions: drain, rolling updates, cluster upgrades.
+#   A node CRASH bypasses PDB -- it is not a voluntary disruption.
+# Critical rule: 'minAvailable' must be less than total replicas.
+#   minAvailable: 3 with replicas: 3 = drain blocks forever -- never undrained.
 apiVersion: policy/v1
 kind: PodDisruptionBudget
 metadata:
@@ -7998,7 +8279,6 @@ spec:
 - **Voluntary vs. Involuntary Disruptions:** PDBs protect ONLY against **voluntary** disruptions (`kubectl drain`, node scale-down). They CANNOT prevent **involuntary** disruptions (hardware crashes, kernel panics, OOMKilled events, network cuts).
 - **Drain Deadlocks:** A PDB requiring `minAvailable: 100%` or `maxUnavailable: 0` will permanently block `kubectl drain`, preventing cluster upgrades until an administrator intervenes.
 
-
 ### Component architecture flow
 
 <iframe src="diagrams/topic-41.html" width="100%" height="560" style="border:none;"></iframe>
@@ -8010,7 +8290,7 @@ spec:
 
 ![Pod Disruption Budget (PDB) zine illustration](generated/kubernetes-apartment-complex/41-zine.png)
 
-**Zine explanation:** The illustration translates the Kubernetes mechanism into the apartment-complex metaphor so the operational relationship is easier to remember.
+**Zine explanation:** The Maintenance Limit Rule image shows PDB's role in protecting application availability during voluntary disruptions like node drains, cluster upgrades, or rolling deployments. Just as a building code limits how many units can be under renovation simultaneously — ensuring the complex never falls below minimum occupancy — a PodDisruptionBudget sets a lower bound (`minAvailable`) or upper bound (`maxUnavailable`) on how many Pods in a workload can be disrupted at the same time. The Eviction API (used by `kubectl drain`) respects PDB constraints and will block further evictions if they would violate the budget. PDBs only protect against voluntary (planned) disruptions — a node crash is an involuntary disruption that PDB cannot prevent. Requires at least as many replicas as `minAvailable` to function correctly.
 
 * **Zine Text & Layout:**
 * (Top): "Pod Disruption Budget — The Maintenance Limit Rule"
@@ -8020,7 +8300,7 @@ spec:
 
 - [Pod disruption budgets](https://kubernetes.io/docs/concepts/workloads/pods/disruptions/)
 - [Eviction API](https://kubernetes.io/docs/concepts/scheduling-eviction/api-eviction/)
-- [CKA Study Notes: Cluster Maintenance (Pod Disruption Budgets)](CKA_Study_Notes/05-cluster-maintenance.md)
+- [CKA Study Notes: Cluster Maintenance (Pod Disruption Budgets)](../CKA_Study_Notes/05-cluster-maintenance.md)
 
 ### Demo — Pod Disruption Budget (PDB)
 
@@ -8155,1140 +8435,5 @@ NOTE
 **Correct Answer:** B) It controls whether pods that are already unhealthy or failing readiness probes are allowed to be evicted immediately during a drain, preventing unhealthy pods from permanently blocking node maintenance.
 
 **Explanation:** `unhealthyPodEvictionPolicy: AlwaysAllow` allows eviction of pods that are already not ready/unhealthy regardless of budget constraints, ensuring broken application pods do not deadlock cluster node maintenance drains.
-
-</details>
-
-## 42. Probes & Health Checks (Liveness, Readiness, Startup)
-
-**Part 1 — Technical Discussion:** Kubernetes relies on three native probe mechanisms executed directly by the worker node's `kubelet` to determine whether a container process is healthy, initialized, and capable of serving user traffic.
-
-### The Three Probe Types
-- **`startupProbe`:** Determines whether the application within the container has successfully started. While the `startupProbe` is running, all `livenessProbe` and `readinessProbe` evaluations are paused. If it fails `failureThreshold` times, the container is killed and restarted according to `restartPolicy`. This protects slow-booting legacy or JVM apps.
-- **`livenessProbe`:** Periodically validates whether the application is alive and healthy. If the probe fails consecutively, kubelet terminates the container process and initiates a restart. This catches deadlocks, infinite loops, and unrecoverable thread starvation.
-- **`readinessProbe`:** Determines whether the container is ready to accept incoming network traffic. If it fails, the Pod condition `Ready` is set to `False`, and Kubernetes endpoints controllers immediately remove the Pod IP from Service backends and `EndpointSlices`. Crucially, **the container is not restarted**.
-
-### Supported Probe Handlers
-1. `httpGet`: Initiates an HTTP GET request to a specified port and path. Status codes 200–399 indicate success.
-2. `tcpSocket`: Attempts to open a TCP socket connection on a specified port. Successful connection indicates health.
-3. `exec`: Executes a command inside the container namespace. Exit code 0 indicates success.
-4. `grpc`: Issues a standard gRPC health check request (`grpc.health.v1.HealthCheckRequest`).
-
-```yaml
-# comprehensive-probes.yaml
-apiVersion: v1
-kind: Pod
-metadata:
-  name: resilient-web-app
-  labels:
-    app: resilient-web
-spec:
-  containers:
-  - name: api
-    image: nginx:alpine
-    ports:
-    - containerPort: 80
-    startupProbe:
-      httpGet:
-        path: /healthz
-        port: 80
-      initialDelaySeconds: 5
-      periodSeconds: 5
-      failureThreshold: 30 # Gives app up to 150 seconds to initialize
-    livenessProbe:
-      httpGet:
-        path: /healthz
-        port: 80
-      periodSeconds: 10
-      timeoutSeconds: 3
-      failureThreshold: 3
-    readinessProbe:
-      httpGet:
-        path: /ready
-        port: 80
-      periodSeconds: 5
-      successThreshold: 1
-      failureThreshold: 2
-```
-
-![Probes & Health Checks technical illustration](generated/kubernetes-apartment-complex/42-technical.png)
-
-**Technical perspective:** Probes decouple process execution from traffic readiness. A frequent anti-pattern is confusing liveness with readiness: if an external database goes down and a service responds with 500 errors, failing a liveness probe will cause kubelet to restart all pods simultaneously in a cascading thundering herd. In contrast, failing a readiness probe safely withdraws the pods from the load balancer until the database recovers, preserving process state.
-
-
-### Component architecture flow
-
-<iframe src="diagrams/topic-42.html" width="100%" height="560" style="border:none;"></iframe>
-
-> [!TIP]
-> View the interactive animated diagram in [diagrams/topic-42.html](diagrams/topic-42.html).
-
-**Part 2 — Analogy / Zine:** The resident building safety and inspection protocol: Startup verifies the water heater and gas mains are fully connected before the tenant unpacks; Liveness verifies the tenant hasn't fainted from carbon monoxide (if so, call paramedics/evacuate); Readiness verifies the apartment door is unlocked and tidy before allowing postal carriers and guests inside.
-
-![Probes & Health Checks zine illustration](generated/kubernetes-apartment-complex/42-zine.png)
-
-**Zine explanation:** The illustration translates container lifecycle checks into apartment safety routines.
-
-* **Zine Text & Layout:**
-* (Top): "Probes & Health Checks — The Apartment Inspection Protocols"
-* (Caption): "Startup protects boot time, Liveness restarts frozen apps, and Readiness gates front-door traffic."
-
-**Further reading**
-
-- [Configure Liveness, Readiness and Startup Probes](https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/)
-- [Pod Lifecycle and Container States](https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/)
-- [CKA Study Notes: Application Lifecycle Management](CKA_Study_Notes/04-application-lifecycle-management.md)
-
-### Demo — Probes & Health Checks (Liveness, Readiness, Startup)
-
-<div style="background:#000;color:#fff;border-radius:8px;padding:1rem;overflow:auto;box-shadow:0 2px 8px rgba(0,0,0,.25);"><pre style="background:transparent;color:#fff;margin:0;white-space:pre-wrap;">
-SETUP
-  kubectl create namespace zine-demo
-
-YAML  (probe-demo.yaml)
-  apiVersion: v1
-  kind: Pod
-  metadata:
-    name: probe-demo
-    namespace: zine-demo
-    labels:
-      app: probe-demo
-  spec:
-    containers:
-    - name: web
-      image: busybox
-      command: ["sh", "-c", "touch /tmp/ready; sleep 20; rm -f /tmp/ready; sleep 600"]
-      readinessProbe:
-        exec:
-          command: ["cat", "/tmp/ready"]
-        initialDelaySeconds: 2
-        periodSeconds: 3
-
-STEPS
-  1. kubectl apply -f probe-demo.yaml
-  2. kubectl get pod probe-demo -n zine-demo -w
-  3. Notice after 2 seconds READY becomes 1/1.
-  4. After 20 seconds /tmp/ready is deleted.
-  5. Watch READY transition to 0/1 without the container being killed or restarted.
-
-WHAT YOU SHOULD SEE
-  The container remains Running with RESTARTS=0, but READY transitions to 0/1 because readiness governs Service traffic inclusion, not container lifecycle.
-
-CLEANUP
-  kubectl delete namespace zine-demo
-
-NOTE
-  Demonstrates how readiness probes isolate pods from traffic without incurring restart penalties.
-</pre></div>
-
-
-### Knowledge Check — Quiz
-
-**Q1: What is the primary operational distinction between a `livenessProbe` and a `readinessProbe` in Kubernetes?**
-
-- [ ] A) A livenessProbe restarts the container if it fails, whereas a readinessProbe removes the Pod's IP from Service endpoints without restarting it.
-- [ ] B) A livenessProbe checks CPU usage, whereas a readinessProbe checks memory usage.
-- [ ] C) A readinessProbe kills the Pod immediately, while a livenessProbe sends a warning to the event log.
-- [ ] D) A livenessProbe is executed only once at boot, while a readinessProbe runs continuously.
-
-<details>
-<summary>Reveal Answer &amp; Explanation</summary>
-
-**Correct Answer:** A) A livenessProbe restarts the container if it fails, whereas a readinessProbe removes the Pod's IP from Service endpoints without restarting it.
-
-**Explanation:** If a livenessProbe fails `failureThreshold` times, kubelet restarts the container. If a readinessProbe fails, kubelet sets `Ready=False` so endpoints controllers remove the pod from Service traffic routing without terminating the process.
-
-</details>
-
-**Q2: When deploying a legacy or JVM-based application that takes 3 minutes to warm up before serving requests, which probe should you configure to prevent premature container restarts?**
-
-- [ ] A) A high-frequency `readinessProbe` with `failureThreshold: 1`.
-- [ ] B) A `startupProbe` with sufficient `failureThreshold` and `periodSeconds` to disable liveness/readiness probes until initialization completes.
-- [ ] C) An initContainer running `sleep 180`.
-- [ ] D) A `terminationGracePeriodSeconds` set to 300.
-
-<details>
-<summary>Reveal Answer &amp; Explanation</summary>
-
-**Correct Answer:** B) A `startupProbe` with sufficient `failureThreshold` and `periodSeconds` to disable liveness/readiness probes until initialization completes.
-
-**Explanation:** A `startupProbe` disables liveness and readiness checks until it succeeds for the first time. This protects slow-starting applications from being killed by aggressive liveness probes during boot.
-
-</details>
-
-**Q3: Which of the following is NOT a native probe mechanism supported by the Kubernetes kubelet in modern versions (v1.24+)?**
-
-- [ ] A) `httpGet`
-- [ ] B) `tcpSocket`
-- [ ] C) `grpc`
-- [ ] D) `smtpPing`
-
-<details>
-<summary>Reveal Answer &amp; Explanation</summary>
-
-**Correct Answer:** D) `smtpPing`
-
-**Explanation:** Kubernetes natively supports four probe mechanisms: `httpGet` (HTTP status 200-399), `tcpSocket` (TCP connection establishment), `exec` (exit code 0 inside container), and `grpc` (gRPC health checking protocol). `smtpPing` is not a Kubernetes probe type.
-
-</details>
-
-**Q4: What happens if a Pod's container defines a `readinessProbe` with `initialDelaySeconds: 10`, `periodSeconds: 5`, and `failureThreshold: 3`, and the probe endpoint starts returning HTTP 500?**
-
-- [ ] A) The container is instantly killed and rescheduled to another node.
-- [ ] B) After 3 consecutive failures (approx. 15 seconds), the Pod condition Ready becomes False, and endpoints controllers strip its IP from backend Services.
-- [ ] C) The API server scales the deployment replicas up by 1.
-- [ ] D) The Pod enters CrashLoopBackOff state.
-
-<details>
-<summary>Reveal Answer &amp; Explanation</summary>
-
-**Correct Answer:** B) After 3 consecutive failures (approx. 15 seconds), the Pod condition Ready becomes False, and endpoints controllers strip its IP from backend Services.
-
-**Explanation:** Readiness failure transitions the Pod to not ready. The container process continues running, but Service endpoints stop routing ingress traffic to it until consecutive successful probes pass `successThreshold`.
-
-</details>
-
-**Q5: Why is running an intensive shell script in an `exec` probe every 2 seconds generally considered an anti-pattern in high-density production clusters?**
-
-- [ ] A) Because `exec` probes run on the control plane instead of the worker node.
-- [ ] B) Because each `exec` probe invocation forks and executes new processes inside the container namespace, consuming host PID resources and CPU overhead.
-- [ ] C) Because `exec` probes automatically invalidate Docker image layers.
-- [ ] D) Because `exec` probes can only check files in `/tmp`.
-
-<details>
-<summary>Reveal Answer &amp; Explanation</summary>
-
-**Correct Answer:** B) Because each `exec` probe invocation forks and executes new processes inside the container namespace, consuming host PID resources and CPU overhead.
-
-**Explanation:** Executing shell commands inside a container requires the container runtime to fork and exec a process (e.g. `/bin/sh`), which incurs kernel overhead, creates transient PIDs, and risks node exhaustion at high scale compared to lightweight socket/HTTP probes.
-
-</details>
-
-**Q6: Which container probe setting controls how many consecutive successful probe responses are required before a previously failed container is marked healthy again?**
-
-- [ ] A) `initialDelaySeconds`
-- [ ] B) `timeoutSeconds`
-- [ ] C) `successThreshold`
-- [ ] D) `failureThreshold`
-
-<details>
-<summary>Reveal Answer &amp; Explanation</summary>
-
-**Correct Answer:** C) `successThreshold`
-
-**Explanation:** `successThreshold` defines minimum consecutive successes for the probe to be considered successful after having failed (defaults to 1; must be 1 for liveness and startup probes).
-
-</details>
-
-## 43. EndpointSlices & Headless Services
-
-**Part 1 — Technical Discussion:** In high-scale Kubernetes clusters, traditional monolithic `Endpoints` objects created severe performance bottlenecks: any change to a single Pod IP in a 5,000-pod service triggered full serialization and broadcast of the entire multi-megabyte object to every worker node running `kube-proxy`. Kubernetes introduced **`EndpointSlice`** (`discovery.k8s.io/v1`) to partition endpoints into smaller, scalable subsets (default 100 endpoints per slice).
-
-### Headless Services (`clusterIP: None`)
-When an application requires direct peer-to-peer network connections without intermediate layer-4 proxying or virtual IP load balancing (common in distributed databases, StatefulSets, Kafka, and ZooKeeper), a **Headless Service** is configured with `spec.clusterIP: None`.
-
-- **DNS Behavior:** Instead of returning a single ClusterIP, CoreDNS returns direct DNS `A`/`AAAA` records containing the individual IP addresses of all backing Pods.
-- **Predictable SRV Records:** StatefulSet members obtain deterministic FQDNs:
-  `$(pod-name).$(service-name).$(namespace).svc.cluster.local`
-
-```yaml
-# headless-stateful-service.yaml
-apiVersion: v1
-kind: Service
-metadata:
-  name: database-headless
-  namespace: data-tier
-spec:
-  clusterIP: None # Defines a Headless Service
-  selector:
-    app: distributed-db
-  ports:
-  - port: 5432
-    name: postgres
-```
-
-```yaml
-# sample-endpointslice.yaml
-apiVersion: discovery.k8s.io/v1
-kind: EndpointSlice
-metadata:
-  name: database-headless-abc12
-  namespace: data-tier
-  labels:
-    kubernetes.io/service-name: database-headless
-addressType: IPv4
-ports:
-  - name: postgres
-    port: 5432
-    protocol: TCP
-endpoints:
-  - addresses:
-      - "10.244.1.42"
-    conditions:
-      ready: true
-      serving: true
-      terminating: false
-    nodeName: worker-node-02
-    zone: us-east-1a
-```
-
-![EndpointSlices & Headless Services technical illustration](generated/kubernetes-apartment-complex/43-technical.png)
-
-**Technical perspective:** EndpointSlices model rich metadata including `conditions.terminating` and `zone` topology hints. This enables **Topology Aware Routing**, allowing kube-proxy to route traffic preferentially to Pods within the same availability zone, slashing cross-zone egress latency and cloud transit bandwidth costs.
-
-
-### Component architecture flow
-
-<iframe src="diagrams/topic-43.html" width="100%" height="560" style="border:none;"></iframe>
-
-> [!TIP]
-> View the interactive animated diagram in [diagrams/topic-43.html](diagrams/topic-43.html).
-
-**Part 2 — Analogy / Zine:** The resident intercom and direct telephone directory: Instead of forcing every piece of mail and caller to pass through a single crowded front desk receptionist (ClusterIP), a direct intercom system (Headless Service) allows visitors to buzz individual apartments directly. For massive towers with thousands of units, the front lobby organizes tenant names into modular 100-resident ring binders (EndpointSlices) rather than a single monolithic phone book.
-
-![EndpointSlices & Headless Services zine illustration](generated/kubernetes-apartment-complex/43-zine.png)
-
-**Zine explanation:** Translating direct service discovery and scalable endpoint chunking into building intercom directories.
-
-* **Zine Text & Layout:**
-* (Top): "EndpointSlices & Headless Services — The Direct Intercom"
-* (Caption): "Bypasses virtual IPs to give stateful pods direct DNS records and chunks endpoints for massive scale."
-
-**Further reading**
-
-- [EndpointSlices Documentation](https://kubernetes.io/docs/concepts/services-networking/endpoint-slices/)
-- [Headless Services](https://kubernetes.io/docs/concepts/services-networking/service/#headless-services)
-- [CKA Study Notes: Networking & Service Discovery](CKA_Study_Notes/07-networking.md)
-
-### Demo — EndpointSlices & Headless Services
-
-<div style="background:#000;color:#fff;border-radius:8px;padding:1rem;overflow:auto;box-shadow:0 2px 8px rgba(0,0,0,.25);"><pre style="background:transparent;color:#fff;margin:0;white-space:pre-wrap;">
-SETUP
-  kubectl create namespace zine-demo
-
-YAML  (headless-demo.yaml)
-  apiVersion: v1
-  kind: Service
-  metadata:
-    name: db-headless
-    namespace: zine-demo
-  spec:
-    clusterIP: None
-    selector:
-      app: db
-    ports:
-    - port: 80
-      name: http
-  ---
-  apiVersion: apps/v1
-  kind: Deployment
-  metadata:
-    name: db-nodes
-    namespace: zine-demo
-  spec:
-    replicas: 2
-    selector:
-      matchLabels:
-        app: db
-    template:
-      metadata:
-        labels:
-          app: db
-      spec:
-        containers:
-        - name: nginx
-          image: nginx:alpine
-
-STEPS
-  1. kubectl apply -f headless-demo.yaml
-  2. kubectl get svc db-headless -n zine-demo     # CLUSTER-IP will show None
-  3. kubectl get endpointslices -n zine-demo -l kubernetes.io/service-name=db-headless
-  4. kubectl describe endpointslice -n zine-demo -l kubernetes.io/service-name=db-headless
-
-WHAT YOU SHOULD SEE
-  The EndpointSlice displays each individual Pod IP address with conditions (ready=true), node name, and protocol mapping, while the Service has no virtual cluster IP.
-
-CLEANUP
-  kubectl delete namespace zine-demo
-
-NOTE
-  Headless services power stateful clustering where pods need to establish direct socket connections to specific peers.
-</pre></div>
-
-
-### Knowledge Check — Quiz
-
-**Q1: What primary scalability bottleneck in large Kubernetes clusters led to the creation of `EndpointSlice` resources to replace legacy `Endpoints`?**
-
-- [ ] A) Legacy Endpoints did not support IPv6.
-- [ ] B) A single Endpoints object contained all Pod IPs for a service; updating a single Pod in a 5,000-replica service forced the API server to serialize and broadcast the entire multi-megabyte object to all nodes.
-- [ ] C) Legacy Endpoints were limited to only 3 backend pods.
-- [ ] D) Endpoints could not resolve DNS SRV records.
-
-<details>
-<summary>Reveal Answer &amp; Explanation</summary>
-
-**Correct Answer:** B) A single Endpoints object contained all Pod IPs for a service; updating a single Pod in a 5,000-replica service forced the API server to serialize and broadcast the entire multi-megabyte object to all nodes.
-
-**Explanation:** Monolithic Endpoints objects scaled poorly because any single pod change caused complete re-serialization and transmission of thousands of IPs. EndpointSlices chunk endpoints into smaller sets (default 100 endpoints per slice), drastically reducing network and CPU overhead.
-
-</details>
-
-**Q2: By default, how many backend endpoints does the Kubernetes `EndpointSlice` controller pack into a single `EndpointSlice` resource before creating an additional slice?**
-
-- [ ] A) 10
-- [ ] B) 100
-- [ ] C) 1,000
-- [ ] D) 65,535
-
-<details>
-<summary>Reveal Answer &amp; Explanation</summary>
-
-**Correct Answer:** B) 100
-
-**Explanation:** By default, the EndpointSlice controller distributes endpoints across slices of up to 100 endpoints each (controlled by the `--max-endpoints-per-slice` flag on kube-controller-manager).
-
-</details>
-
-**Q3: How do you define a 'Headless Service' in Kubernetes, and what is its primary DNS behavior?**
-
-- [ ] A) Set `spec.type: ExternalName`; it maps external CNAME records.
-- [ ] B) Set `spec.clusterIP: None`; DNS queries for the service name return direct A/AAAA records for the individual backing Pod IPs instead of a single virtual ClusterIP.
-- [ ] C) Omit `spec.ports`; it disables all networking on the pod.
-- [ ] D) Set `metadata.annotations: headless=true`; it disables TLS termination.
-
-<details>
-<summary>Reveal Answer &amp; Explanation</summary>
-
-**Correct Answer:** B) Set `spec.clusterIP: None`; DNS queries for the service name return direct A/AAAA records for the individual backing Pod IPs instead of a single virtual ClusterIP.
-
-**Explanation:** Specifying `clusterIP: None` creates a Headless Service. Without a virtual cluster IP, CoreDNS returns the set of matching Pod IP addresses directly, which is critical for stateful clustering (e.g. Cassandra, ZooKeeper, Elasticsearch).
-
-</details>
-
-**Q4: When querying CoreDNS for a StatefulSet pod named `db-0` governed by a headless service named `db-headless` in namespace `prod`, what FQDN resolves directly to `db-0`'s IP?**
-
-- [ ] A) `db-0.db-headless.prod.svc.cluster.local`
-- [ ] B) `db-headless.db-0.prod.pod.cluster.local`
-- [ ] C) `db-0.prod.cluster.local`
-- [ ] D) `statefulset.db-0.svc.cluster.local`
-
-<details>
-<summary>Reveal Answer &amp; Explanation</summary>
-
-**Correct Answer:** A) `db-0.db-headless.prod.svc.cluster.local`
-
-**Explanation:** Kubernetes automatically registers predictable A records for StatefulSet pods with the pattern `<pod-name>.<service-name>.<namespace>.svc.<cluster-domain>`.
-
-</details>
-
-**Q5: What information does an `EndpointSlice` store for each backend endpoint that legacy `Endpoints` did not natively model in a first-class structured format?**
-
-- [ ] A) Docker image hash and container creation timestamp.
-- [ ] B) Endpoint conditions (`ready`, `serving`, `terminating`) and topology zone hints for topology-aware routing.
-- [ ] C) Host CPU utilization percentages.
-- [ ] D) Linux kernel routing table entries.
-
-<details>
-<summary>Reveal Answer &amp; Explanation</summary>
-
-**Correct Answer:** B) Endpoint conditions (`ready`, `serving`, `terminating`) and topology zone hints for topology-aware routing.
-
-**Explanation:** EndpointSlice objects include structured endpoint conditions (`ready`, `serving`, `terminating`), node names, and `zone` topology information that enable Topology Aware Routing without cluster-wide broadcasts.
-
-</details>
-
-**Q6: If a Pod in a StatefulSet is terminating (`deletionTimestamp` is set) but still finishing active connections, how does an `EndpointSlice` represent its state compared to `spec.publishNotReadyAddresses`?**
-
-- [ ] A) The slice immediately deletes the endpoint entry.
-- [ ] B) The endpoint's `conditions.ready` becomes `false`, but `conditions.terminating` becomes `true` (and `serving` remains `true` if configured), enabling graceful traffic draining.
-- [ ] C) The Pod is marked as a static pod.
-- [ ] D) The EndpointSlice crashes.
-
-<details>
-<summary>Reveal Answer &amp; Explanation</summary>
-
-**Correct Answer:** B) The endpoint's `conditions.ready` becomes `false`, but `conditions.terminating` becomes `true` (and `serving` remains `true` if configured), enabling graceful traffic draining.
-
-**Explanation:** EndpointSlices distinguish between `ready`, `serving`, and `terminating`. This allows traffic forwarders (kube-proxy, ingress controllers) to gracefully drain in-flight requests during rolling updates.
-
-</details>
-
-## 44. Pod Security Standards (PSS) & Admission (PSA)
-
-**Part 1 — Technical Discussion:** Following the deprecation and removal of `PodSecurityPolicy` (PSP) in Kubernetes 1.25+, the native **Pod Security Admission (PSA)** controller implements built-in security policies based on the CNCF **Pod Security Standards (PSS)**.
-
-### The Three Security Profiles
-1. **`Privileged`:** Completely unrestricted policy. Containers may run as root, share host namespaces (`hostPID`, `hostNetwork`, `hostIPC`), access raw host block devices, and enable all Linux capabilities. Intended only for system daemons and CNI/CSI drivers.
-2. **`Baseline`:** Minimally restrictive policy that prevents known privilege escalations with minimal configuration friction. Forbids `privileged: true`, host namespaces, host ports, and capabilities beyond a safe default list, but **allows running as root user**.
-3. **`Restricted`:** Heavily hardened policy enforcing modern cloud-native security best practices. Mandates:
-   - Rootless execution (`runAsNonRoot: true`, `runAsUser: > 0`).
-   - Disallowing privilege escalation (`allowPrivilegeEscalation: false`).
-   - Dropping all capabilities (`drop: ["ALL"]`) with optional addition of `NET_BIND_SERVICE`.
-   - Read-only root filesystems (`readOnlyRootFilesystem: true`).
-   - Restricted volume types (only `configMap`, `secret`, `emptyDir`, `projected`, `downwardAPI`, `persistentVolumeClaim`).
-
-### Namespace Policy Configuration
-PSA is configured declaratively using standardized namespace labels across three evaluation modes:
-- `pod-security.kubernetes.io/enforce`: Rejects pods that violate the standard.
-- `pod-security.kubernetes.io/audit`: Allows violating pods to run, but generates an audit log entry.
-- `pod-security.kubernetes.io/warn`: Returns user-facing CLI warnings upon submission without blocking.
-
-```yaml
-# hardened-namespace.yaml
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: finance-workloads
-  labels:
-    pod-security.kubernetes.io/enforce: restricted
-    pod-security.kubernetes.io/enforce-version: latest
-    pod-security.kubernetes.io/warn: restricted
-    pod-security.kubernetes.io/audit: restricted
-```
-
-```yaml
-# compliant-restricted-pod.yaml
-apiVersion: v1
-kind: Pod
-metadata:
-  name: secure-microservice
-  namespace: finance-workloads
-spec:
-  securityContext:
-    runAsNonRoot: true
-    runAsUser: 10001
-    seccompProfile:
-      type: RuntimeDefault
-  containers:
-  - name: app
-    image: nginxinc/nginx-unprivileged:alpine
-    securityContext:
-      allowPrivilegeEscalation: false
-      readOnlyRootFilesystem: true
-      capabilities:
-        drop:
-        - ALL
-```
-
-![Pod Security Standards technical illustration](generated/kubernetes-apartment-complex/44-technical.png)
-
-**Technical perspective:** Built-in PSA eliminates the operational overhead, latency penalty, and failure modes of maintaining external third-party mutating admission webhooks for baseline cluster hygiene. By pinning `enforce-version: v1.31`, teams avoid surprise validation breaks when upgrading Kubernetes control plane versions.
-
-
-### Component architecture flow
-
-<iframe src="diagrams/topic-44.html" width="100%" height="560" style="border:none;"></iframe>
-
-> [!TIP]
-> View the interactive animated diagram in [diagrams/topic-44.html](diagrams/topic-44.html).
-
-**Part 2 — Analogy / Zine:** Building safety codes and fire marshal regulations: The building manager tags wings with standardized safety tiers: Maintenance Workshops (Privileged — heavy equipment and blowtorches allowed), Residential Suites (Baseline — standard appliances, no commercial stoves), and High-Security Bio-Clean Wing (Restricted — fireproof furnishings, non-combustible clothing, and zero open flames permitted). The fire marshal checks every blueprint at the door and blocks entry if fire codes are breached.
-
-![Pod Security Standards zine illustration](generated/kubernetes-apartment-complex/44-zine.png)
-
-**Zine explanation:** Mapping cluster isolation profiles to building safety standards and fire marshal code enforcement.
-
-* **Zine Text & Layout:**
-* (Top): "Pod Security Standards — Building Safety Codes"
-* (Caption): "Privileged, Baseline, and Restricted profiles enforced natively at admission without external webhooks."
-
-**Further reading**
-
-- [Pod Security Standards Documentation](https://kubernetes.io/docs/concepts/security/pod-security-standards/)
-- [Pod Security Admission](https://kubernetes.io/docs/concepts/security/pod-security-admission/)
-- [CKA Study Notes: Security Primitives & Hardening](CKA_Study_Notes/06-security.md)
-
-### Demo — Pod Security Standards (PSS) & Admission (PSA)
-
-<div style="background:#000;color:#fff;border-radius:8px;padding:1rem;overflow:auto;box-shadow:0 2px 8px rgba(0,0,0,.25);"><pre style="background:transparent;color:#fff;margin:0;white-space:pre-wrap;">
-SETUP
-  kubectl create namespace pss-demo
-  kubectl label namespace pss-demo pod-security.kubernetes.io/enforce=restricted
-
-YAML  (insecure-pod.yaml)
-  apiVersion: v1
-  kind: Pod
-  metadata:
-    name: insecure-pod
-    namespace: pss-demo
-  spec:
-    containers:
-    - name: nginx
-      image: nginx:alpine
-
-STEPS
-  1. kubectl apply -f insecure-pod.yaml
-  2. Observe the immediate API admission rejection error:
-     'Error from server (Forbidden): pods "insecure-pod" is forbidden: violates PodSecurity "restricted:latest"...'
-  3. Notice it lists violations: runAsNonRoot != true, allowPrivilegeEscalation != false, capabilities.drop != ALL.
-
-WHAT YOU SHOULD SEE
-  The API server strictly denies the request without persisting the object to etcd or scheduling it to any worker node.
-
-CLEANUP
-  kubectl delete namespace pss-demo
-
-NOTE
-  Demonstrates declarative zero-trust namespace admission enforcement without third-party plugins.
-</pre></div>
-
-
-### Knowledge Check — Quiz
-
-**Q1: What built-in admission mechanism replaced the deprecated `PodSecurityPolicy` (PSP) starting in Kubernetes 1.25+?**
-
-- [ ] A) AppArmor Controller
-- [ ] B) Pod Security Admission (PSA) enforcing Pod Security Standards (PSS)
-- [ ] C) SELinux DaemonSet
-- [ ] D) IPTables Security Agent
-
-<details>
-<summary>Reveal Answer &amp; Explanation</summary>
-
-**Correct Answer:** B) Pod Security Admission (PSA) enforcing Pod Security Standards (PSS)
-
-**Explanation:** Pod Security Admission (PSA) is the native replacement for PSP. It evaluates pods against three standardized profiles (`privileged`, `baseline`, `restricted`) defined by the Pod Security Standards.
-
-</details>
-
-**Q2: Which of the three Pod Security Standards (PSS) levels enforces the most stringent security best practices, prohibiting privilege escalation, host namespaces, and requiring rootless execution?**
-
-- [ ] A) `privileged`
-- [ ] B) `baseline`
-- [ ] C) `restricted`
-- [ ] D) `isolated`
-
-<details>
-<summary>Reveal Answer &amp; Explanation</summary>
-
-**Correct Answer:** C) `restricted`
-
-**Explanation:** `restricted` is the most secure profile; it mandates running as non-root, drops all default Linux capabilities except `NET_BIND_SERVICE`, forbids host namespaces, and requires volume restrictions.
-
-</details>
-
-**Q3: How do cluster administrators configure Pod Security Admission policies on a target namespace?**
-
-- [ ] A) By creating custom iptables chains on worker nodes.
-- [ ] B) By applying standard labels to the namespace object (e.g., `pod-security.kubernetes.io/enforce: restricted`).
-- [ ] C) By editing `/etc/shadow` inside container images.
-- [ ] D) By mounting a ConfigMap to kubelet's static manifests directory.
-
-<details>
-<summary>Reveal Answer &amp; Explanation</summary>
-
-**Correct Answer:** B) By applying standard labels to the namespace object (e.g., `pod-security.kubernetes.io/enforce: restricted`).
-
-**Explanation:** PSA is configured declaratively using namespace labels with three modes: `enforce` (rejects violating pods), `audit` (logs violations in audit logs), and `warn` (returns user-facing CLI warnings).
-
-</details>
-
-**Q4: What is the key difference between the `enforce` mode and the `audit` mode in Pod Security Admission?**
-
-- [ ] A) `enforce` modifies pod manifests to fix them, while `audit` deletes violating namespaces.
-- [ ] B) `enforce` rejects the pod creation request if it breaches the standard, whereas `audit` allows the pod to run but records an event in the API audit log.
-- [ ] C) `audit` restarts kube-apiserver on every violation.
-- [ ] D) `enforce` applies only to worker nodes; `audit` applies only to control plane nodes.
-
-<details>
-<summary>Reveal Answer &amp; Explanation</summary>
-
-**Correct Answer:** B) `enforce` rejects the pod creation request if it breaches the standard, whereas `audit` allows the pod to run but records an event in the API audit log.
-
-**Explanation:** `enforce` acts as an active gatekeeper that rejects HTTP POST/PUT requests for non-compliant pods. `audit` allows deployments to proceed without disruption while logging violations for compliance analysis.
-
-</details>
-
-**Q5: Under the `baseline` Pod Security Standard profile, which of the following container configurations is permitted?**
-
-- [ ] A) Running in privileged mode (`securityContext.privileged: true`).
-- [ ] B) Sharing the host network namespace (`spec.hostNetwork: true`).
-- [ ] C) Running as root (`runAsUser: 0`) without privileged capabilities.
-- [ ] D) Sharing the host PID namespace (`spec.hostPID: true`).
-
-<details>
-<summary>Reveal Answer &amp; Explanation</summary>
-
-**Correct Answer:** C) Running as root (`runAsUser: 0`) without privileged capabilities.
-
-**Explanation:** The `baseline` profile prevents known privilege escalations (forbidding `privileged: true`, `hostPID`, `hostIPC`, `hostNetwork`), but intentionally allows running as root to support off-the-shelf container images that have not yet been refactored for rootless execution.
-
-</details>
-
-**Q6: Why is namespace labeling preferred over custom third-party admission webhooks for basic pod hardening in standard Kubernetes?**
-
-- [ ] A) Because namespace labels do not require any external controllers, webhooks, or latency overhead; PSA is compiled directly into kube-apiserver.
-- [ ] B) Because third-party webhooks cannot inspect container manifests.
-- [ ] C) Because PSA automatically encrypts all container disk storage.
-- [ ] D) Because namespace labels work even if the API server is turned off.
-
-<details>
-<summary>Reveal Answer &amp; Explanation</summary>
-
-**Correct Answer:** A) Because namespace labels do not require any external controllers, webhooks, or latency overhead; PSA is compiled directly into kube-apiserver.
-
-**Explanation:** PSA is a built-in admission plugin in `kube-apiserver`. Enabling it via namespace labels incurs zero network webhook roundtrips and zero external dependencies, providing deterministic baseline security out of the box.
-
-</details>
-
-## 45. CustomResourceDefinitions (CRDs) & Operators
-
-**Part 1 — Technical Discussion:** Kubernetes is engineered as a fully extensible platform. A **CustomResourceDefinition (CRD)** (`apiextensions.k8s.io/v1`) registers new resource endpoints in the Kubernetes API, allowing developers to define domain-specific abstractions (e.g. `PostgreSQLCluster`, `KafkaTopic`, `BackupSchedule`) that behave identically to native primitives.
-
-### The Operator Pattern
-A CRD defines only the **schema** (desired state); it has no operational intelligence. An **Operator** pairs a CRD with a **Custom Controller** that runs a continuous **Reconcile Loop**:
-1. **Observe:** The controller watches Custom Resources and dependent child resources using `client-go` Informers and Watch streams.
-2. **Analyze:** Compares the actual observed cluster state against the desired state declared in `.spec`.
-3. **Act:** Executes corrective operations (provisioning StatefulSets, triggering automated database backups, executing failover promotions).
-
-```yaml
-# postgres-crd.yaml
-apiVersion: apiextensions.k8s.io/v1
-kind: CustomResourceDefinition
-metadata:
-  name: postgresclusters.database.example.com
-spec:
-  group: database.example.com
-  names:
-    kind: PostgresCluster
-    listKind: PostgresClusterList
-    plural: postgresclusters
-    singular: postgrescluster
-    shortNames:
-    - pg
-  scope: Namespaced
-  versions:
-  - name: v1alpha1
-    served: true
-    storage: true
-    schema:
-      openAPIV3Schema:
-        type: object
-        properties:
-          spec:
-            type: object
-            required: ["replicas", "storageSize"]
-            properties:
-              replicas:
-                type: integer
-                minimum: 1
-                maximum: 5
-              storageSize:
-                type: string
-                pattern: "^[0-9]+(Gi|Mi)$"
-    subresources:
-      status: {}
-```
-
-```yaml
-# my-database-instance.yaml
-apiVersion: database.example.com/v1alpha1
-kind: PostgresCluster
-metadata:
-  name: production-db
-  namespace: data
-spec:
-  replicas: 3
-  storageSize: 50Gi
-```
-
-![CustomResourceDefinitions & Operators technical illustration](generated/kubernetes-apartment-complex/45-technical.png)
-
-**Technical perspective:** Operators encode domain-specific human operational knowledge into self-healing software. Using the `/status` subresource allows operators to record cluster conditions and health metrics without triggering incrementing updates to `.metadata.generation`, preventing infinite reconciliation loops.
-
-
-### Component architecture flow
-
-<iframe src="diagrams/topic-45.html" width="100%" height="560" style="border:none;"></iframe>
-
-> [!TIP]
-> View the interactive animated diagram in [diagrams/topic-45.html](diagrams/topic-45.html).
-
-**Part 2 — Analogy / Zine:** Specialized external facility contractors: The building installs custom, computerized commercial HVAC refrigeration chillers (Custom Resource). Standard on-site apartment janitors do not know how to rebuild chiller compressors, so management hires a specialized 24/7 HVAC engineering contractor (The Operator). The contractor constantly monitors pressure sensors and coolant levels (Informer) and automatically tunes valves and replaces filters to keep the building chillers operating perfectly (Reconcile Loop).
-
-![CustomResourceDefinitions & Operators zine illustration](generated/kubernetes-apartment-complex/45-zine.png)
-
-**Zine explanation:** Translating Kubernetes custom APIs and autonomous controllers into specialized facility equipment and dedicated maintenance contractors.
-
-* **Zine Text & Layout:**
-* (Top): "CRDs & Operators — Specialized Facility Contractors"
-* (Caption): "CRDs define new building blueprints; Operators continuously tune actual machinery to match specifications."
-
-**Further reading**
-
-- [Custom Resources Documentation](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/)
-- [Operator Pattern Overview](https://kubernetes.io/docs/concepts/extend-kubernetes/operator/)
-- [Kubebuilder Book](https://book.kubebuilder.io/)
-
-### Demo — CustomResourceDefinitions (CRDs) & Operators
-
-<div style="background:#000;color:#fff;border-radius:8px;padding:1rem;overflow:auto;box-shadow:0 2px 8px rgba(0,0,0,.25);"><pre style="background:transparent;color:#fff;margin:0;white-space:pre-wrap;">
-SETUP
-  kubectl create namespace zine-demo
-
-YAML  (crd-demo.yaml)
-  apiVersion: apiextensions.k8s.io/v1
-  kind: CustomResourceDefinition
-  metadata:
-    name: apptenants.apartment.demo
-  spec:
-    group: apartment.demo
-    names:
-      kind: AppTenant
-      plural: apptenants
-      shortNames:
-      - at
-    scope: Namespaced
-    versions:
-    - name: v1
-      served: true
-      storage: true
-      schema:
-        openAPIV3Schema:
-          type: object
-          properties:
-            spec:
-              type: object
-              required: ["plan"]
-              properties:
-                plan:
-                  type: string
-                  enum: ["basic", "premium"]
-  ---
-  apiVersion: apartment.demo/v1
-  kind: AppTenant
-  metadata:
-    name: tenant-suite-401
-    namespace: zine-demo
-  spec:
-    plan: premium
-
-STEPS
-  1. kubectl apply -f crd-demo.yaml
-  2. kubectl get crd apptenants.apartment.demo
-  3. kubectl get apptenant -n zine-demo
-  4. kubectl describe at tenant-suite-401 -n zine-demo
-
-WHAT YOU SHOULD SEE
-  The custom resource is stored and queried via standard kubectl commands just like a native Pod or Deployment, with full schema validation enforced.
-
-CLEANUP
-  kubectl delete crd apptenants.apartment.demo
-  kubectl delete namespace zine-demo
-
-NOTE
-  Deleting a CRD automatically deletes all instances of that resource across all namespaces.
-</pre></div>
-
-
-### Knowledge Check — Quiz
-
-**Q1: What is the primary function of a `CustomResourceDefinition` (CRD) in Kubernetes?**
-
-- [ ] A) It compiles new C++ extensions directly into the Linux kernel on worker nodes.
-- [ ] B) It extends the Kubernetes API by registering new declarative resource types (kinds and API groups) backed by etcd storage without modifying Kubernetes core code.
-- [ ] C) It overrides the etcd consensus algorithm with Paxos.
-- [ ] D) It automatically generates Dockerfiles for container applications.
-
-<details>
-<summary>Reveal Answer &amp; Explanation</summary>
-
-**Correct Answer:** B) It extends the Kubernetes API by registering new declarative resource types (kinds and API groups) backed by etcd storage without modifying Kubernetes core code.
-
-**Explanation:** CRDs allow developers to define custom REST endpoints and schemas in the Kubernetes API. The API server serves and stores them in etcd just like native Pods or Deployments.
-
-</details>
-
-**Q2: In the Kubernetes Operator pattern, what component is responsible for turning declarative Custom Resources into actual running infrastructure?**
-
-- [ ] A) The Linux systemd init system.
-- [ ] B) A Custom Controller executing a continuous Reconcile Loop that watches CR events and brings actual state into alignment with desired state.
-- [ ] C) The DNS resolver inside CoreDNS.
-- [ ] D) The kube-proxy iptables rules generator.
-
-<details>
-<summary>Reveal Answer &amp; Explanation</summary>
-
-**Correct Answer:** B) A Custom Controller executing a continuous Reconcile Loop that watches CR events and brings actual state into alignment with desired state.
-
-**Explanation:** An Operator consists of a CRD plus a custom controller. The controller's reconcile loop continuously compares observed state against the custom resource spec and executes corrective operations (e.g. database backups, clustering).
-
-</details>
-
-**Q3: Which schema validation format is mandatory for defining the structure and data types of fields in a `CustomResourceDefinition` (`apiextensions.k8s.io/v1`)?**
-
-- [ ] A) Protocol Buffers v2
-- [ ] B) OpenAPI v3 JSON Schema (`spec.versions[*].schema.openAPIV3Schema`)
-- [ ] C) SQL DDL Schemas
-- [ ] D) XML Document Type Definitions (DTD)
-
-<details>
-<summary>Reveal Answer &amp; Explanation</summary>
-
-**Correct Answer:** B) OpenAPI v3 JSON Schema (`spec.versions[*].schema.openAPIV3Schema`)
-
-**Explanation:** Kubernetes requires CRDs in `apiextensions.k8s.io/v1` to define structural schemas using OpenAPI v3 JSON Schema for client-side and server-side validation.
-
-</details>
-
-**Q4: What mechanism does an efficient Kubernetes controller use to watch for resource updates without overwhelming the API server with constant polling?**
-
-- [ ] A) Cron jobs querying `kubectl get` every second.
-- [ ] B) HTTP GET long-polling with chunked transfers.
-- [ ] C) Kubernetes Informers and Watch API (`watch=true`) utilizing HTTP chunked streaming and local caching.
-- [ ] D) Direct SSH connections to worker nodes.
-
-<details>
-<summary>Reveal Answer &amp; Explanation</summary>
-
-**Correct Answer:** C) Kubernetes Informers and Watch API (`watch=true`) utilizing HTTP chunked streaming and local caching.
-
-**Explanation:** Controllers use client-go Informers and the API Watch stream. The API server streams resource change events (Added, Modified, Deleted) over an open HTTP connection, and informers store state in an in-memory cache.
-
-</details>
-
-**Q5: What is the purpose of the `/status` subresource in a CustomResourceDefinition definition (`spec.versions[*].subresources.status`)?**
-
-- [ ] A) It logs all pod stdout streams to etcd.
-- [ ] B) It isolates the resource `.status` field so custom controllers can update status without mutating `.spec`, enforcing role-based permissions and preventing generation bumps.
-- [ ] C) It reboots the controller pod whenever a field changes.
-- [ ] D) It makes the resource read-only for all cluster administrators.
-
-<details>
-<summary>Reveal Answer &amp; Explanation</summary>
-
-**Correct Answer:** B) It isolates the resource `.status` field so custom controllers can update status without mutating `.spec`, enforcing role-based permissions and preventing generation bumps.
-
-**Explanation:** Enabling the `/status` subresource splits updates: users modify `.spec`, while controllers update `.status` via `PUT /apis/.../customs/name/status`. This prevents race conditions and avoids incrementing `metadata.generation` on status-only updates.
-
-</details>
-
-**Q6: What occurs when you delete a `CustomResourceDefinition` object using `kubectl delete crd <crd-name>`?**
-
-- [ ] A) Only the schema definition is removed; all existing instances of that custom resource remain in etcd.
-- [ ] B) The API server purges the custom resource endpoint AND immediately deletes all existing custom resource instances of that kind across all namespaces.
-- [ ] C) The worker nodes are drained immediately.
-- [ ] D) The API server rejects the deletion until all controllers are uninstalled.
-
-<details>
-<summary>Reveal Answer &amp; Explanation</summary>
-
-**Correct Answer:** B) The API server purges the custom resource endpoint AND immediately deletes all existing custom resource instances of that kind across all namespaces.
-
-**Explanation:** Deleting a CRD is a destructive operation: the API server unregisters the REST endpoint and cascades the immediate deletion of all custom resource instances across every namespace in the cluster.
-
-</details>
-
-## 46. LimitRange
-
-**Part 1 — Technical Discussion:** While a `ResourceQuota` controls the **macroscopic** total aggregate resource consumption across an entire namespace, a **`LimitRange`** (`v1`) enforces **microscopic** resource boundaries and defaults on individual containers, pods, or PersistentVolumeClaims within that namespace.
-
-### Core Capabilities of LimitRange
-1. **Default Requests & Limits Injection:** If a developer submits a Pod manifest that omits compute requests or limits, the built-in `LimitRanger` admission controller mutates the incoming object to inject configured default values before persisting it to etcd.
-2. **Min & Max Bounds Enforcement:** Enforces minimum and maximum allowable bounds for CPU, memory, and storage. Requests or limits outside these bounds cause the API server to reject pod creation immediately.
-3. **Burst Ratio Enforcement (`maxLimitRequestRatio`):** Limits how aggressively a container can burst beyond its guaranteed request (e.g. `limit / request <= 2`), curbing extreme resource overcommit and safeguarding node stability.
-
-```yaml
-# app-namespace-limits.yaml
-apiVersion: v1
-kind: LimitRange
-metadata:
-  name: container-resource-rules
-  namespace: engineering
-spec:
-  limits:
-  - type: Container
-    default: # Default limit injected if omitted
-      cpu: 500m
-      memory: 512Mi
-    defaultRequest: # Default request injected if omitted
-      cpu: 100m
-      memory: 128Mi
-    max: # Maximum allowed container limit
-      cpu: "2"
-      memory: 2Gi
-    min: # Minimum allowed container request
-      cpu: 50m
-      memory: 64Mi
-    maxLimitRequestRatio:
-      cpu: 4
-      memory: 4
-  - type: PersistentVolumeClaim
-    min:
-      storage: 1Gi
-    max:
-      storage: 50Gi
-```
-
-![LimitRange technical illustration](generated/kubernetes-apartment-complex/46-technical.png)
-
-**Technical perspective:** A `LimitRange` is mandatory when paired with compute `ResourceQuotas`. If a namespace has a ResourceQuota on `requests.cpu`, Kubernetes rejects any Pod that omits CPU requests; configuring a `LimitRange` ensures default requests are automatically injected, allowing unconfigured pods to run smoothly without manual boilerplate.
-
-
-### Component architecture flow
-
-<iframe src="diagrams/topic-46.html" width="100%" height="560" style="border:none;"></iframe>
-
-> [!TIP]
-> View the interactive animated diagram in [diagrams/topic-46.html](diagrams/topic-46.html).
-
-**Part 2 — Analogy / Zine:** Apartment appliance power draw caps and breaker panel fuses: While the utility company monitors the whole building's monthly electrical bill (ResourceQuota), each apartment suite has its own circuit breaker panel (LimitRange). You cannot plug in an industrial plasma cutter that draws 50 amps (Max Limit), and if you plug in an unbranded microwave without stating its power consumption, the building assumes a baseline 5 amp draw (Default Request).
-
-![LimitRange zine illustration](generated/kubernetes-apartment-complex/46-zine.png)
-
-**Zine explanation:** Translating per-container compute constraints and default request injection into apartment circuit breaker limits.
-
-* **Zine Text & Layout:**
-* (Top): "LimitRange — Appliance Power Draw Limits"
-* (Caption): "Sets min/max boundaries and injects default CPU/memory requests to prevent noisy neighbors."
-
-**Further reading**
-
-- [Configure Default Memory and CPU Requests and Limits](https://kubernetes.io/docs/tasks/administer-cluster/manage-resources/memory-default-namespace/)
-- [Limit Ranges Resource Guide](https://kubernetes.io/docs/concepts/policy/limit-range/)
-- [CKA Study Notes: Scheduling & Resource Limits](CKA_Study_Notes/02-scheduling.md)
-
-### Demo — LimitRange
-
-<div style="background:#000;color:#fff;border-radius:8px;padding:1rem;overflow:auto;box-shadow:0 2px 8px rgba(0,0,0,.25);"><pre style="background:transparent;color:#fff;margin:0;white-space:pre-wrap;">
-SETUP
-  kubectl create namespace zine-demo
-
-YAML  (limitrange-demo.yaml)
-  apiVersion: v1
-  kind: LimitRange
-  metadata:
-    name: demo-limits
-    namespace: zine-demo
-  spec:
-    limits:
-    - type: Container
-      default:
-        cpu: 250m
-        memory: 256Mi
-      defaultRequest:
-        cpu: 100m
-        memory: 128Mi
-  ---
-  apiVersion: v1
-  kind: Pod
-  metadata:
-    name: unconfigured-pod
-    namespace: zine-demo
-  spec:
-    containers:
-    - name: web
-      image: nginx:alpine
-
-STEPS
-  1. kubectl apply -f limitrange-demo.yaml
-  2. kubectl get pod unconfigured-pod -n zine-demo -o yaml | grep -A 5 resources:
-
-WHAT YOU SHOULD SEE
-  Although the submitted Pod omitted resources, the LimitRanger admission controller injected requests (100m CPU, 128Mi RAM) and limits (250m CPU, 256Mi RAM) automatically.
-
-CLEANUP
-  kubectl delete namespace zine-demo
-
-NOTE
-  Essential for multi-tenant clusters to prevent rogue containers from consuming unlimited host resources.
-</pre></div>
-
-
-### Knowledge Check — Quiz
-
-**Q1: What is the primary difference in purpose between a `ResourceQuota` and a `LimitRange` in Kubernetes?**
-
-- [ ] A) ResourceQuota limits the aggregate resource consumption of an entire namespace, while LimitRange enforces constraints and default values on individual containers/Pods within that namespace.
-- [ ] B) ResourceQuota limits network bandwidth; LimitRange limits disk storage.
-- [ ] C) ResourceQuota is configured on nodes; LimitRange is configured on the control plane.
-- [ ] D) There is no difference; they are aliases for the same object.
-
-<details>
-<summary>Reveal Answer &amp; Explanation</summary>
-
-**Correct Answer:** A) ResourceQuota limits the aggregate resource consumption of an entire namespace, while LimitRange enforces constraints and default values on individual containers/Pods within that namespace.
-
-**Explanation:** ResourceQuota sets a macroscopic ceiling for total resources (e.g. max 10 CPUs total across the whole namespace). LimitRange sets microscopic policies on individual containers (e.g. min 100m CPU, max 2 CPU, and default 500m CPU if omitted).
-
-</details>
-
-**Q2: If a developer submits a Pod manifest that does NOT specify `resources.requests` or `resources.limits`, and the namespace contains a `LimitRange` with `default` and `defaultRequest` values, what happens?**
-
-- [ ] A) The Pod creation is rejected with an HTTP 400 Bad Request error.
-- [ ] B) The LimitRanger admission controller automatically mutates the Pod manifest to inject the configured default requests and limits before persisting it to etcd.
-- [ ] C) The Pod is scheduled with unbounded CPU and RAM access.
-- [ ] D) The node kills the container after 10 seconds.
-
-<details>
-<summary>Reveal Answer &amp; Explanation</summary>
-
-**Correct Answer:** B) The LimitRanger admission controller automatically mutates the Pod manifest to inject the configured default requests and limits before persisting it to etcd.
-
-**Explanation:** The built-in `LimitRanger` admission controller mutates incoming pods that lack resource specifications, injecting the namespace's `default` (limits) and `defaultRequest` (requests) values.
-
-</details>
-
-**Q3: What happens if a user submits a Pod specifying `resources.limits.memory: 8Gi`, but the namespace has an active `LimitRange` specifying `max.memory: 4Gi` for containers?**
-
-- [ ] A) The pod is accepted, but the container's memory is capped at 4Gi at runtime by cgroups.
-- [ ] B) The API server rejects the Pod creation with an admission error stating that the requested limit exceeds the maximum allowable container limit.
-- [ ] C) The API server automatically adds a second worker node.
-- [ ] D) The Pod is scheduled but permanently placed in Pending state.
-
-<details>
-<summary>Reveal Answer &amp; Explanation</summary>
-
-**Correct Answer:** B) The API server rejects the Pod creation with an admission error stating that the requested limit exceeds the maximum allowable container limit.
-
-**Explanation:** LimitRange validation occurs during the admission phase. If any container request or limit violates `min`, `max`, or `maxLimitRequestRatio`, the API server rejects the creation request immediately with a validation error.
-
-</details>
-
-**Q4: Why is configuring a `LimitRange` with default requests especially critical in a namespace governed by a `ResourceQuota` that tracks compute resources?**
-
-- [ ] A) Because ResourceQuotas cannot function without a CNI plugin.
-- [ ] B) Because if a namespace has a CPU/memory ResourceQuota, any Pod submitted without explicit resource requests will be rejected by the Quota controller unless a LimitRange injects default requests.
-- [ ] C) Because LimitRange encrypts Secret keys used by ResourceQuotas.
-- [ ] D) Because ResourceQuota requires LimitRange to calculate billing costs.
-
-<details>
-<summary>Reveal Answer &amp; Explanation</summary>
-
-**Correct Answer:** B) Because if a namespace has a CPU/memory ResourceQuota, any Pod submitted without explicit resource requests will be rejected by the Quota controller unless a LimitRange injects default requests.
-
-**Explanation:** When a ResourceQuota tracks compute resources (like `requests.cpu`), every container in that namespace MUST declare requests. If users omit them, the quota controller rejects the pod unless a LimitRange is present to provide default requests automatically.
-
-</details>
-
-**Q5: What constraint does the `maxLimitRequestRatio` field in a `LimitRange` object enforce on a container?**
-
-- [ ] A) It limits the maximum allowable ratio between a container's limit and its request (e.g. limit cannot be more than 2x the request), preventing excessive overcommit.
-- [ ] B) It enforces the ratio between CPU cores and memory in gigabytes.
-- [ ] C) It controls the ratio between pod replicas and worker node count.
-- [ ] D) It limits the ratio between TCP and UDP traffic.
-
-<details>
-<summary>Reveal Answer &amp; Explanation</summary>
-
-**Correct Answer:** A) It limits the maximum allowable ratio between a container's limit and its request (e.g. limit cannot be more than 2x the request), preventing excessive overcommit.
-
-**Explanation:** `maxLimitRequestRatio` caps how aggressively a container can burst beyond its guaranteed request (e.g. `limit / request <= 2`), protecting nodes from sudden resource starvation due to high overcommitment.
-
-</details>
-
-**Q6: Which types of resources can a `LimitRange` restrict within a namespace?**
-
-- [ ] A) `Container`, `Pod`, and `PersistentVolumeClaim` (storage min/max requests).
-- [ ] B) Only CPU and Memory on Docker daemons.
-- [ ] C) Only API server network bandwidth.
-- [ ] D) Only physical server rack temperatures.
-
-<details>
-<summary>Reveal Answer &amp; Explanation</summary>
-
-**Correct Answer:** A) `Container`, `Pod`, and `PersistentVolumeClaim` (storage min/max requests).
-
-**Explanation:** A LimitRange can enforce constraints across three resource types: `Container` (min/max/default CPU and memory), `Pod` (total min/max across all containers), and `PersistentVolumeClaim` (min/max storage request sizes).
 
 </details>

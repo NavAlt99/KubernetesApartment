@@ -21,6 +21,12 @@ ENRICHED_11_20 = {
 
 ```yaml
 # oci-security-pod.yaml
+# WHY THIS YAML: These security fields are translated by containerd into OCI runtime spec,
+#   which runc passes to Linux kernel syscalls when creating the container sandbox.
+# 'runAsNonRoot: true': containerd verifies UID != 0 before starting the container.
+# 'seccompProfile: RuntimeDefault': containerd loads a BPF filter blocking dangerous syscalls.
+# 'allowPrivilegeEscalation: false': sets the no_new_privs prctl flag via runc.
+# 'capabilities.drop: ALL': runc calls cap_set_proc() stripping all Linux capabilities.
 apiVersion: v1
 kind: Pod
 metadata:
@@ -58,6 +64,12 @@ spec:
 
 ```yaml
 # native-sidecar-pod.yaml
+# WHY THIS YAML: Demonstrates the native sidecar pattern (Kubernetes 1.28+).
+# 'initContainers' with 'restartPolicy: Always': this is what makes it a native sidecar.
+#   It starts BEFORE application containers but does NOT exit -- stays running alongside.
+# 'shared-logs emptyDir volume': both containers mount the SAME Linux tmpfs directory.
+#   The sidecar reads logs written by web-app because they share the same volume mount
+#   -- enabled by the Pod's shared mount namespace (all containers share Pod volumes).
 apiVersion: v1
 kind: Pod
 metadata:
@@ -100,6 +112,12 @@ spec:
 
 ```yaml
 # init-container-dependency.yaml
+# WHY THIS YAML: Init containers enforce startup prerequisites before the main app starts.
+# The kubelet runs init containers IN ORDER, each must exit code 0 before the next starts.
+# Common pattern: init container runs 'until nc -z postgres 5432; do sleep 2; done'
+#   -- the main app container will not start until the DB port is confirmed open.
+# Init containers share Pod volumes (emptyDir, PVCs), allowing pre-seeding of config
+#   files, DB migrations, or secrets into shared storage before the app reads them.
 apiVersion: v1
 kind: Pod
 metadata:
@@ -148,6 +166,12 @@ spec:
 
 ```yaml
 # calico-ippool-spec.yaml
+# WHY THIS YAML: This Calico IPPool defines the CIDR range for Pod IP allocation.
+# 'cidr: 192.168.0.0/16': every Pod gets an IP from this block via CNI IPAM.
+#   When kubelet calls the CNI ADD command for a new Pod, Calico allocates from here.
+# 'ipipMode: Always': cross-node Pod traffic is IP-in-IP encapsulated, enabling
+#   pod-to-pod routing across nodes without BGP routing support.
+# 'natOutgoing: true': enables SNAT so Pod traffic leaving the cluster uses the node IP.
 apiVersion: projectcalico.org/v3
 kind: IPPool
 metadata:
@@ -183,6 +207,13 @@ spec:
 
 ```yaml
 # coredns-configmap.yaml
+# WHY THIS YAML: This ConfigMap IS the CoreDNS Corefile -- its runtime configuration.
+# 'cluster.local': the cluster domain. Services resolve as:
+#   <service>.<namespace>.svc.cluster.local -> ClusterIP address.
+# 'kubernetes cluster.local': uses the Kubernetes API as the DNS backend,
+#   watching Service and EndpointSlice objects to answer queries in real time.
+# 'forward . /etc/resolv.conf': external domain queries forwarded to node DNS.
+# Every Pod's /etc/resolv.conf is auto-configured to use this CoreDNS ClusterIP.
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -229,6 +260,12 @@ data:
 
 ```yaml
 # nodeport-service-spec.yaml
+# WHY THIS YAML: This Service shows the ClusterIP + NodePort layered model.
+# 'type: NodePort' creates BOTH a ClusterIP (internal) AND a NodePort (external).
+# 'selector: app: web-frontend': EndpointSlice controller populates backends;
+#   kube-proxy reads EndpointSlices to program its iptables rules.
+# 'port: 80 -> targetPort: 8080': stable interface -> actual container port.
+# 'nodePort: 30080': kube-proxy opens this port on every node's iptables chain.
 apiVersion: v1
 kind: Service
 metadata:
@@ -266,6 +303,12 @@ spec:
 
 ```yaml
 # custom-manual-endpoints.yaml
+# WHY THIS YAML: Manual Endpoints/EndpointSlices route a Service to non-Pod backends.
+# A Service WITHOUT a 'selector' tells the controller NOT to auto-manage backends.
+# The Endpoints object lists IP:port pairs that kube-proxy uses to program
+#   its iptables/IPVS rules, exactly as it would for Pod-backed endpoints.
+# This lets Kubernetes Services act as stable internal DNS names for external systems
+#   (legacy VMs, managed databases), enabling transparent migration to in-cluster Pods.
 apiVersion: v1
 kind: Service
 metadata:
@@ -310,6 +353,13 @@ endpoints:
 
 ```yaml
 # tls-ingress-spec.yaml
+# WHY THIS YAML: This Ingress resource is processed by the Ingress Controller,
+#   NOT by kube-apiserver or kube-proxy directly.
+# 'ingressClassName: nginx': selects which controller watches this object.
+#   Multiple controllers can coexist; className routes to the right one.
+# 'tls.secretName: tls-cert': the controller reads this Secret and configures
+#   its virtual host to terminate HTTPS -- Layer 7, impossible with raw kube-proxy.
+# 'rules.host / path': HTTP Host header and URL-path-based routing to backend Services.
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -355,6 +405,13 @@ spec:
 
 ```yaml
 # strict-backend-network-policy.yaml
+# WHY THIS YAML: Enforces namespace-level network segmentation via the CNI plugin.
+# 'podSelector: app: backend': once ANY NetworkPolicy selects this Pod,
+#   default becomes deny-all -- only explicitly allowed traffic flows.
+# 'policyTypes: [Ingress, Egress]': both directions are now controlled.
+# 'ingress.from.namespaceSelector: frontend': ONLY the frontend namespace may connect.
+# 'egress.ports.port: 5432': Pods may only make outbound connections to PostgreSQL.
+# WARNING: Must explicitly allow DNS (port 53) or DNS resolution breaks.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -409,6 +466,13 @@ spec:
 
 ```yaml
 # nfs-persistent-volume.yaml
+# WHY THIS YAML: Demonstrates the administrator-provisioned PV lifecycle.
+# 'capacity.storage: 50Gi': the PV advertises its size -- PVCs requesting >50Gi won't bind.
+# 'accessModes: ReadWriteMany': NFS supports multiple nodes mounting simultaneously.
+#   Block storage (EBS) would be ReadWriteOnce -- one node at a time only.
+# 'persistentVolumeReclaimPolicy: Retain': when PVC is deleted, PV is NOT destroyed.
+#   Moves to 'Released' state; admin must manually reclaim before rebinding.
+# 'storageClassName: ""': empty string means only manual PVC binding (no dynamic provisioning).
 apiVersion: v1
 kind: PersistentVolume
 metadata:

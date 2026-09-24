@@ -22,6 +22,12 @@ ENRICHED_1_10 = {
 
 ```yaml
 # cluster-workload-foundation.yaml
+# WHY THIS YAML: Demonstrates the cluster's declarative model in action.
+# 'replicas: 3' is the desired state the Controller Manager reconciles against.
+#   If a pod dies, it creates a replacement — no human intervention needed.
+# 'resources.requests' is what the Scheduler reads to decide which Node fits.
+# 'resources.limits' is enforced at runtime by kernel cgroups on the Worker Node.
+# The cluster unifies scheduling, execution, and healing into one declarative API.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -71,6 +77,12 @@ spec:
 
 ```yaml
 # node-affinity-spec.yaml
+# WHY THIS YAML: Enforces the Control Plane / Worker Node separation boundary.
+# 'DoesNotExist' for 'node-role.kubernetes.io/control-plane' tells the Scheduler:
+#   never place this workload on a control plane node during the Filtering phase.
+# This is how you prevent application Pods from competing with etcd, kube-apiserver,
+#   or kube-scheduler for CPU/RAM on control plane nodes.
+# Worker Nodes are the execution layer — this affinity rule enforces that boundary.
 apiVersion: v1
 kind: Pod
 metadata:
@@ -108,7 +120,13 @@ spec:
 - **HTTP/2 Streaming & Watch API:** Uses HTTP/2 persistent streaming multiplexing to support `watch` calls, pushing asynchronous state change notifications instantly to subscribed controllers without polling.
 
 ```yaml
-# /etc/kubernetes/manifests/kube-apiserver.yaml (Static Pod excerpt)
+# /etc/kubernetes/manifests/kube-apiserver.yaml -- Static Pod excerpt
+# WHY THIS YAML: kube-apiserver itself runs as a Static Pod — its own manifest.
+# '--secure-port=6443': the single front door; ALL kubectl, controller, and kubelet
+#   traffic hits this port. No component bypasses it.
+# '--etcd-servers': proves kube-apiserver is the ONLY component that talks to etcd.
+# '--authorization-mode=Node,RBAC': every request traverses this AuthZ chain.
+# '--enable-admission-plugins': defines what mutation/validation runs before etcd write.
 apiVersion: v1
 kind: Pod
 metadata:
@@ -151,6 +169,12 @@ spec:
 
 ```yaml
 # etcd-backup-cronjob.yaml
+# WHY THIS YAML: etcd is the single source of truth for ALL cluster state.
+# This CronJob automates the critical disaster recovery operation: etcdctl snapshot save.
+# 'schedule: "0 */4 * * *"': every 4 hours — data written since the last snapshot
+#   is unrecoverable if etcd loses quorum and all members fail simultaneously.
+# '--endpoints=https://127.0.0.1:2379': etcd is only reachable locally (by design).
+# '--cacert/--cert/--key': etcd requires mTLS — the cluster CA chain in action.
 apiVersion: batch/v1
 kind: CronJob
 metadata:
@@ -200,6 +224,12 @@ spec:
 
 ```yaml
 # advanced-pod-scheduling.yaml
+# WHY THIS YAML: Demonstrates both phases of kube-scheduler's pipeline.
+# FILTERING: 'tolerations' removes nodes that have the 'dedicated=high-compute:NoSchedule'
+#   taint — without matching, the Scheduler discards those nodes before scoring.
+# FILTERING + SCORING: 'requiredDuringScheduling' eliminates nodes outside allowed zones.
+# 'resources.requests': the Scheduler checks NodeResourcesFit using these values —
+#   nodes without 250m CPU or 256Mi free allocatable capacity are filtered out.
 apiVersion: v1
 kind: Pod
 metadata:
@@ -246,7 +276,12 @@ spec:
 - Active leadership is acquired via a distributed lease lock stored as a `Lease` object in `kube-system` (`coordination.k8s.io/v1`). Standby instances continuously poll the lease, taking over immediately if the leader fails to renew within the renewal interval.
 
 ```yaml
-# /etc/kubernetes/manifests/kube-controller-manager.yaml (Flags excerpt)
+# /etc/kubernetes/manifests/kube-controller-manager.yaml -- Flags excerpt
+# WHY THIS YAML: These flags configure the controller loops inside kube-controller-manager.
+# '--leader-elect=true': only ONE active instance in HA; others watch the Lease lock.
+# '--node-monitor-grace-period=40s': how long before a silent node is marked NotReady.
+# '--pod-eviction-timeout=5m0s': after NotReady, pods wait this long before rescheduling.
+# '--cluster-cidr=10.244.0.0/16': the Pod IP block; the controller assigns per-node CIDRs.
 apiVersion: v1
 kind: Pod
 metadata:
@@ -283,6 +318,12 @@ spec:
 
 ```yaml
 # cloud-loadbalancer-service.yaml
+# WHY THIS YAML: This Service spec triggers the cloud-controller-manager's Service Controller.
+# 'type: LoadBalancer': when the API server persists this, CCM's Service Controller
+#   calls the cloud provider API (AWS/GCP/Azure) to provision an actual load balancer.
+# 'annotations': cloud-specific parameters passed to the CCM for LB configuration.
+# 'aws-load-balancer-type: external' tells CCM to create an AWS NLB, not an ALB.
+# This proves 'type: LoadBalancer' is a Kubernetes intent — CCM translates it to infra.
 apiVersion: v1
 kind: Service
 metadata:
@@ -320,6 +361,12 @@ spec:
 
 ```yaml
 # /etc/kubernetes/manifests/node-diagnostics.yaml
+# WHY THIS YAML: Placed in the Static Pod directory — kubelet reads via inotify.
+# The kubelet starts this container WITHOUT consulting kube-apiserver, etcd, or scheduler.
+# 'hostNetwork: true': shares the node's network namespace — needed before CNI is ready.
+# 'hostPID: true': shares the node's PID namespace — needed for node-level diagnostics.
+# 'hostPath /var/log': mounts the node's actual log directory into the container.
+# This is the exact pattern kubeadm uses to bootstrap etcd and kube-apiserver.
 apiVersion: v1
 kind: Pod
 metadata:
@@ -363,6 +410,13 @@ spec:
 
 ```yaml
 # pod-with-probes.yaml
+# WHY THIS YAML: These probes are the kubelet's health monitoring directives.
+# 'startupProbe': kubelet will NOT run livenessProbe until this succeeds.
+#   'failureThreshold: 30 x periodSeconds: 10' = up to 300s for slow startup.
+#   Without this, slow-starting apps are killed by liveness checks prematurely.
+# 'livenessProbe': failure causes kubelet to instruct the CRI to restart the container.
+# 'readinessProbe': failure removes the Pod from the Service's EndpointSlice.
+#   The kubelet -- not the API server -- executes these probes on the node locally.
 apiVersion: v1
 kind: Pod
 metadata:
@@ -414,6 +468,13 @@ spec:
 
 ```yaml
 # service-network-spec.yaml
+# WHY THIS YAML: This ClusterIP Service triggers kube-proxy's iptables/IPVS programming.
+# 'type: ClusterIP': creates a virtual IP that exists nowhere physically.
+#   It works ONLY because kube-proxy programs iptables DNAT rules on every node.
+# 'selector: app: backend-api': kube-proxy reads the matching EndpointSlice to know
+#   which Pod IPs to include in the DNAT rules. Rules update as Pods come and go.
+# 'port: 80 -> targetPort: 8080': iptables rewrites BOTH destination IP and port.
+# Without kube-proxy's rules, this ClusterIP would be completely unreachable.
 apiVersion: v1
 kind: Service
 metadata:

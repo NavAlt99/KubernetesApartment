@@ -120,13 +120,41 @@
   }
 
   footer { text-align: center; color: #cbd5e1; font-size: 10px; margin-top: 22px; letter-spacing: 0.02em; }
+
+  .step-badge {
+    display: inline-block;
+    background: rgba(244, 63, 94, 0.18);
+    color: #fb7185;
+    border: 1px solid #be185d;
+    padding: 2px 8px;
+    border-radius: 9999px;
+    font-size: 11px;
+    font-weight: 700;
+    margin-right: 8px;
+    letter-spacing: 0.04em;
+    vertical-align: middle;
+  }
+  .step-badge.step-done {
+    background: rgba(34, 197, 94, 0.18);
+    color: #4ade80;
+    border-color: #16a34a;
+  }
+  kbd {
+    background: #190e1f;
+    border: 1px solid #be185d;
+    border-radius: 4px;
+    padding: 1px 5px;
+    font-size: 11px;
+    color: #fce7f3;
+  }
+
 </style>
 </head>
 <body>
 <div class="wrap">
   <h1>kube-scheduler — Filtering & Scoring Pipeline</h1>
   <p class="subtitle">Evaluating node eligibility, constraints, affinity, and scoring candidate nodes</p>
-  <p class="stage-label" id="stageLabel">Press play to trace the flow</p>
+  <p class="stage-label" id="stageLabel">Press play or <kbd>Next →</kbd> to trace flow (or use <kbd>→</kbd> <kbd>←</kbd> <kbd>Space</kbd>)</p>
 
   <div class="controls">
     <button id="playBtn" onclick="togglePlay()">▶ Play</button>
@@ -205,7 +233,7 @@ const stages = [
       "x": 160,
       "y": 138
     },
-    "label": "Scheduler detects newly created pod with no assigned node",
+    "label": "kube-scheduler detects newly created pod in etcd with spec.nodeName empty \u2014 scheduling queue fires",
     "conns": []
   },
   {
@@ -214,7 +242,7 @@ const stages = [
       "x": 160,
       "y": 242
     },
-    "label": "Filtering phase eliminates nodes lacking resources or matching taints",
+    "label": "Filtering Phase (Predicates): evaluates nodes and eliminates those lacking CPU/RAM or violating taints",
     "conns": [
       "c0"
     ]
@@ -225,7 +253,7 @@ const stages = [
       "x": 690,
       "y": 170
     },
-    "label": "Candidate Node A is evaluated: insufficient memory and taint mismatch fail filtering",
+    "label": "Candidate Node A evaluated: insufficient memory and taint mismatch fail filtering \u2014 hard rejection",
     "conns": [
       "c4"
     ]
@@ -236,7 +264,7 @@ const stages = [
       "x": 380,
       "y": 242
     },
-    "label": "Scoring phase ranks remaining eligible nodes using topology spread and resource balance",
+    "label": "Scoring Phase (Priorities): ranks eligible nodes using LeastAllocated, ImageLocality, and topology spread",
     "conns": [
       "c1"
     ]
@@ -247,7 +275,7 @@ const stages = [
       "x": 270,
       "y": 388
     },
-    "label": "Scheduler issues atomic binding call for optimal candidate Node B to API server",
+    "label": "Scheduler executes atomic Binding: writes pod.spec.nodeName=Node-B directly to the API server",
     "conns": [
       "c2"
     ]
@@ -258,7 +286,7 @@ const stages = [
       "x": 690,
       "y": 300
     },
-    "label": "Node B kubelet observes pod assignment and begins container startup",
+    "label": "Node B kubelet observes pod assignment via watch stream and immediately begins CRI container startup",
     "conns": [
       "c3"
     ]
@@ -324,7 +352,7 @@ function showStep(idx) {
     packet.setAttribute('cy', s.dot.y);
   }
 
-  document.getElementById('stageLabel').textContent = s.label;
+  document.getElementById('stageLabel').innerHTML = '<span class="step-badge">Step ' + (idx + 1) + ' / ' + totalStages + '</span> ' + s.label;
   updateControls();
 }
 
@@ -353,7 +381,7 @@ function reset() {
   clearAll();
   const packet = document.getElementById('packet');
   if (packet) packet.classList.remove('on');
-  document.getElementById('stageLabel').textContent = 'Press play or Next → to trace the flow';
+  document.getElementById('stageLabel').innerHTML = 'Press play or <kbd>Next →</kbd> to trace flow (or use <kbd>→</kbd> <kbd>←</kbd> <kbd>Space</kbd>)';
   updateControls();
 }
 
@@ -370,7 +398,7 @@ function togglePlay() {
       if (!playing) return;
       if (currentStep >= totalStages - 1) {
         playing = false;
-        document.getElementById('stageLabel').textContent = completionMessage;
+        document.getElementById('stageLabel').innerHTML = '<span class="step-badge step-done">Complete</span> ' + completionMessage;
         updateControls();
         return;
       }

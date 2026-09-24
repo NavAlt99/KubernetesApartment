@@ -367,11 +367,10 @@ as they converge instead of being checked only after the fact.</p>
 <li><strong>Three-Way Merge Apply:</strong> Modern cluster management relies on <code>kubectl apply</code>, which computes a three-way diff between the local configuration manifest, the live cluster state, and the <code>kubectl.kubernetes.io/last-applied-configuration</code> annotation.</li>
 </ul>
 <h3 id="linux-kernel-os-foundation">Linux Kernel &amp; OS Foundation</h3>
-<ul>
-<li><strong>Namespaces (Isolation):</strong> Linux namespaces (<code>pid</code>, <code>net</code>, <code>mnt</code>, <code>ipc</code>, <code>uts</code>, <code>user</code>) partition kernel resources so containers operate in isolated process spaces on shared Linux kernels.</li>
-<li><strong>Control Groups (cgroups v1/v2):</strong> Kernel cgroups enforce granular compute constraints (CFS CPU bandwidth quota in <code>cpu.cfs_quota_us</code>, hard memory limits in <code>memory.max</code>, and block I/O priorities).</li>
-<li><strong>Systemd &amp; Container Daemons:</strong> Nodes execute as Linux systems managed by systemd, with system daemons (<code>kubelet</code>, <code>containerd</code>) running as prioritized system units.</li>
-</ul>
+<p>Before Kubernetes can schedule multiple workloads on shared machines, the Linux kernel must provide isolation so containers cannot interfere with each other's processes, files, or network. Two foundational kernel primitives make this multi-tenant execution possible:
+- <strong>Namespaces (Isolation):</strong> Linux namespaces (<code>pid</code>, <code>net</code>, <code>mnt</code>, <code>ipc</code>, <code>uts</code>, <code>user</code>) partition kernel resources so containers operate in isolated process spaces on shared Linux kernels.
+- <strong>Control Groups (cgroups v1/v2):</strong> Kernel cgroups enforce granular compute constraints (CFS CPU bandwidth quota in <code>cpu.cfs_quota_us</code>, hard memory limits in <code>memory.max</code>, and block I/O priorities).
+- <strong>Systemd &amp; Container Daemons:</strong> Nodes execute as Linux systems managed by systemd, with system daemons (<code>kubelet</code>, <code>containerd</code>) running as prioritized system units.</p>
 <pre><code class="language-yaml"># cluster-workload-foundation.yaml
 # WHY THIS YAML: Demonstrates the cluster's declarative model in action.
 # 'replicas: 3' is the desired state the Controller Manager reconciles against.
@@ -567,11 +566,10 @@ NOTE
 <li><strong>Node Heartbeats via NodeLeases:</strong> In modern Kubernetes, worker nodes report heartbeats through lightweight <code>Lease</code> objects in the <code>kube-node-lease</code> namespace every 10 seconds, drastically reducing <code>kube-apiserver</code> etcd write load compared to full Node status updates.</li>
 </ul>
 <h3 id="linux-os-node-requirements">Linux OS Node Requirements</h3>
-<ul>
-<li><strong>Kernel Forwarding &amp; Netfilter:</strong> Nodes require <code>net.ipv4.ip_forward = 1</code> and <code>net.bridge.bridge-nf-call-iptables = 1</code> in <code>/etc/sysctl.d/k8s.conf</code> to allow bridge traffic traversal through iptables rules.</li>
-<li><strong>Swap Disabled:</strong> The Linux kernel swap mechanism must be disabled (<code>swapoff -a</code>) so the kubelet and kernel OOM killer have deterministic memory accounting without page thrashing.</li>
-<li><strong>System Slices:</strong> Worker nodes partition resources using systemd slices (<code>system.slice</code>, <code>kubelet.slice</code>, <code>runtime.slice</code>, and <code>kubepods.slice</code>).</li>
-</ul>
+<p>Worker nodes run standard Linux distributions whose default network and memory settings conflict with container orchestration. The host kernel must be explicitly tuned to permit cross-interface forwarding and predictable memory allocation:
+- <strong>Kernel Forwarding &amp; Netfilter:</strong> Nodes require <code>net.ipv4.ip_forward = 1</code> and <code>net.bridge.bridge-nf-call-iptables = 1</code> in <code>/etc/sysctl.d/k8s.conf</code> to allow bridge traffic traversal through iptables rules.
+- <strong>Swap Disabled:</strong> The Linux kernel swap mechanism must be disabled (<code>swapoff -a</code>) so the kubelet and kernel OOM killer have deterministic memory accounting without page thrashing.
+- <strong>System Slices:</strong> Worker nodes partition resources using systemd slices (<code>system.slice</code>, <code>kubelet.slice</code>, <code>runtime.slice</code>, and <code>kubepods.slice</code>).</p>
 <pre><code class="language-yaml"># node-affinity-spec.yaml
 # WHY THIS YAML: Enforces the Control Plane / Worker Node separation boundary.
 # 'DoesNotExist' for 'node-role.kubernetes.io/control-plane' tells the Scheduler:
@@ -757,10 +755,9 @@ NOTE
 <li><strong>Persistence:</strong> Serializes the validated object and commits it directly to <code>etcd</code>.</li>
 </ol>
 <h3 id="linux-system-network-concepts">Linux System &amp; Network Concepts</h3>
-<ul>
-<li><strong>mTLS Mutual Authentication:</strong> Every connection requires bidirectional cryptographic verification using certificates signed by the cluster Certificate Authority (<code>ca.crt</code>).</li>
-<li><strong>HTTP/2 Streaming &amp; Watch API:</strong> Uses HTTP/2 persistent streaming multiplexing to support <code>watch</code> calls, pushing asynchronous state change notifications instantly to subscribed controllers without polling.</li>
-</ul>
+<p>The API server is the single security perimeter for cluster management. Rather than relying on simple passwords or unprotected HTTP, Kubernetes relies on the operating system's cryptographic TLS stack and persistent connection multiplexing to safeguard cluster communications:
+- <strong>mTLS Mutual Authentication:</strong> Every connection requires bidirectional cryptographic verification using certificates signed by the cluster Certificate Authority (<code>ca.crt</code>).
+- <strong>HTTP/2 Streaming &amp; Watch API:</strong> Uses HTTP/2 persistent streaming multiplexing to support <code>watch</code> calls, pushing asynchronous state change notifications instantly to subscribed controllers without polling.</p>
 <pre><code class="language-yaml"># /etc/kubernetes/manifests/kube-apiserver.yaml -- Static Pod excerpt
 # WHY THIS YAML: kube-apiserver itself runs as a Static Pod — its own manifest.
 # '--secure-port=6443': the single front door; ALL kubectl, controller, and kubelet
@@ -943,10 +940,9 @@ NOTE
 <li><strong>MVCC (Multi-Version Concurrency Control):</strong> etcd maintains historical revisions of keys. Compaction processes prune historical tombstones to prevent database bloat, followed by defragmentation to reclaim disk space.</li>
 </ul>
 <h3 id="linux-storage-performance-realities">Linux Storage &amp; Performance Realities</h3>
-<ul>
-<li><strong>Fsync Latency Requirement:</strong> etcd commits every transaction to disk using synchronous writes (<code>fdatasync</code>). Sequential write latency must remain below <strong>10ms</strong> (ideally &lt; 2ms) to prevent Raft leader election timeouts and cluster instability. High-IOPS NVMe/SSD storage is non-negotiable.</li>
-<li><strong>BoltDB Engine:</strong> Uses a B+ tree memory-mapped file backend (<code>bbolt</code>), benefiting directly from Linux kernel page cache performance.</li>
-</ul>
+<p>etcd guarantees strong consistency for all cluster state. To prevent split-brain situations or corrupted state machines during node crashes, it relies directly on synchronous Linux filesystem flush operations where disk speed dictates cluster health:
+- <strong>Fsync Latency Requirement:</strong> etcd commits every transaction to disk using synchronous writes (<code>fdatasync</code>). Sequential write latency must remain below <strong>10ms</strong> (ideally &lt; 2ms) to prevent Raft leader election timeouts and cluster instability. High-IOPS NVMe/SSD storage is non-negotiable.
+- <strong>BoltDB Engine:</strong> Uses a B+ tree memory-mapped file backend (<code>bbolt</code>), benefiting directly from Linux kernel page cache performance.</p>
 <pre><code class="language-yaml"># etcd-backup-cronjob.yaml
 # WHY THIS YAML: etcd is the single source of truth for ALL cluster state.
 # This CronJob automates the critical disaster recovery operation: etcdctl snapshot save.
@@ -1134,10 +1130,9 @@ NOTE
 <li><strong>Binding Phase:</strong> The scheduler constructs a <code>Binding</code> API object pointing the Pod to the winning node and posts it to <code>kube-apiserver</code>, populating <code>spec.nodeName</code>.</li>
 </ol>
 <h3 id="linux-capacity-evaluation">Linux Capacity Evaluation</h3>
-<ul>
-<li>The scheduler reads node capacity summaries reported by the kubelet based on kernel <code>/proc/meminfo</code> and <code>/sys/fs/cgroup/cpu</code> controllers.</li>
-<li>Workloads are evaluated against <strong>Requests</strong> (guaranteed reservation allocated by scheduler), not <strong>Limits</strong> (enforced by kernel cgroups).</li>
-</ul>
+<p>The scheduler cannot simply rely on static node specifications because host daemons and background tasks continuously consume memory and CPU. It queries live kernel status files exposed by the Linux subsystem:
+- The scheduler reads node capacity summaries reported by the kubelet based on kernel <code>/proc/meminfo</code> and <code>/sys/fs/cgroup/cpu</code> controllers.
+- Workloads are evaluated against <strong>Requests</strong> (guaranteed reservation allocated by scheduler), not <strong>Limits</strong> (enforced by kernel cgroups).</p>
 <pre><code class="language-yaml"># advanced-pod-scheduling.yaml
 # WHY THIS YAML: Demonstrates both phases of kube-scheduler's pipeline.
 # FILTERING: 'tolerations' removes nodes that have the 'dedicated=high-compute:NoSchedule'
@@ -1684,10 +1679,9 @@ NOTE
 <li><strong>Control Plane Self-Hosting:</strong> Standard tools like <code>kubeadm</code> use static pods to bootstrap the entire Kubernetes control plane (<code>kube-apiserver</code>, <code>etcd</code>, <code>kube-controller-manager</code>, <code>kube-scheduler</code>).</li>
 </ul>
 <h3 id="linux-os-integration">Linux OS Integration</h3>
-<ul>
-<li>Static pods execute container runtimes while the control plane is offline or uninitialized.</li>
-<li>File ownership in <code>/etc/kubernetes/manifests/</code> must be restricted to <code>root:root</code> with permissions <code>0600</code> or <code>0644</code>.</li>
-</ul>
+<p>Static Pods solve a chicken-and-egg dilemma: components like the API server and etcd must run as containers, but the API server does not exist yet to schedule them. The kubelet uses the host's Linux filesystem directly to bootstrap these core services:
+- Static pods execute container runtimes while the control plane is offline or uninitialized.
+- File ownership in <code>/etc/kubernetes/manifests/</code> must be restricted to <code>root:root</code> with permissions <code>0600</code> or <code>0644</code>.</p>
 <pre><code class="language-yaml"># /etc/kubernetes/manifests/node-diagnostics.yaml
 # WHY THIS YAML: Placed in the Static Pod directory — kubelet reads via inotify.
 # The kubelet starts this container WITHOUT consulting kube-apiserver, etcd, or scheduler.
@@ -1869,11 +1863,10 @@ NOTE
 <li><strong>Node Status &amp; Heartbeats:</strong> Updates node conditions (<code>Ready</code>, <code>MemoryPressure</code>, <code>DiskPressure</code>, <code>PIDPressure</code>) and refreshes its 10-second <code>Lease</code> in <code>kube-node-lease</code>.</li>
 </ul>
 <h3 id="linux-system-kernel-mechanisms">Linux System &amp; Kernel Mechanisms</h3>
-<ul>
-<li><strong>cgroup Management:</strong> Coordinates with systemd via <code>cgroupDriver: systemd</code> to create and nest cgroup hierarchies under <code>/sys/fs/cgroup/kubepods.slice/</code>.</li>
-<li><strong>OOM Score Adjustment:</strong> Configures <code>/proc/&lt;pid&gt;/oom_score_adj</code> based on QoS class (<code>Guaranteed</code> = -997, <code>Burstable</code> = 100-999, <code>BestEffort</code> = 1000) so Linux kernel out-of-memory killer terminates non-critical pods first under host memory starvation.</li>
-<li><strong>Eviction Manager:</strong> Monitors host thresholds (e.g., <code>imagefs.available &lt; 15%</code>, <code>nodefs.available &lt; 10%</code>, <code>memory.available &lt; 100Mi</code>) and proactively evicts pods before kernel panics occur.</li>
-</ul>
+<p>The kubelet is the primary bridge between Kubernetes API declarations and actual Linux process management. When an engineer defines resource limits or restart policies, the kubelet translates those high-level directives into host-level Linux kernel structures:
+- <strong>cgroup Management:</strong> Coordinates with systemd via <code>cgroupDriver: systemd</code> to create and nest cgroup hierarchies under <code>/sys/fs/cgroup/kubepods.slice/</code>.
+- <strong>OOM Score Adjustment:</strong> Configures <code>/proc/&lt;pid&gt;/oom_score_adj</code> based on QoS class (<code>Guaranteed</code> = -997, <code>Burstable</code> = 100-999, <code>BestEffort</code> = 1000) so Linux kernel out-of-memory killer terminates non-critical pods first under host memory starvation.
+- <strong>Eviction Manager:</strong> Monitors host thresholds (e.g., <code>imagefs.available &lt; 15%</code>, <code>nodefs.available &lt; 10%</code>, <code>memory.available &lt; 100Mi</code>) and proactively evicts pods before kernel panics occur.</p>
 <pre><code class="language-yaml"># pod-with-probes.yaml
 # WHY THIS YAML: These probes are the kubelet's health monitoring directives.
 # 'startupProbe': kubelet will NOT run livenessProbe until this succeeds.
@@ -2064,11 +2057,10 @@ NOTE
 <li>Routed packets via user-space socket copies; deprecated due to excessive context-switch overhead.</li>
 </ul>
 <h3 id="linux-netfilter-connection-tracking">Linux Netfilter &amp; Connection Tracking</h3>
-<ul>
-<li><strong>DNAT (Destination NAT):</strong> Rewrites the destination IP from virtual ClusterIP (<code>10.96.x.x</code>) to the selected Pod IP (<code>10.244.x.x</code>).</li>
-<li><strong>SNAT / Masquerade:</strong> Rewrites source IP when traffic leaves the pod network or when <code>externalTrafficPolicy: Cluster</code> is used on NodePort.</li>
-<li><strong>conntrack:</strong> Relies on the Linux kernel connection tracking table (<code>/proc/net/nf_conntrack</code>) to ensure return packets are un-NATed symmetrically.</li>
-</ul>
+<p>ClusterIP addresses are virtual constructs with no physical network cards or MAC addresses attached. When a packet targets a Service, the Linux kernel's packet processing framework intercepts the connection before standard routing can discard it:
+- <strong>DNAT (Destination NAT):</strong> Rewrites the destination IP from virtual ClusterIP (<code>10.96.x.x</code>) to the selected Pod IP (<code>10.244.x.x</code>).
+- <strong>SNAT / Masquerade:</strong> Rewrites source IP when traffic leaves the pod network or when <code>externalTrafficPolicy: Cluster</code> is used on NodePort.
+- <strong>conntrack:</strong> Relies on the Linux kernel connection tracking table (<code>/proc/net/nf_conntrack</code>) to ensure return packets are un-NATed symmetrically.</p>
 <pre><code class="language-yaml"># service-network-spec.yaml
 # WHY THIS YAML: This ClusterIP Service triggers kube-proxy's iptables/IPVS programming.
 # 'type: ClusterIP': creates a virtual IP that exists nowhere physically.
@@ -2243,11 +2235,10 @@ NOTE
 <li><strong>crictl CLI Utility:</strong> The official CKA command-line tool for inspecting CRI runtimes directly (<code>crictl pods</code>, <code>crictl ps</code>, <code>crictl images</code>, <code>crictl logs</code>).</li>
 </ul>
 <h3 id="linux-os-kernel-foundation">Linux OS &amp; Kernel Foundation</h3>
-<ul>
-<li><strong>Namespaces:</strong> Isolates visibility per container (Mount <code>mnt</code>, Process ID <code>pid</code>, Network <code>net</code>, Inter-Process <code>ipc</code>, Hostname <code>uts</code>, User <code>user</code>).</li>
-<li><strong>Control Groups (cgroups v2):</strong> Enforces resource boundaries under unified hierarchy <code>/sys/fs/cgroup/kubepods.slice/</code>.</li>
-<li><strong>OverlayFS:</strong> Union filesystem combining read-only image layers (<code>lowerdir</code>), a thin writable container layer (<code>upperdir</code>), and a merged execution mount (<code>merged</code>).</li>
-</ul>
+<p>Containers do not exist as independent virtual machines; they are regular Linux processes constrained by the kernel. The container runtime orchestrates these native kernel boundaries whenever a pod starts:
+- <strong>Namespaces:</strong> Isolates visibility per container (Mount <code>mnt</code>, Process ID <code>pid</code>, Network <code>net</code>, Inter-Process <code>ipc</code>, Hostname <code>uts</code>, User <code>user</code>).
+- <strong>Control Groups (cgroups v2):</strong> Enforces resource boundaries under unified hierarchy <code>/sys/fs/cgroup/kubepods.slice/</code>.
+- <strong>OverlayFS:</strong> Union filesystem combining read-only image layers (<code>lowerdir</code>), a thin writable container layer (<code>upperdir</code>), and a merged execution mount (<code>merged</code>).</p>
 <pre><code class="language-yaml"># oci-security-pod.yaml
 # WHY THIS YAML: These security fields are translated by containerd into OCI runtime spec,
 #   which runc passes to Linux kernel syscalls when creating the container sandbox.
@@ -2424,9 +2415,8 @@ NOTE
 <li><strong>Native Sidecar Containers (K8s 1.28+):</strong> Built directly into <code>initContainers</code> using <code>restartPolicy: Always</code>. Unlike legacy sidecars, native sidecars start <em>before</em> application containers and do not block Pod shutdown.</li>
 </ul>
 <h3 id="linux-namespace-sharing">Linux Namespace Sharing</h3>
-<ul>
-<li>Processes in the Pod share the network namespace (<code>/proc/&lt;pid&gt;/ns/net</code>) and optionally the PID namespace if <code>shareProcessNamespace: true</code> is configured, allowing sidecars to monitor application PIDs directly.</li>
-</ul>
+<p>The sidecar pattern functions because Kubernetes groups containers under shared Linux namespaces rather than isolating each container entirely. This selective boundary sharing enables sidecars to assist the main app with zero network overhead:
+- Processes in the Pod share the network namespace (<code>/proc/&lt;pid&gt;/ns/net</code>) and optionally the PID namespace if <code>shareProcessNamespace: true</code> is configured, allowing sidecars to monitor application PIDs directly.</p>
 <pre><code class="language-yaml"># native-sidecar-pod.yaml
 # WHY THIS YAML: Demonstrates the native sidecar pattern (Kubernetes 1.28+).
 # 'initContainers' with 'restartPolicy: Always': this is what makes it a native sidecar.
@@ -2621,10 +2611,9 @@ NOTE
 <li><strong>Filesystem Hydration:</strong> Clones git repos, seeds configuration templates, or unpacks assets into a shared <code>emptyDir</code> volume.</li>
 </ul>
 <h3 id="linux-execution-flow">Linux Execution Flow</h3>
-<ul>
-<li>Kubelet starts the init container sandbox, binds volumes, and monitors process exit code.</li>
-<li>Kubelet proceeds to the next container only when the process exits with <strong>status code 0</strong>.</li>
-</ul>
+<p>Init containers enforce strict prerequisites before main applications boot. The kubelet relies on Linux process exit status codes to coordinate this startup pipeline:
+- Kubelet starts the init container sandbox, binds volumes, and monitors process exit code.
+- Kubelet proceeds to the next container only when the process exits with <strong>status code 0</strong>.</p>
 <pre><code class="language-yaml"># init-container-dependency.yaml
 # WHY THIS YAML: Init containers enforce startup prerequisites before the main app starts.
 # The kubelet runs init containers IN ORDER, each must exit code 0 before the next starts.
@@ -2822,13 +2811,12 @@ NOTE
 <li>The IP that a Pod sees for itself is the exact same IP that any other Pod sees for it.</li>
 </ol>
 <h3 id="linux-kernel-networking-mechanisms">Linux Kernel Networking Mechanisms</h3>
-<ul>
-<li><strong>Virtual Ethernet (veth) Pairs:</strong> CNI creates a Linux <code>veth</code> pair (<code>veth-host</code> and <code>veth-pod</code>). One end is connected to the host network namespace (attached to bridge <code>cni0</code> or routed via eBPF), while the other is moved into the container's network namespace as <code>eth0</code>.</li>
-<li><strong>IPAM (IP Address Management):</strong> Allocates subnets to worker nodes from cluster PodCIDR using plugins like <code>host-local</code> or cloud VPC IPAM.</li>
-<li><strong>Encapsulation vs. Direct Routing:</strong></li>
-<li><em>Overlay Networks (VXLAN / Geneve):</em> Encapsulates Pod L2 frames inside host UDP packets (Flannel, Calico VXLAN). Operates over any underlying network.</li>
-<li><em>Direct / BGP Routing:</em> Advertises Pod routes via BGP directly to physical or cloud routers (Calico BGP, Cilium BGP) with zero encapsulation overhead.</li>
-</ul>
+<p>Every container starts inside an empty, isolated network namespace without interfaces. The CNI plugin connects this isolated bubble to the host and cluster network using virtual Linux networking devices:
+- <strong>Virtual Ethernet (veth) Pairs:</strong> CNI creates a Linux <code>veth</code> pair (<code>veth-host</code> and <code>veth-pod</code>). One end is connected to the host network namespace (attached to bridge <code>cni0</code> or routed via eBPF), while the other is moved into the container's network namespace as <code>eth0</code>.
+- <strong>IPAM (IP Address Management):</strong> Allocates subnets to worker nodes from cluster PodCIDR using plugins like <code>host-local</code> or cloud VPC IPAM.
+- <strong>Encapsulation vs. Direct Routing:</strong>
+  - <em>Overlay Networks (VXLAN / Geneve):</em> Encapsulates Pod L2 frames inside host UDP packets (Flannel, Calico VXLAN). Operates over any underlying network.
+  - <em>Direct / BGP Routing:</em> Advertises Pod routes via BGP directly to physical or cloud routers (Calico BGP, Cilium BGP) with zero encapsulation overhead.</p>
 <pre><code class="language-yaml"># calico-ippool-spec.yaml
 # WHY THIS YAML: This Calico IPPool defines the CIDR range for Pod IP allocation.
 # 'cidr: 192.168.0.0/16': every Pod gets an IP from this block via CNI IPAM.
@@ -2999,14 +2987,13 @@ NOTE
 <li><strong>SRV Records:</strong> Resolves named ports (e.g., <code>_http._tcp.&lt;service&gt;.&lt;namespace&gt;.svc.cluster.local</code>).</li>
 </ul>
 <h3 id="linux-dns-resolution-resolvconf">Linux DNS Resolution &amp; resolv.conf</h3>
-<ul>
-<li>Kubelet automatically populates <code>/etc/resolv.conf</code> in every container with:
+<p>Applications expect to discover services using simple DNS names like 'auth-db' instead of dynamic IP addresses. To facilitate this transparently, the kubelet configures the standard Linux resolver file inside every container filesystem:
+- Kubelet automatically populates <code>/etc/resolv.conf</code> in every container with:
   <code>text
   nameserver 10.96.0.10
   search &lt;namespace&gt;.svc.cluster.local svc.cluster.local cluster.local
-  options ndots:5</code></li>
-<li><strong>The <code>ndots:5</code> Challenge:</strong> Any query with fewer than 5 dots (e.g., <code>google.com</code>) searches sequentially through every local search path first before querying the root servers, generating 4-5 redundant DNS queries per external lookup.</li>
-</ul>
+  options ndots:5</code>
+- <strong>The <code>ndots:5</code> Challenge:</strong> Any query with fewer than 5 dots (e.g., <code>google.com</code>) searches sequentially through every local search path first before querying the root servers, generating 4-5 redundant DNS queries per external lookup.</p>
 <pre><code class="language-yaml"># coredns-configmap.yaml
 # WHY THIS YAML: This ConfigMap IS the CoreDNS Corefile -- its runtime configuration.
 # 'cluster.local': the cluster domain. Services resolve as:
@@ -3779,10 +3766,9 @@ NOTE
 <li><code>ipBlock</code>: Specifies external CIDR ranges with optional <code>except</code> blocks.</li>
 </ul>
 <h3 id="linux-kernel-enforcement">Linux Kernel Enforcement</h3>
-<ul>
-<li>NetworkPolicies are <strong>not</strong> enforced by core Kubernetes or kube-proxy; they require a policy-capable CNI plugin (Calico, Cilium, Antrea, Weave).</li>
-<li>The CNI translates NetworkPolicy YAML rules into host Linux Netfilter <code>iptables</code> filter chains or Linux kernel <code>eBPF</code> maps evaluated directly on virtual interfaces.</li>
-</ul>
+<p>A NetworkPolicy is purely a declarative specification in etcd; core Kubernetes contains no packet filtering engine. Real traffic filtering depends entirely on kernel-level packet inspection configured by the CNI:
+- NetworkPolicies are <strong>not</strong> enforced by core Kubernetes or kube-proxy; they require a policy-capable CNI plugin (Calico, Cilium, Antrea, Weave).
+- The CNI translates NetworkPolicy YAML rules into host Linux Netfilter <code>iptables</code> filter chains or Linux kernel <code>eBPF</code> maps evaluated directly on virtual interfaces.</p>
 <pre><code class="language-yaml"># strict-backend-network-policy.yaml
 # WHY THIS YAML: Enforces namespace-level network segmentation via the CNI plugin.
 # 'podSelector: app: backend': once ANY NetworkPolicy selects this Pod,
@@ -3993,9 +3979,8 @@ NOTE
 <li><code>Recycle</code> (Deprecated): Performed basic scrub (<code>rm -rf /volume/*</code>).</li>
 </ul>
 <h3 id="linux-storage-subsystem-integration">Linux Storage Subsystem Integration</h3>
-<ul>
-<li>Backed by the <strong>Container Storage Interface (CSI)</strong> standard. Kubelet coordinates with CSI node plugins to format block storage (<code>mkfs.ext4</code>, <code>mkfs.xfs</code>) and execute kernel <code>mount</code> system calls into the host directory before bind-mounting into the container's mount namespace.</li>
-</ul>
+<p>Kubernetes PersistentVolumes abstract away cloud and SAN storage systems. However, before an application container can read or write files, the host Linux kernel must format the physical block device and bind-mount it into the container's isolated filesystem:
+- Backed by the <strong>Container Storage Interface (CSI)</strong> standard. Kubelet coordinates with CSI node plugins to format block storage (<code>mkfs.ext4</code>, <code>mkfs.xfs</code>) and execute kernel <code>mount</code> system calls into the host directory before bind-mounting into the container's mount namespace.</p>
 <pre><code class="language-yaml"># nfs-persistent-volume.yaml
 # WHY THIS YAML: Demonstrates the administrator-provisioned PV lifecycle.
 # 'capacity.storage: 50Gi': the PV advertises its size -- PVCs requesting &gt;50Gi won't bind.
@@ -4204,10 +4189,9 @@ NOTE
 <li><strong>PVC Phase Transitions:</strong> <code>Pending</code> (no matching PV or waiting for consumer) $\rightarrow$ <code>Bound</code> (successfully paired) $\rightarrow$ <code>Lost</code> (bound PV was deleted).</li>
 </ul>
 <h3 id="workload-consumption">Workload Consumption</h3>
-<ul>
-<li>Pods mount storage by referencing the PVC name under <code>spec.volumes[*].persistentVolumeClaim.claimName</code>.</li>
-<li>Linux mount paths (<code>mountPath</code>) are injected into the container's mount namespace (<code>mnt</code>) via Linux bind mounts.</li>
-</ul>
+<p>From the container's perspective, storage must appear as a standard local folder. The kubelet bridges the cluster storage abstraction to the container using Linux mount namespace mechanics:
+- Pods mount storage by referencing the PVC name under <code>spec.volumes[*].persistentVolumeClaim.claimName</code>.
+- Linux mount paths (<code>mountPath</code>) are injected into the container's mount namespace (<code>mnt</code>) via Linux bind mounts.</p>
 <pre><code class="language-yaml"># pvc-workload-claim.yaml
 # WHY THIS YAML: Shows the full PVC consumption lifecycle in one manifest.
 # PVC 'accessModes: ReadWriteOnce': binds only to PVs supporting single-node mounting.
@@ -5683,13 +5667,12 @@ NOTE
 <h2 id="29-namespace-controller">29. Namespace (controller)</h2>
 <p><strong>Part 1 — Technical Discussion:</strong> The <strong>Namespace Controller</strong> manages the lifecycle, state reconciliation, and cascading deletion of <code>Namespace</code> resources in a cluster.</p>
 <h3 id="scoping-lifecycle-transitions">Scoping &amp; Lifecycle Transitions</h3>
-<ul>
-<li><strong>Logical Administrative Scope:</strong> Namespaces partition object names, RBAC boundaries, ResourceQuotas, and LimitRanges within a single physical cluster. (Note: Namespaces do <strong>not</strong> provide network isolation by default; NetworkPolicies must be applied).</li>
-<li><strong>Phases:</strong></li>
-<li><code>Active</code>: Operating normally; accepting new resources.</li>
-<li><code>Terminating</code>: Deletion initiated. The controller rejects all new resource creation requests and walks through every namespaced resource to execute graceful cleanup.</li>
-<li><strong>Finalizer Pipeline:</strong> Namespaces contain the <code>kubernetes</code> finalizer. The controller recursively deletes all Pods, Services, PVCs, ConfigMaps, and custom resources before releasing the namespace record from etcd.</li>
-</ul>
+<p>A Kubernetes namespace is a logical administrative boundary in the API server, fundamentally distinct from Linux kernel namespaces (<code>pid</code>, <code>net</code>, <code>mnt</code>) which isolate processes on individual hosts. While Linux namespaces partition host OS resources, Kubernetes namespaces partition object names, RBAC rules, and capacity policies:
+- <strong>Logical Administrative Scope:</strong> Namespaces partition object names, RBAC boundaries, ResourceQuotas, and LimitRanges within a single physical cluster. (Note: Namespaces do <strong>not</strong> provide network isolation by default; NetworkPolicies must be applied).
+- <strong>Phases:</strong>
+  - <code>Active</code>: Operating normally; accepting new resources.
+  - <code>Terminating</code>: Deletion initiated. The controller rejects all new resource creation requests and walks through every namespaced resource to execute graceful cleanup.
+- <strong>Finalizer Pipeline:</strong> Namespaces contain the <code>kubernetes</code> finalizer. The controller recursively deletes all Pods, Services, PVCs, ConfigMaps, and custom resources before releasing the namespace record from etcd.</p>
 <pre><code class="language-yaml"># labeled-namespace-spec.yaml
 # WHY THIS YAML: A Namespace is the primary isolation boundary and RBAC scope.
 # 'labels.pod-security.kubernetes.io/enforce: restricted': activates Pod Security Admission
@@ -5865,10 +5848,9 @@ CLEANUP
 <li><strong>Object Counts:</strong> Restricts total API instances (<code>pods</code>, <code>services</code>, <code>services.loadbalancers</code>, <code>configmaps</code>, <code>secrets</code>).</li>
 </ul>
 <h3 id="admission-enforcement">Admission Enforcement</h3>
-<ul>
-<li>Enforced synchronously by the <strong><code>ResourceQuota</code> Admission Plugin</strong> on <code>kube-apiserver</code>.</li>
-<li><strong>Mandatory Request Requirement:</strong> If a namespace defines a compute quota for CPU or memory, <strong>every single container</strong> created in that namespace must explicitly declare that resource request/limit, or creation is rejected with HTTP 403 Forbidden (unless a <code>LimitRange</code> automatically injects defaults).</li>
-</ul>
+<p>While Linux kernel cgroups enforce physical CPU and memory limits on running processes, ResourceQuota operates earlier in the deployment pipeline — preventing resource over-allocation at the API level before containers are ever dispatched to worker nodes:
+- Enforced synchronously by the <strong><code>ResourceQuota</code> Admission Plugin</strong> on <code>kube-apiserver</code>.
+- <strong>Mandatory Request Requirement:</strong> If a namespace defines a compute quota for CPU or memory, <strong>every single container</strong> created in that namespace must explicitly declare that resource request/limit, or creation is rejected with HTTP 403 Forbidden (unless a <code>LimitRange</code> automatically injects defaults).</p>
 <pre><code class="language-yaml"># team-resource-quota.yaml
 # WHY THIS YAML: ResourceQuota enforces aggregate resource governance at Namespace level.
 # 'requests.cpu: &quot;8&quot;': SUM of all Pod resource requests in this namespace cannot exceed 8 CPU.
@@ -6884,9 +6866,8 @@ NOTE
 <li>DaemonSets typically include universal tolerations allowing them to run on control plane nodes or tainted storage nodes (<code>node-role.kubernetes.io/control-plane:NoSchedule</code>).</li>
 </ul>
 <h3 id="host-integration">Host Integration</h3>
-<ul>
-<li>Often configured with <code>hostNetwork: true</code>, <code>hostPID: true</code>, and host filesystem bind-mounts (<code>/var/log</code>, <code>/proc</code>, <code>/sys</code>) to monitor low-level Linux kernel metrics.</li>
-</ul>
+<p>Unlike standard application containers that remain strictly isolated within independent Linux namespaces, host monitoring and logging agents need direct access to the underlying machine's network stack and kernel diagnostics (<code>/proc</code>, <code>/sys</code>). DaemonSets achieve this privileged host visibility through explicit pod security settings:
+- Often configured with <code>hostNetwork: true</code>, <code>hostPID: true</code>, and host filesystem bind-mounts (<code>/var/log</code>, <code>/proc</code>, <code>/sys</code>) to monitor low-level Linux kernel metrics.</p>
 <pre><code class="language-yaml"># node-exporter-daemonset.yaml
 # WHY THIS YAML: DaemonSet guarantees one Pod per node -- node-exporter needs this.
 # 'tolerations: node-role.kubernetes.io/control-plane: NoSchedule': without this,
@@ -7097,9 +7078,8 @@ NOTE
 <li><strong><code>activeDeadlineSeconds</code>:</strong> Hard ceiling timeout duration for the Job; terminates all running pods once exceeded.</li>
 </ul>
 <h3 id="linux-process-termination-restart-policy">Linux Process Termination &amp; Restart Policy</h3>
-<ul>
-<li>Container specs inside Jobs only support <code>restartPolicy: OnFailure</code> (restarts container inside existing pod sandbox) or <code>Never</code> (kubelet fails pod and Job controller spawns a fresh pod).</li>
-</ul>
+<p>Batch computing requires knowing when a task has finished successfully versus crashed. The Job controller evaluates Linux process exit codes returned by the container runtime to determine job completion:
+- Container specs inside Jobs only support <code>restartPolicy: OnFailure</code> (restarts container inside existing pod sandbox) or <code>Never</code> (kubelet fails pod and Job controller spawns a fresh pod).</p>
 <pre><code class="language-yaml"># batch-processing-job.yaml
 # WHY THIS YAML: Job's completion tracking and retry semantics are configured here.
 # 'completions: 4': Job must run 4 successful Pod completions to be considered Done.

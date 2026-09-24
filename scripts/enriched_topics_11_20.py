@@ -15,6 +15,7 @@ ENRICHED_11_20 = {
 - **crictl CLI Utility:** The official CKA command-line tool for inspecting CRI runtimes directly (`crictl pods`, `crictl ps`, `crictl images`, `crictl logs`).
 
 ### Linux OS & Kernel Foundation
+Containers do not exist as independent virtual machines; they are regular Linux processes constrained by the kernel. The container runtime orchestrates these native kernel boundaries whenever a pod starts:
 - **Namespaces:** Isolates visibility per container (Mount `mnt`, Process ID `pid`, Network `net`, Inter-Process `ipc`, Hostname `uts`, User `user`).
 - **Control Groups (cgroups v2):** Enforces resource boundaries under unified hierarchy `/sys/fs/cgroup/kubepods.slice/`.
 - **OverlayFS:** Union filesystem combining read-only image layers (`lowerdir`), a thin writable container layer (`upperdir`), and a merged execution mount (`merged`).
@@ -60,6 +61,7 @@ spec:
 - **Native Sidecar Containers (K8s 1.28+):** Built directly into `initContainers` using `restartPolicy: Always`. Unlike legacy sidecars, native sidecars start *before* application containers and do not block Pod shutdown.
 
 ### Linux Namespace Sharing
+The sidecar pattern functions because Kubernetes groups containers under shared Linux namespaces rather than isolating each container entirely. This selective boundary sharing enables sidecars to assist the main app with zero network overhead:
 - Processes in the Pod share the network namespace (`/proc/<pid>/ns/net`) and optionally the PID namespace if `shareProcessNamespace: true` is configured, allowing sidecars to monitor application PIDs directly.
 
 ```yaml
@@ -107,6 +109,7 @@ spec:
 - **Filesystem Hydration:** Clones git repos, seeds configuration templates, or unpacks assets into a shared `emptyDir` volume.
 
 ### Linux Execution Flow
+Init containers enforce strict prerequisites before main applications boot. The kubelet relies on Linux process exit status codes to coordinate this startup pipeline:
 - Kubelet starts the init container sandbox, binds volumes, and monitors process exit code.
 - Kubelet proceeds to the next container only when the process exits with **status code 0**.
 
@@ -158,6 +161,7 @@ spec:
 4. The IP that a Pod sees for itself is the exact same IP that any other Pod sees for it.
 
 ### Linux Kernel Networking Mechanisms
+Every container starts inside an empty, isolated network namespace without interfaces. The CNI plugin connects this isolated bubble to the host and cluster network using virtual Linux networking devices:
 - **Virtual Ethernet (veth) Pairs:** CNI creates a Linux `veth` pair (`veth-host` and `veth-pod`). One end is connected to the host network namespace (attached to bridge `cni0` or routed via eBPF), while the other is moved into the container's network namespace as `eth0`.
 - **IPAM (IP Address Management):** Allocates subnets to worker nodes from cluster PodCIDR using plugins like `host-local` or cloud VPC IPAM.
 - **Encapsulation vs. Direct Routing:**
@@ -197,6 +201,7 @@ spec:
 - **SRV Records:** Resolves named ports (e.g., `_http._tcp.<service>.<namespace>.svc.cluster.local`).
 
 ### Linux DNS Resolution & resolv.conf
+Applications expect to discover services using simple DNS names like 'auth-db' instead of dynamic IP addresses. To facilitate this transparently, the kubelet configures the standard Linux resolver file inside every container filesystem:
 - Kubelet automatically populates `/etc/resolv.conf` in every container with:
   ```text
   nameserver 10.96.0.10
@@ -400,6 +405,7 @@ spec:
   - `ipBlock`: Specifies external CIDR ranges with optional `except` blocks.
 
 ### Linux Kernel Enforcement
+A NetworkPolicy is purely a declarative specification in etcd; core Kubernetes contains no packet filtering engine. Real traffic filtering depends entirely on kernel-level packet inspection configured by the CNI:
 - NetworkPolicies are **not** enforced by core Kubernetes or kube-proxy; they require a policy-capable CNI plugin (Calico, Cilium, Antrea, Weave).
 - The CNI translates NetworkPolicy YAML rules into host Linux Netfilter `iptables` filter chains or Linux kernel `eBPF` maps evaluated directly on virtual interfaces.
 
@@ -462,6 +468,7 @@ spec:
   - `Recycle` (Deprecated): Performed basic scrub (`rm -rf /volume/*`).
 
 ### Linux Storage Subsystem Integration
+Kubernetes PersistentVolumes abstract away cloud and SAN storage systems. However, before an application container can read or write files, the host Linux kernel must format the physical block device and bind-mount it into the container's isolated filesystem:
 - Backed by the **Container Storage Interface (CSI)** standard. Kubelet coordinates with CSI node plugins to format block storage (`mkfs.ext4`, `mkfs.xfs`) and execute kernel `mount` system calls into the host directory before bind-mounting into the container's mount namespace.
 
 ```yaml

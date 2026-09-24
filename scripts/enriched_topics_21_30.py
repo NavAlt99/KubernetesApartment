@@ -18,6 +18,7 @@ ENRICHED_21_30 = {
 - **PVC Phase Transitions:** `Pending` (no matching PV or waiting for consumer) $\\rightarrow$ `Bound` (successfully paired) $\\rightarrow$ `Lost` (bound PV was deleted).
 
 ### Workload Consumption
+From the container's perspective, storage must appear as a standard local folder. The kubelet bridges the cluster storage abstraction to the container using Linux mount namespace mechanics:
 - Pods mount storage by referencing the PVC name under `spec.volumes[*].persistentVolumeClaim.claimName`.
 - Linux mount paths (`mountPath`) are injected into the container's mount namespace (`mnt`) via Linux bind mounts.
 
@@ -352,6 +353,7 @@ spec:
         "tech_disc": """The **Namespace Controller** manages the lifecycle, state reconciliation, and cascading deletion of `Namespace` resources in a cluster.
 
 ### Scoping & Lifecycle Transitions
+A Kubernetes namespace is a logical administrative boundary in the API server, fundamentally distinct from Linux kernel namespaces (`pid`, `net`, `mnt`) which isolate processes on individual hosts. While Linux namespaces partition host OS resources, Kubernetes namespaces partition object names, RBAC rules, and capacity policies:
 - **Logical Administrative Scope:** Namespaces partition object names, RBAC boundaries, ResourceQuotas, and LimitRanges within a single physical cluster. (Note: Namespaces do **not** provide network isolation by default; NetworkPolicies must be applied).
 - **Phases:**
   - `Active`: Operating normally; accepting new resources.
@@ -392,6 +394,7 @@ metadata:
 - **Object Counts:** Restricts total API instances (`pods`, `services`, `services.loadbalancers`, `configmaps`, `secrets`).
 
 ### Admission Enforcement
+While Linux kernel cgroups enforce physical CPU and memory limits on running processes, ResourceQuota operates earlier in the deployment pipeline — preventing resource over-allocation at the API level before containers are ever dispatched to worker nodes:
 - Enforced synchronously by the **`ResourceQuota` Admission Plugin** on `kube-apiserver`.
 - **Mandatory Request Requirement:** If a namespace defines a compute quota for CPU or memory, **every single container** created in that namespace must explicitly declare that resource request/limit, or creation is rejected with HTTP 403 Forbidden (unless a `LimitRange` automatically injects defaults).
 

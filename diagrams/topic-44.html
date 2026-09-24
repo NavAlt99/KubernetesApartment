@@ -110,13 +110,41 @@
   }
 
   footer { text-align: center; color: #cbd5e1; font-size: 10px; margin-top: 22px; letter-spacing: 0.02em; }
+
+  .step-badge {
+    display: inline-block;
+    background: rgba(244, 63, 94, 0.18);
+    color: #fb7185;
+    border: 1px solid #be185d;
+    padding: 2px 8px;
+    border-radius: 9999px;
+    font-size: 11px;
+    font-weight: 700;
+    margin-right: 8px;
+    letter-spacing: 0.04em;
+    vertical-align: middle;
+  }
+  .step-badge.step-done {
+    background: rgba(34, 197, 94, 0.18);
+    color: #4ade80;
+    border-color: #16a34a;
+  }
+  kbd {
+    background: #190e1f;
+    border: 1px solid #be185d;
+    border-radius: 4px;
+    padding: 1px 5px;
+    font-size: 11px;
+    color: #fce7f3;
+  }
+
 </style>
 </head>
 <body>
 <div class="wrap">
   <h1>Pod Security Standards & Admission — Cluster Hardening</h1>
   <p class="subtitle">Privileged, Baseline, and Restricted security profiles enforced natively at admission</p>
-  <p class="stage-label" id="stageLabel">Press play to trace the flow</p>
+  <p class="stage-label" id="stageLabel">Press play or <kbd>Next →</kbd> to trace flow (or use <kbd>→</kbd> <kbd>←</kbd> <kbd>Space</kbd>)</p>
 
   <div class="controls">
     <button id="playBtn" onclick="togglePlay()">▶ Play</button>
@@ -178,7 +206,7 @@ const stages = [
       "x": 160,
       "y": 172
     },
-    "label": "Developer submits Pod specification containing securityContext",
+    "label": "Developer submits Pod manifest containing container securityContext declarations",
     "conns": []
   },
   {
@@ -198,7 +226,7 @@ const stages = [
       "x": 655,
       "y": 172
     },
-    "label": "Built-in Pod Security Admission plugin inspects target namespace security labels",
+    "label": "Pod Security Admission plugin inspects target namespace pod-security.kubernetes.io labels",
     "conns": [
       "c1"
     ]
@@ -209,7 +237,7 @@ const stages = [
       "x": 405,
       "y": 302
     },
-    "label": "Validates against Restricted profile: no host namespaces, non-root user required",
+    "label": "Validates spec against Baseline or Restricted profile: checks non-root, seccomp, and privilege escalation",
     "conns": [
       "c2"
     ]
@@ -220,7 +248,7 @@ const stages = [
       "x": 655,
       "y": 302
     },
-    "label": "Rejects violating pods immediately or logs audit warnings for operators",
+    "label": "Admission verdict: compliant pods admitted to etcd, while violating specs are rejected with HTTP 403",
     "conns": [
       "c3"
     ]
@@ -232,7 +260,7 @@ let currentStep = -1;
 let playing = false;
 let timer = null;
 const totalStages = stages.length;
-const completionMessage = 'Flow completed successfully ✓';
+const completionMessage = 'Security boundaries enforced: Pod Security Standards validated at admission before etcd commit ✓';
 
 function updateControls() {
   const playBtn = document.getElementById('playBtn');
@@ -286,7 +314,7 @@ function showStep(idx) {
     packet.setAttribute('cy', s.dot.y);
   }
 
-  document.getElementById('stageLabel').textContent = s.label;
+  document.getElementById('stageLabel').innerHTML = '<span class="step-badge">Step ' + (idx + 1) + ' / ' + totalStages + '</span> ' + s.label;
   updateControls();
 }
 
@@ -315,7 +343,7 @@ function reset() {
   clearAll();
   const packet = document.getElementById('packet');
   if (packet) packet.classList.remove('on');
-  document.getElementById('stageLabel').textContent = 'Press play or Next → to trace the flow';
+  document.getElementById('stageLabel').innerHTML = 'Press play or <kbd>Next →</kbd> to trace flow (or use <kbd>→</kbd> <kbd>←</kbd> <kbd>Space</kbd>)';
   updateControls();
 }
 
@@ -332,7 +360,7 @@ function togglePlay() {
       if (!playing) return;
       if (currentStep >= totalStages - 1) {
         playing = false;
-        document.getElementById('stageLabel').textContent = completionMessage;
+        document.getElementById('stageLabel').innerHTML = '<span class="step-badge step-done">Complete</span> ' + completionMessage;
         updateControls();
         return;
       }

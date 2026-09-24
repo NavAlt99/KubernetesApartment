@@ -242,6 +242,7 @@ spec:
 - DaemonSets typically include universal tolerations allowing them to run on control plane nodes or tainted storage nodes (`node-role.kubernetes.io/control-plane:NoSchedule`).
 
 ### Host Integration
+Unlike standard application containers that remain strictly isolated within independent Linux namespaces, host monitoring and logging agents need direct access to the underlying machine's network stack and kernel diagnostics (`/proc`, `/sys`). DaemonSets achieve this privileged host visibility through explicit pod security settings:
 - Often configured with `hostNetwork: true`, `hostPID: true`, and host filesystem bind-mounts (`/var/log`, `/proc`, `/sys`) to monitor low-level Linux kernel metrics.
 
 ```yaml
@@ -299,6 +300,7 @@ spec:
 - **`activeDeadlineSeconds`:** Hard ceiling timeout duration for the Job; terminates all running pods once exceeded.
 
 ### Linux Process Termination & Restart Policy
+Batch computing requires knowing when a task has finished successfully versus crashed. The Job controller evaluates Linux process exit codes returned by the container runtime to determine job completion:
 - Container specs inside Jobs only support `restartPolicy: OnFailure` (restarts container inside existing pod sandbox) or `Never` (kubelet fails pod and Job controller spawns a fresh pod).
 
 ```yaml

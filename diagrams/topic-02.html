@@ -120,13 +120,41 @@
   }
 
   footer { text-align: center; color: #cbd5e1; font-size: 10px; margin-top: 22px; letter-spacing: 0.02em; }
+
+  .step-badge {
+    display: inline-block;
+    background: rgba(244, 63, 94, 0.18);
+    color: #fb7185;
+    border: 1px solid #be185d;
+    padding: 2px 8px;
+    border-radius: 9999px;
+    font-size: 11px;
+    font-weight: 700;
+    margin-right: 8px;
+    letter-spacing: 0.04em;
+    vertical-align: middle;
+  }
+  .step-badge.step-done {
+    background: rgba(34, 197, 94, 0.18);
+    color: #4ade80;
+    border-color: #16a34a;
+  }
+  kbd {
+    background: #190e1f;
+    border: 1px solid #be185d;
+    border-radius: 4px;
+    padding: 1px 5px;
+    font-size: 11px;
+    color: #fce7f3;
+  }
+
 </style>
 </head>
 <body>
 <div class="wrap">
   <h1>Control Plane vs. Worker Nodes — Failure Isolation</h1>
   <p class="subtitle">Separation of decision-making (brain) from physical workload execution (muscle)</p>
-  <p class="stage-label" id="stageLabel">Press play to trace the flow</p>
+  <p class="stage-label" id="stageLabel">Press play or <kbd>Next →</kbd> to trace flow (or use <kbd>→</kbd> <kbd>←</kbd> <kbd>Space</kbd>)</p>
 
   <div class="controls">
     <button id="playBtn" onclick="togglePlay()">▶ Play</button>
@@ -203,7 +231,7 @@ const stages = [
       "x": 650,
       "y": 145
     },
-    "label": "Worker Node 1 experiences hardware or network failure",
+    "label": "Worker Node 1 experiences hardware or network failure \u2014 kubelet halts lease renewals in kube-node-lease",
     "conns": []
   },
   {
@@ -212,7 +240,7 @@ const stages = [
       "x": 230,
       "y": 140
     },
-    "label": "API server marks node lease expired after heartbeat timeout",
+    "label": "API server marks node lease expired after node-monitor-grace-period (40s default) \u2014 node marked NotReady",
     "conns": [
       "c0"
     ]
@@ -223,7 +251,7 @@ const stages = [
       "x": 230,
       "y": 240
     },
-    "label": "Node controller flags node NotReady and triggers pod eviction",
+    "label": "Node Lifecycle Controller attaches node.kubernetes.io/unreachable:NoExecute taint to initiate eviction countdown",
     "conns": [
       "c1"
     ]
@@ -234,7 +262,7 @@ const stages = [
       "x": 650,
       "y": 250
     },
-    "label": "Workload pods queued for relocation to available capacity",
+    "label": "Eviction grace period (default 5m) expires: uncontactable pods marked for termination and deletion",
     "conns": [
       "c2"
     ]
@@ -245,7 +273,7 @@ const stages = [
       "x": 230,
       "y": 340
     },
-    "label": "Scheduler identifies healthy Worker Node 2 and binds pod",
+    "label": "kube-scheduler filters out failed Node 1 and binds evicted pod to healthy Worker Node 2 via nodeName patch",
     "conns": [
       "c3"
     ]
@@ -256,7 +284,7 @@ const stages = [
       "x": 650,
       "y": 355
     },
-    "label": "Worker Node 2 starts replacement pod with zero data loss",
+    "label": "Worker Node 2 kubelet pulls image and starts replacement pod \u2014 control plane self-healing completed",
     "conns": [
       "c4"
     ]
@@ -322,7 +350,7 @@ function showStep(idx) {
     packet.setAttribute('cy', s.dot.y);
   }
 
-  document.getElementById('stageLabel').textContent = s.label;
+  document.getElementById('stageLabel').innerHTML = '<span class="step-badge">Step ' + (idx + 1) + ' / ' + totalStages + '</span> ' + s.label;
   updateControls();
 }
 
@@ -351,7 +379,7 @@ function reset() {
   clearAll();
   const packet = document.getElementById('packet');
   if (packet) packet.classList.remove('on');
-  document.getElementById('stageLabel').textContent = 'Press play or Next → to trace the flow';
+  document.getElementById('stageLabel').innerHTML = 'Press play or <kbd>Next →</kbd> to trace flow (or use <kbd>→</kbd> <kbd>←</kbd> <kbd>Space</kbd>)';
   updateControls();
 }
 
@@ -368,7 +396,7 @@ function togglePlay() {
       if (!playing) return;
       if (currentStep >= totalStages - 1) {
         playing = false;
-        document.getElementById('stageLabel').textContent = completionMessage;
+        document.getElementById('stageLabel').innerHTML = '<span class="step-badge step-done">Complete</span> ' + completionMessage;
         updateControls();
         return;
       }

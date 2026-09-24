@@ -18,249 +18,590 @@
   </style>
 </head>
 <body><main class="markdown-page"><h1 id="09-design-and-install-a-kubernetes-cluster">09. Design and Install a Kubernetes Cluster</h1>
-<h2 id="design-and-install-a-kubernetes-cluster">Design and Install a Kubernetes Cluster</h2>
-<h3 id="design-a-kubernetes-cluster">Design a Kubernetes Cluster</h3>
-<p>In this lecture we will discuss about designing a kubernetes cluster. Before you head into designing a cluster. I must ask the following questions. </p>
-<p><strong>What is the purpose of this cluster?</strong><strong>Is it for learning or development or testing purpose or for hosting production grade applications.?</strong> <strong>What is cloud adoption at your organization?</strong><strong>Do you prefer your platform to be managed by a cloud provider or a self hosted?</strong><strong>What kind of workloads are you going to run on this cluster?</strong><strong>How many applications are to be hosted on the Cluster? Few or many?</strong><strong>What kind of applications are going to be hosted on the Cluster? Web applications or big data or analytics?</strong></p>
-<p>Depending on the kind of application the resource requirements may vary. <strong>What type of network traffic are these applications expecting?Continuous heavy traffic or burst?</strong></p>
-<p>Well let's try and break down some of these. If you want to deploy a cluster for <strong>learning purposes</strong> then a solution based on minikube or a single node cluster deployed using kubeadm on local VMs or cloud providers like GCP or AWS should do.We have deployed such a cluster in the beginners course. </p>
-<p>To deploy a cluster for <strong>development and testing</strong> purposes, a multi node cluster with single master and multiple worker nodes would help. Again kubeadm is an appropriate tool. Or if on managed cloud environments, then quickly provision a cluster on GCP, AWS or AKS solution on Azure. </p>
-<p><img alt="Diagram" src="images/image82.png" /></p>
-<p>Let’s talk about p<strong>roduction level clusters</strong>. For hosting production grade applications a High Availability Multi node cluster with multiple master nodes is recommended. We look at it in more detail about High Availability setup with multiple-master nodes later in this section. Again this can be set up with kubeadm or GCP or using kops on AWS or other supported platforms. You can have upto 5000 nodes in the cluster, a total of 150000 PODs in the cluster, 300,000 containers in total and upto 100 PODs per node. </p>
-<p><img alt="Diagram" src="images/image416.png" /></p>
-<p>Depending on the size of your cluster. The resource requirement for your nodes varies. CSPs like GCP and AWS automatically select the right sized nodes for you based on the number of nodes in the cluster. This table shows the size of the instances and their resource specifications for a specific number of nodes.</p>
-<p>If you are deploying on prem nodes then you could probably start with these numbers as base. </p>
-<p><strong>Cloud or Onprem?</strong>We have already discussed that all of these deployment options are available in any environment. For on-prem kubeadm is a very useful tool. Google Container engine makes provisioning kubernetes clusters on GCP very easy. It comes with one-click cluster upgrade features that makes it very easy to maintain the cluster. KOPS is a nice tool to deploy kubernetes clusters on AWS and the Azure Kubernetes Service or AKS helps in managing the hosted kubernetes environment on Azure. </p>
-<p><img alt="Diagram" src="images/image133.png" /></p>
-<p>Depending on the workloads configured, your node and disk configurations will differ. For High Performance workloads rely on SSD Backed Storage. For <strong>multiple concurrent access</strong> consider network based storage. For shared access to volumes across multiple PODs, Consider persistent storage volumes that we discussed in the storage section. </p>
-<p>Consider defining different storage classes  and allocating the right class to the right applications.</p>
-<p>The Nodes forming a kubernetes cluster can be physical or virtual. In our case we will be deploying virtual machines on VirtualBox environments that have nodes of our cluster.  You may chose to deploy on physical machines or virtual machines or cloud environments like GCP, AWS, Azure or any other platform of your choice. </p>
-<p>We will be building a cluster with three nodes, one master and two worker nodes. Now We know that master nodes are for hosting control plane components like the kube-api server, etcd server and others, while worker nodes are for hosting workloads. However this is not a strict requirement. The master nodes are also considered as nodes and can host workloads. As a best practice it is recommended to dedicate master nodes for control plane components only specially in a production environment. Deployment tools like kubeadm prevent workloads from being hosted on master nodes by adding a taint to the master node.  </p>
-<p>You must use a 64 bit Linux operating system for nodes. Another thing to note is that typically you have all the control plane components on the master nodes. However, in large clusters you may choose to separate the ETCD clusters from the master node to its own cluster nodes. We will discuss more about the different topologies for that in the upcoming lecture when we talk about high availability setup. Well those are some of the considerations for designing a kubernetes cluster.  </p>
-<p><img alt="Diagram" src="images/image357.png" /></p>
-<h3 id="choosing-kubernetes-infrastructure">Choosing Kubernetes Infrastructure</h3>
-<p>In this lecture we talk about the different choices available for the infrastructure hosting a Kubernetes cluster. In the previous lecture we discussed about the various options we have in deploying a kubernetes cluster.</p>
-<p>Let's look at it in a bit more detail here. Kubernetes can be deployed on various systems in different ways. Starting with your laptops, to physical or virtual servers within an organization as well as those in the cloud. Depending on your requirements your cloud ecosystem and the kind of applications you wish to deploy you may choose one of these solutions. On a laptop or a local machine, There are a number of ways to get started.</p>
-<p>First of all on a supported Linux machine you can get started with installing the binaries manually and setting up a local cluster. However that is too tedious especially if you are just getting started. So relying on a solution that automates all that will help in setting up a cluster in a matter of minutes. We will look at some of those solutions in a bit. On Windows on the other hand, you cannot setup kubernetes natively as there are no windows binaries. You must rely on  virtualization software like Hyper-V or Vmware workstation or VirtualBox to create Linux VMs on which you can run kubernetes.</p>
-<p>There are also solutions available to run kubernetes components as docker containers on windows VMs. But remember, even then the docker images are Linux based and under the hood they run on a small Linux OS created by Hyper-V for running Linux docker containers. So what are some of the solutions available to easily get started with kubernetes on a local machine? <strong>Minikube</strong>, deploys a single node cluster easily. It relies on one of the virtualization software like Oracle Virtualbox to create virtual machines that run the kubernetes cluster components. </p>
-<p>We have seen this in the beginners course. The kubeadm tool can be used to deploy a single node or a multi node cluster real quick before this you must provision the required hosts with supported configuration yourself. So the different between the first two and kubeadm is that the first two provisions a VM with supported configuration by itself, whereas kubeadm expects the VMs provisioned already. At the same time it allows for deploying multi-node clusters, whereas the former doesn’t. Again deploying a kubernetes cluster locally on a laptop is usually for learning, testing and development purposes. For production purposes, there are many ways to get started with a kubernetes cluster. Both in a private or a public cloud environment. I would categorize them as <strong>Turnkey solutions</strong> or <strong>Hosted or managed solutions</strong>. Turnkey solutions are where you provision the required VMs and use some kind of tools or scripts to configure kubernetes cluster on them.</p>
-<p>At the end of the day you are responsible for maintaining those VMs, and patching them and creating, upgrading them etc. But cluster management and maintenance are mostly made easy using these tools and scripts. For example deploying a kubernetes cluster on AWS using the KOPS tool. Hosted solutions are more like Kubernetes as a service solution, where the cluster along with the required VMs are deployed by the provider and kubernetes is configured by them by the provider.  The VMs are maintained by the provider.</p>
-<p>For example, Google Container Engine lets you deploy a kubernetes cluster in a matter of minutes, without you having to perform any configuration by yourself. Let us look at some of the Turnkey solutions. </p>
-<p><strong>OpenShift</strong> is a popular on-prem kubernetes platform by RedHat. For those of you who may not be familiar, OpenShift is an open source container application platform and is built on top of kubernetes. It provides a set of additional tools and a nice GUI to create and manage kubernetes constructs and easily integrate with CI/CD pipelines etc. </p>
-<p><strong>Cloud Foundry</strong> Container Runtime is an open-source project from Cloud Foundry that helps in deploying and managing highly available kubernetes clusters using their open-source tool called <strong>BOSH</strong>.</p>
-<p>If you wish to leverage your existing Vmware environment for kubernetes, then the <strong>Vmware Cloud PKS</strong> solution is one that should be evaluated. </p>
-<p>Vagrant provides a set of useful scripts to deploy a Kubernetes cluster on different cloud service providers. All of these solutions makes it easy to deploy and manage a kubernetes cluster privately within your organization.You must have a few Virtual Machines with supported configurations in place. These are few of the many kubernetes certified solutions. Well there are many more, so check them out in the kubernetes documentation page. Let us look at some of the hosted solutions. Google Container Engine is a very popular kubernetes as a service offering on Google Cloud Platform. Openshift online is an offering from RedHat where you can gain access to a fully functional kubernetes cluster online. Azure has Azure Kubernetes Service. And finally Amazon Elastic Container Service for Kubernetes is Amazon’s hosted kubernetes offering. </p>
-<p>Again, these are just some of the solutions there are many more. So what is our choice? So our design now has 3 nodes, 1 master, 2 worker, to be deployed on a laptop with Virtual Machines provisioned on VirtualBox.</p>
-<h3 id="configure-high-availability">Configure High Availability</h3>
-<p>We now look at high availability in kubernetes. <strong>So what happens when you lose the master node in your cluster?</strong>As long as the workers are up and containers are alive, your applications are still running.Users can access the application until things start to fail. For example a container or POD on the worker node crashes. Now, if that pod was part of a ReplicaSet then the replication controller on the master needs to instruct the worker to load a new pod. But if the Master is not available and so are the controllers and schedulers on the master. There is no one to recreate the pod and no one to schedule it on nodes. Similarly, since the kube-api server is not available you cannot access the cluster externally through the kubectl tool or through API for management purposes. Which is why you must consider multiple master nodes in a High availability configuration in your production environment. A high availability configuration is where you have redundancy across every component in the cluster so as to avoid a single point of failure. </p>
-<p>The master nodes, the worker nodes, the control plane components, the application of course, which we already have multiple copies in the form of replicasets and services. So our focus in this lecture is going to be on the master and control plane components. Let's take a better look at how it works. We’ve been looking at a 3 node cluster with 1 master and 2 worker nodes throughout this course. In this lecture, we will focus on just the master node. As we learned already the master node hosts the control plane components including the API, Controller Manager, Scheduler and ETCD server. In a HA setup, with an additional master node, you have the same components running on the new master as well. <strong>So how does that work? Running multiple instances of the same components?</strong> <strong>Are they going to do the same thing twice?</strong><strong>How do they share the work among themselves?</strong></p>
-<p><img alt="Diagram" src="images/image102.png" /></p>
-<p>Well that differs based on what they do. We know that the API server is responsible for receiving requests and processing them or providing information about the cluster. They work on one request at a time. So the API servers on all cluster nodes can be alive and running at the same time in an <strong>active-active</strong> mode. So far in this course we know that the kubectl utility talks to the API server to get things done and we point the kubectl utility to reach the master node at port 6443. That’s where the API server listens and this is configured in the kube-config file. <strong>Well now with 2 masters, where do we point the kubectl to?</strong>  We can send a request to either one of them but we shouldn't be sending the same request to both of them. So it is better to have a l<strong>oad balancer</strong> of some kind configured in the front of the master nodes that split traffic between the API servers. So We then point the kubectl utility to that load balancer.  You may use  <strong>NGINX</strong> or <strong>HA proxy</strong> or any other load balancer for this purpose. </p>
-<p><strong>What about the scheduler and the controller manager?</strong>  These are controllers that watch the State of the cluster and take actions. For example the controller-manager consists of controllers like the <strong>replication controller</strong> that is constantly watching the state of PODs and taking necessary actions, like creating a new POD when one fails. If multiple instances of those run in parallel, then they might duplicate actions resulting in more PODs than actually needed. The same is true with the scheduler. As such they must not run in parallel. They run in an <strong>active-standby</strong> mode. So then who decides which among the two is active and which is passive. This is achieved through a <strong>l</strong><strong><em>eader election process.</em></strong><strong>So how does that work?</strong> Let's look at controller manager for instance. When a controller manager process is configured. You may specify the <code>--leader-elect-option</code> which is by default set to true. With this option when the controller manager process starts it tries to gain a lease or a lock on an endpoint object in kubernetes named as <strong>kube-controller-manager-endpoint.</strong> Whichever process first updates the endpoint. With this information gains the lease and becomes the active of the two. The other becomes passive; it holds the lock for the lease duration specified using the <code>--``leader-elect-lease-duration</code> option which is by default set to 15 seconds. The active process then renews the lease every 10 seconds which is the default value for the option <code>--``leader-elect-renew-deadline</code>. Both the processes tries to become the leader every two seconds, set by the <code>--``leader-elect-retry-period</code> <code>option</code>. That way if one process fails maybe because the first must of crashes then the second process can acquire the lock and become the leader. The scheduler follows a similar approach and has the same command line options. </p>
-<p><img alt="Diagram" src="images/image168.png" /></p>
-<p>Next up, ETCD. We discussed about ETCD earlier in this course. It's a good idea to go through that again now, just to quickly refresh your memory as we're going to discuss some topics related to how ETCD works in this lecture. With ETCD, there are two topologies that you can configure in kubernetes. One is as it looks here and the same architecture we have been following throughout this course, where ETCD is part of the kubernetes master nodes. It’s called a <strong>stacked</strong> <strong>controlplan</strong> <strong>nodes</strong> <strong><em>topology</em></strong>. This is easier to set up and easier to manage. And requires fewer nodes. But if one node goes down both an ETCD member and control plane instance is lost and redundancy is compromised. The other is where ETCD is separated from the control plane nodes and runs on its own set of  servers. This is a topology with external ETCD servers. Compared to the previous topology this is less risky as a failed control plane node does not impact the ETCD cluster and the data it stores. </p>
-<p>However it is harder to set up and requires twice the number of servers for the external etcd nodes. So remember, the API server is the only component that talks to the ETCD server and if you look into the API service configuration options, we have a set of options specifying where the ETCD server is. </p>
-<p>So regardless of the topology we use and wherever we configure ETCD servers, whether on the same server or on a separate server ultimately we need to make sure that the API server is pointing to the right address of the ETCD servers. </p>
-<p><img alt="Diagram" src="images/image38.png" /></p>
-<p>Now remember ETCD is a distributed system, so the API server or any other component that wishes to talk to it, can reach the ETCD server at any of its instances.   You can read and write data through any of the available ETCD server instances. This is why we specify a list of etcd-servers in the kube-apiserver configuration. </p>
-<p>So back to our design we had originally planned for a single master node in our cluster. Now with HA, we decided to configure multiple masters. We also mentioned about a load balancer for the API server. So we will have that as  well. So we now have a total of five nodes in our cluster.</p>
-<p><img alt="Diagram" src="images/image216.png" /></p>
-<h3 id="etcd-in-ha">ETCD in HA</h3>
-<p><em>ETCD in a high availability setup.</em></p>
-<p>So this is really a prerequisite lecture for the next lecture where we talk about configuring Kubernetes in a highly available mode. Well one portion of that deals with configuring ETCD in HA mode. So in this lecture we will discuss about ETCD in HA mode. In the beginning of this course we took a quick look at ETCD. We will now recap real quick and more importantly focus on the cluster configuration on ETCD. So let’s recap real quick and look at the number of nodes in the cluster, and what a RAFT protocol is etc ? </p>
-<p><img alt="Diagram" src="images/image257.png" /></p>
-<p><strong>So what is ETCD?</strong> <strong>It's a distributed reliable key value store that is simple, secure and fast.</strong> So let's break it up.Traditionally data was organized and stored in tables like this. For example to store details about a number of individuals. A key value store stores information in the form of documents or pages. So each individual gets a document and all information about that individual is stored within that file. These files can be in any format or structure and changes to one file, does not affect the others.</p>
-<p>In this case the working individuals can have their files with salary fields. While you could store and retrieve simple key and values, when your data gets complex you typically end up transacting in data formats like JSON or YAML. So that’s what etcd is and how you quickly get started with it. <strong>We also said that ETCD is distributed. So what does that mean?</strong>And that is what we're going to focus on in this lecture. We had ETCD on a single server. But it’s a database and may be storing critical data. So it is possible to have your datastore across multiple servers. Now you have 3 servers, all running etcd, and all maintaining an identical copy of the database. So if you lose one you still have two copies of your data. Perfect!But how does it ensure the data on all the nodes are consistent?You can write to any instance and read your data from any instance. ETCD ensures that the same consistent copy of the data is available on all instances at the same time. <strong>So how does it do that?</strong>With reads, its easy. Since the same data is available across all nodes, you can easily read it from any nodes. But that is not the case with writes. What if two write requests come in on two different instances? Which one goes through? For example I have writes coming in for name set to john on one and with the name joe on the other. Of course we cannot have two different data on two different nodes. </p>
-<p>When I said ETCD can write through any instance, I wasn't 100% right. ETCD does not process the writes on each node. Instead, only one of the instances is responsible for processing the writes. Internally the two nodes elect a leader among them. Of the total instances one node becomes the leader and the other node becomes the followers. If the writes came in through the leader node, then the leader processes the write. The leader makes sure that the other nodes are sent a copy of the data. If the writes come in through any of the other follower nodes, then they forward the writes to the leader internally and then the leader processes the writes. Again when the writes are processed, the leader ensures that copies of the write are distributed to other instances in the cluster. Thus a write is only considered complete, if the leader gets consent from other members in the cluster. </p>
-<p><strong>So how do they elect the leader among themselves?</strong> <strong>And how do they ensure a write is propagated across all instances?</strong></p>
+<h2 id="table-of-contents">📑 Table of Contents</h2>
 <ul>
-<li><em>→ ETCD implements distributed consensus using the RAFT protocol.</em>*</li>
+<li><a href="#1-cluster-design-fundamentals">1. Cluster Design Fundamentals</a></li>
+<li><a href="#assessing-cluster-purpose--workload-profiles">Assessing Cluster Purpose &amp; Workload Profiles</a></li>
+<li><a href="#kubernetes-scale-limits--node-sizing">Kubernetes Scale Limits &amp; Node Sizing</a></li>
+<li><a href="#cloud-vs-on-premises-architecture">Cloud vs. On-Premises Architecture</a></li>
+<li><a href="#storage-considerations">Storage Considerations</a></li>
+<li><a href="#master-vs-worker-node-architecture">Master vs. Worker Node Architecture</a></li>
+<li><a href="#2-choosing-kubernetes-infrastructure">2. Choosing Kubernetes Infrastructure</a></li>
+<li><a href="#local-development-environments">Local Development Environments</a></li>
+<li><a href="#turnkey-solutions-vs-managed-cloud-platforms">Turnkey Solutions vs. Managed Cloud Platforms</a></li>
+<li><a href="#3-high-availability-ha-control-plane-architecture">3. High Availability (HA) Control Plane Architecture</a></li>
+<li><a href="#the-need-for-high-availability">The Need for High Availability</a></li>
+<li><a href="#api-server-active-active-with-load-balancer">API Server: Active-Active with Load Balancer</a></li>
+<li><a href="#controller-manager--scheduler-active-standby-via-leader-election">Controller Manager &amp; Scheduler: Active-Standby via Leader Election</a></li>
+<li><a href="#etcd-topologies-stacked-vs-external">ETCD Topologies: Stacked vs. External</a></li>
+<li><a href="#complete-5-node-ha-architecture">Complete 5-Node HA Architecture</a></li>
+<li><a href="#4-etcd-in-high-availability">4. ETCD in High Availability</a></li>
+<li><a href="#what-is-etcd-distributed-key-value-architecture">What is ETCD? Distributed Key-Value Architecture</a></li>
+<li><a href="#read-vs-write-operations">Read vs. Write Operations</a></li>
+<li><a href="#distributed-consensus-via-the-raft-protocol">Distributed Consensus via the RAFT Protocol</a></li>
+<li><a href="#quorum-calculation--fault-tolerance">Quorum Calculation &amp; Fault Tolerance</a></li>
+<li><a href="#why-odd-numbers-of-nodes-3-5-7">Why Odd Numbers of Nodes (3, 5, 7)?</a></li>
+<li><a href="#etcd-cluster-configuration--service-setup">ETCD Cluster Configuration &amp; Service Setup</a></li>
+<li><a href="#interacting-with-etcd-using-etcdctl-v3-api">Interacting with ETCD using <code>etcdctl</code> (v3 API)</a></li>
+<li><a href="#5-bootstrapping-with-kubeadm">5. Bootstrapping with Kubeadm</a></li>
+<li><a href="#kubeadm-overview--responsibilities">Kubeadm Overview &amp; Responsibilities</a></li>
+<li><a href="#high-level-installation-workflow">High-Level Installation Workflow</a></li>
+<li><a href="#6-provisioning-vms-with-vagrant-local-multi-node-setup">6. Provisioning VMs with Vagrant (Local Multi-Node Setup)</a></li>
+<li><a href="#vagrantfile-configuration">Vagrantfile Configuration</a></li>
+<li><a href="#provisioning-and-connecting-to-vms">Provisioning and Connecting to VMs</a></li>
+<li><a href="#7-step-by-step-kubeadm-cluster-deployment-playbook">7. Step-by-Step Kubeadm Cluster Deployment Playbook</a></li>
+<li><a href="#prerequisites--kernel-bridging-configuration">Prerequisites &amp; Kernel Bridging Configuration</a></li>
+<li><a href="#container-runtime-setup">Container Runtime Setup</a></li>
+<li><a href="#installing-kubeadm-kubelet-and-kubectl">Installing Kubeadm, Kubelet, and Kubectl</a></li>
+<li><a href="#initializing-the-control-plane-node">Initializing the Control Plane Node</a></li>
+<li><a href="#configuring-non-root-kubectl-access">Configuring Non-Root Kubectl Access</a></li>
+<li><a href="#deploying-cni-pod-network-addon">Deploying CNI Pod Network Addon</a></li>
+<li><a href="#joining-worker-nodes">Joining Worker Nodes</a></li>
+<li><a href="#cluster-verification--smoke-test">Cluster Verification &amp; Smoke Test</a></li>
+<li><a href="#8-cka-exam-practice-lab-kubeadm-deployment">8. CKA Exam Practice Lab: Kubeadm Deployment</a></li>
 </ul>
-<p>Let's see how that works in a three node cluster. When the cluster is setup we have 3 nodes that do not have a leader elected. The <strong>RAFT algorithm</strong> uses random timers for initiating requests. For example a random timer is kicked off on the three managers; the first one to finish the timer sends out a request to the other node requesting permission to be the leader. The other managers on receiving the request respond with their vote and the node assumes the Leader role. Now that it is elected the leader it sends out notification at regular intervals to other masters informing them that it is continuing to assume the role of the leader. In case the other nodes do not receive a notification from the leader at some point in time which could either be due to the leader going down or losing network connectivity the nodes initiate a re-election process among themselves and a new leader is identified, going back to our previous example where a write come seen, it is processed by the leader and is replicated to other nodes in the cluster, the write is considered to be complete only once it is replicated to the other instances in the cluster.</p>
-<p>We said that the ETCD cluster is highly available. So even if we lose a node it should still function. Say for example a new write comes in but one of the node is not responding. And hence the leader is only able to write to 2 nodes in the cluster. <strong>Is the write considered to be complete? Does it wait for the third node to be up? Or does it fail?</strong> A write is considered to be complete, if it can be written on the majority of the nodes in the cluster. For example, in this case of the 3 nodes, the majority is 2. So if the data can be written on two of the nodes then the write is considered to be complete. If the third node was to come online then the data is copied to that as well. <strong>So what is the majority?</strong> Well a more appropriate term to use would be <strong>Quorum</strong>. Quorum is the minimum number of nodes that must be available for the cluster to function properly or make a successful write in case of 3. we know its 2. For any given number of nodes, the quorum is the total number of nodes divided by 2 + 1. </p>
-<p><img alt="Diagram" src="images/image382.png" /></p>
-<p><img alt="Diagram" src="images/image238.png" /></p>
-<p>So the Quorum of 3 nodes is If there is a .5 consider the whole number only so that's 2.</p>
-<p><img alt="Diagram" src="images/image387.png" /></p>
-<p><img alt="Diagram" src="images/image50.png" /></p>
-<p>Similarly the quorum of 5 nodes is 3. So here is a table that shows the quorum of clusters of size 1 to 7. Quorum of 3 and 5 are what we calculated. Quorum of 1 is 1 itself. Meaning if you have a single node cluster none of these really apply. If you lose that node everything's gone. </p>
-<p>If you look at 2 and apply the same formula. the quorum is 2 itself. 2/2 is 1 and 1 + 1 is 2. So even if you have 2 instances in the cluster the majority is still 2. If one fails,There is no quorum. So writes won't be processed. So having two instances is like having one instance, it doesn't offer you any real value as quorum cannot be met.</p>
-<p>Which is why it is recommended to have a minimum of 3 instances in an ETCD cluster. That way it offers a fault tolerance of at least 1 node. If you lose one, you can still have quorum and the cluster will continue to function. So the first column minus the second column gives you the fault tolerance. The number of nodes that you can afford to lose while keeping the cluster alive. So we have 1 to 7 nodes here. 1 and 2 are out of consideration.</p>
-<p><strong>So from 3 to 7 what do we consider?</strong></p>
-<p><img alt="Diagram" src="images/image403.png" /></p>
-<p>As you can see 3 and 4 have the same fault tolerance of 1 and 5 and 6 have the same fault tolerance of 2. When deciding on the number of master nodes,it is recommended to select an odd number as in the table, 3 or 5 or 7. </p>
-<p>Say we have a 6 node cluster. So for example due to a disruption in the network it fails and causes the network to partition. We have 4 nodes on one and 2 on the other. In this case the group with 4 nodes has a quorum and continues to operate normally. However if the network got partitioned in a different way resulting in nodes being distributed equally between the two, each group now has 3 nodes only. But since we originally had 6 manager nodes, the quorum for the cluster to stay alive is 4 </p>
-<p>But if you look at the groups here neither of these groups have four managers to meet the quorum so it results in a failed cluster. So with an even number of nodes there is a possibility of the cluster failing during a network segmentation. In case we had an odd number of managers originally, say 7, then after the network segmentation we have 4 on one segmented network and 3 on the other, and so our cluster still lives on the group with 4 managers as it meets the quorum of 4. </p>
-<p>No matter how the network segments there are better chances for your cluster to stay alive in case of network segmentation with an odd number of nodes. So an odd number of nodes is preferred over even number having 5 is preferred over 6 and having more than 5 nodes is really not necessary as 5 gives you enough fault tolerance. </p>
-<p>To install ETCD on a server.download the latest supported binary. Extract it, create the required directory structure. Copy over the certificate files generated for ETCD. We discussed how to generate these certificates in detail in the TLS Certificates section. Then configure the ETCD service. </p>
-<p><img alt="Diagram" src="images/image137.png" /></p>
-<p><img alt="Diagram" src="images/image99.png" /></p>
-<p>What's important here is to note that the initial cluster option where we passing the peer's information that’s how each etcd service knows that it is part of a cluster and where its peers are.Once installed and configured use the etcdctl utility to store and retrieve data. ETCDCTL utility has two API versions. V2 and V3. So the commands work different in each version. Version 2 is default. However we will use version 3. So set an environment variable ETCDCTL_API=3, otherwise the below commands won’t work.</p>
-<p><img alt="Diagram" src="images/image420.png" /></p>
-<p>Run the <code>etcdctl put</code> command and specify the key as name and value as john. To retrieve data run  the <code>etcdctl get</code> command with the key /name and it returns the value john.To get all keys run the  <code>etcdctl get –keys-only</code> command. Going back to our design, <strong>how many nodes should our cluster have?</strong> In an HA environment as you can see having 1 or 2 instances doesn’t really make any sense. As losing 1 node, in either case will leave you without quorum and thus render the cluster non functional. Hence the minimum required nodes in an HA setup is 3. We also discussed why we prefer odd number of instances over even number. Having an even number of instances can leave the cluster without quorum in certain network partition scenarios. So all that even number of nodes is out of scope. So we are left with 3 5 and 7 or any odd number above that 3 is a good start but if you prefer a higher level of full tolerance then 5 is better. But  anything beyond that is just unnecessary. So considering your environment, the fault tolerance requirements and the cost that you can bear you should be able to choose one number from this list. In our case we go with 3. <strong>So how does our design look now?</strong> With HA, the minimum required number of nodes for fault tolerance is 3. Now while it would be great to have 3 master nodes we are limited by our capacity of our laptop. So we will just go with 2. But if you're deploying the setup in another environment and have sufficient capacity feel free to go with 3. We also chose to go with the stacked topology where we will have the ETCD servers on the master nodes itself. </p>
-<h3 id="introduction-to-deployment-with-kubeadm">Introduction to Deployment with kubeadm</h3>
-<p>The kubeadm tool, which can be used to bootstrap a kubernetes cluster, the kubeadm tool helps us set up a multi node cluster following kubernetes best practices. As we discussed, the kubernetes cluster consists of various components, such as the kubeAPI server, ETCD controllers, etc., and we've seen some of the requirements are on security and certificates to enable communication between these components, installing all of these various components individually on different nodes and modifying the configuration files to make sure these components point to each other. And setting up certificates to make it work is a tedious task. The kubeadm tool helps us by taking care of all of those tasks.</p>
-<p><img alt="Diagram" src="images/image113.png" /></p>
-<p>Let's go through the steps to set up a kubernetes cluster using the kubeadm tool at a high level.</p>
-<p>First, you must have multiple systems or virtual machines provisioned for configuring a cluster. We will see how to set up your laptop to do just that. That's if you're not familiar with it.</p>
+<hr />
+<h2 id="1-cluster-design-fundamentals">1. Cluster Design Fundamentals</h2>
+<h3 id="assessing-cluster-purpose-workload-profiles">Assessing Cluster Purpose &amp; Workload Profiles</h3>
+<p>Before provisioning a cluster, evaluate key architectural drivers:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Dimension</th>
+<th style="text-align: left;">Key Questions &amp; Considerations</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>Purpose</strong></td>
+<td style="text-align: left;">Learning/exploration, Dev/Test, or Production-grade enterprise hosting?</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Cloud Model</strong></td>
+<td style="text-align: left;">Fully-managed Cloud Service Provider (CSP) vs. Self-hosted IaaS/Bare-metal?</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Workload Types</strong></td>
+<td style="text-align: left;">Web services, asynchronous workers, big data, analytics, or stateful databases?</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Workload Volume</strong></td>
+<td style="text-align: left;">Number of services, horizontal replica count, resource bounds (CPU, RAM)?</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Network Traffic</strong></td>
+<td style="text-align: left;">Predictable baseline traffic vs. spiky, bursty high-throughput requests?</td>
+</tr>
+</tbody>
+</table>
+<p><img alt="Cluster Purpose and Topologies" src="images/image82.png" /></p>
+<h4 id="cluster-profiles-by-tier">Cluster Profiles by Tier:</h4>
 <ul>
-<li>Once the systems are created, designate one node as master and others as worker notes.→ The next step is to install a container runtime on the hosts.→ We will be using Docker. So we must install Docker on all the nodes.→ The next step is to install the Kubeadm tool on all the nodes. The kubeadm tool helps us bootstrap the kubernetes  solution by installing and configuring all the required components in the right nodes in the right order. → The next step is to initialize the master server, during this process all the required components are installed and configured on the master server.</li>
+<li><strong>Learning &amp; Prototyping:</strong> Single-node setups (<code>minikube</code>, <code>kind</code>, or single-node <code>kubeadm</code> on local VMs or cloud instances).</li>
+<li><strong>Development &amp; Testing:</strong> Multi-node cluster with 1 master and 2–3 worker nodes. Provisioned quickly via <code>kubeadm</code>, GKE, EKS, or AKS.</li>
+<li><strong>Production Environments:</strong> High Availability (HA) multi-node setup with redundant control planes, dedicated/external ETCD clusters, multiple worker nodes, and multi-zone fault domains.</li>
 </ul>
-<p>Once the master is initialized and before joining the worker nodes to the master, you must ensure that the network prerequisites are met and normal network connectivity between the systems is not sufficient for this.</p>
-<p>Kubernetes requires a special networking solution between the master and worker nodes, which is called the pod network. The last step is to join the worker node to the master node. We’re  then all set to launch our application in the kubernetes environment.</p>
-<p><a href="https://github.com/kodekloudhub/certified-kubernetes-administrator-course">https://github.com/kodekloudhub/certified-kubernetes-administrator-course</a> </p>
-<h3 id="deploy-with-kubeadm-provision-vms-with-vagrant">Deploy with Kubeadm – Provision VMs with Vagrant</h3>
-<p>In this demo, we will see how to provision the VMs required to set up a single master two worker  node kubernetes cluster using virtual box and vagrant on our local system. As a prerequisite You must have virtual box and vagrant installed. We will use a vagrant file to automate the provisioning of the virtual machines required for the master and worker notes.</p>
-<p>The vagrant file is located in the GitHub repository associated with this course. So we clone this repository first by copying the repository url and running the clone command followed by the URL to the repository. Once cloned cd into the cloned directory. Review the vagrant file to make sure it has the right settings. </p>
-<pre><code class="language-text">git https://github.com/kodekloudhub/certified-kubernetes-administrator-course.git
+<hr />
+<h3 id="kubernetes-scale-limits-node-sizing">Kubernetes Scale Limits &amp; Node Sizing</h3>
+<p>Standard Kubernetes architecture supports the following upper scale boundaries:
+- <strong>Max Nodes per Cluster:</strong> Up to <strong>5,000</strong> nodes
+- <strong>Max Pods per Cluster:</strong> Up to <strong>150,000</strong> Pods
+- <strong>Max Containers per Cluster:</strong> Up to <strong>300,000</strong> containers
+- <strong>Max Pods per Node:</strong> Up to <strong>110</strong> Pods (configurable via kubelet <code>--max-pods</code>)</p>
+<p><img alt="Kubernetes Cluster Sizing and Scale Limits" src="images/image416.png" /></p>
+<p>Node resource configurations vary by cluster capacity:
+- Small clusters ($\le 10$ nodes): 2–4 vCPUs, 8–16 GB RAM per master node.
+- Large clusters ($&gt; 500$ nodes): Master nodes scaled up with dedicated control-plane resources and high-performance NVMe storage for ETCD.</p>
+<hr />
+<h3 id="cloud-vs-on-premises-architecture">Cloud vs. On-Premises Architecture</h3>
+<p><img alt="Cloud vs On-Premises Deployment" src="images/image133.png" /></p>
+<ul>
+<li><strong>On-Premises / Bare-Metal:</strong> <code>kubeadm</code> is the standard tool to bootstrap production-ready clusters. Turnkey solutions like Red Hat OpenShift, VMware Tanzu, or Cloud Foundry Container Runtime provide enterprise operational layers.</li>
+<li><strong>Managed Public Cloud:</strong></li>
+<li><strong>GCP (Google Kubernetes Engine - GKE):</strong> Managed control planes with automated one-click version upgrades and repair.</li>
+<li><strong>AWS (Elastic Kubernetes Service - EKS / kOps):</strong> Self-managed clusters using <code>kops</code> or managed control planes via EKS.</li>
+<li><strong>Azure (Azure Kubernetes Service - AKS):</strong> Free managed control plane with integrated Azure Active Directory and ACR.</li>
+</ul>
+<hr />
+<h3 id="storage-considerations">Storage Considerations</h3>
+<ul>
+<li><strong>High-Performance Workloads:</strong> SSD/NVMe-backed local storage or low-latency block volumes for databases.</li>
+<li><strong>Concurrent / Shared Access:</strong> Network-attached storage (NFS, CephFS) providing <code>ReadWriteMany</code> (RWX) access modes.</li>
+<li><strong>Persistent Volumes:</strong> Abstracted storage volumes managed dynamically via distinct <strong>StorageClasses</strong>.</li>
+</ul>
+<hr />
+<h3 id="master-vs-worker-node-architecture">Master vs. Worker Node Architecture</h3>
+<ul>
+<li><strong>Control Plane (Master) Nodes:</strong> Host control components (<code>kube-apiserver</code>, <code>etcd</code>, <code>kube-controller-manager</code>, <code>kube-scheduler</code>).</li>
+<li><strong>Worker Nodes:</strong> Run container runtimes, <code>kubelet</code>, <code>kube-proxy</code>, and end-user workload Pods.</li>
+<li><strong>Isolation Best Practice:</strong> Dedicated control plane nodes should not host general workloads. Tools like <code>kubeadm</code> enforce this automatically by applying the taint:
+  <code>text
+  node-role.kubernetes.io/control-plane:NoSchedule</code></li>
+<li><strong>OS Requirement:</strong> 64-bit Linux distribution with kernel cgroup and namespace support.</li>
+</ul>
+<p><img alt="Node Roles and Workload Isolation" src="images/image357.png" /></p>
+<hr />
+<h2 id="2-choosing-kubernetes-infrastructure">2. Choosing Kubernetes Infrastructure</h2>
+<h3 id="local-development-environments">Local Development Environments</h3>
+<ul>
+<li><strong>Linux Hosts:</strong> Native binaries or containerized clusters (<code>kind</code>, <code>minikube</code>).</li>
+<li><strong>Windows / macOS Hosts:</strong> Run via virtualization hypervisors (Hyper-V, VirtualBox, VMware) or WSL2 running Linux VMs.</li>
+<li><strong>Minikube:</strong> Boots a lightweight VM hosting a single-node all-in-one Kubernetes cluster.</li>
+<li><strong>Kubeadm on Local VMs:</strong> Mirror production deployment topology using multiple VMs provisioned via Vagrant + VirtualBox.</li>
+</ul>
+<hr />
+<h3 id="turnkey-solutions-vs-managed-cloud-platforms">Turnkey Solutions vs. Managed Cloud Platforms</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Solution Type</th>
+<th style="text-align: left;">Examples</th>
+<th style="text-align: left;">Control Plane Management</th>
+<th style="text-align: left;">Infrastructure Maintenance</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>Turnkey (Private Cloud / On-Prem)</strong></td>
+<td style="text-align: left;">Red Hat OpenShift, VMware Tanzu, Cloud Foundry (BOSH), Rancher (RKE)</td>
+<td style="text-align: left;">Managed by platform scripts/tooling</td>
+<td style="text-align: left;">Customer manages underlying VMs and OS patching</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Hosted / Managed (Public Cloud)</strong></td>
+<td style="text-align: left;">Google Cloud GKE, AWS EKS, Azure AKS</td>
+<td style="text-align: left;">Automated by Cloud Provider (SLA-backed)</td>
+<td style="text-align: left;">Cloud provider manages control plane; optional automated worker upgrades</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="3-high-availability-ha-control-plane-architecture">3. High Availability (HA) Control Plane Architecture</h2>
+<h3 id="the-need-for-high-availability">The Need for High Availability</h3>
+<p>In a single-master cluster, losing the control plane causes major operational disruptions:
+- Worker nodes continue executing existing Pods, but <strong>no scheduling or health recovery can occur</strong>.
+- Failed Pods are not recreated by controllers.
+- <code>kubectl</code> and Kubernetes APIs become completely inaccessible.
+- A production architecture requires redundancy across every control plane layer.</p>
+<hr />
+<h3 id="api-server-active-active-with-load-balancer">API Server: Active-Active with Load Balancer</h3>
+<p><code>kube-apiserver</code> instances are stateless request handlers.
+- Multiple instances run concurrently in <strong>Active-Active</strong> mode across all control plane nodes.
+- An external Load Balancer (HAProxy, NGINX, Keepalived, or Cloud LB) distributes client (<code>kubectl</code>, worker <code>kubelet</code>, <code>kube-proxy</code>) traffic across all API servers on port <code>6443</code>.</p>
+<p><img alt="Active-Active API Servers Behind Load Balancer" src="images/image102.png" /></p>
+<hr />
+<h3 id="controller-manager-scheduler-active-standby-via-leader-election">Controller Manager &amp; Scheduler: Active-Standby via Leader Election</h3>
+<p><code>kube-controller-manager</code> and <code>kube-scheduler</code> maintain active cluster state and cannot process mutations in parallel (which would cause race conditions and duplicate Pod creations).
+- They operate in <strong>Active-Standby</strong> mode via an automated <strong>Leader Election</strong> mechanism.
+- The active process secures a renewable lease lock on an endpoint/lease object (<code>coordination.k8s.io</code>).</p>
+<p><img alt="Leader Election in Controller Manager and Scheduler" src="images/image168.png" /></p>
+<h4 id="leader-election-flags">Leader Election Flags:</h4>
+<ul>
+<li><code>--leader-elect=true</code> (Enables leader election mechanism)</li>
+<li><code>--leader-elect-lease-duration=15s</code> (Lock expiration timeout)</li>
+<li><code>--leader-elect-renew-deadline=10s</code> (Interval at which active leader must renew its lease)</li>
+<li><code>--leader-elect-retry-period=2s</code> (Interval at which standby candidates attempt to acquire lock)</li>
+</ul>
+<hr />
+<h3 id="etcd-topologies-stacked-vs-external">ETCD Topologies: Stacked vs. External</h3>
+<p><img alt="Stacked vs External ETCD Topologies" src="images/image38.png" /></p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Topology</th>
+<th style="text-align: left;">Architecture</th>
+<th style="text-align: left;">Advantages</th>
+<th style="text-align: left;">Disadvantages</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>Stacked Control Plane</strong></td>
+<td style="text-align: left;">ETCD members run as static Pods directly on control plane nodes.</td>
+<td style="text-align: left;">Fewer servers required; easier to deploy with <code>kubeadm init --control-plane</code>.</td>
+<td style="text-align: left;">Coupling: Losing a control plane node simultaneously destroys an ETCD node.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>External ETCD</strong></td>
+<td style="text-align: left;">ETCD cluster runs on separate dedicated bare-metal/VM hosts.</td>
+<td style="text-align: left;">Maximum resilience and isolation; control plane node crashes do not impact datastore.</td>
+<td style="text-align: left;">Requires double the host instances; increased setup and TLS complexity.</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h3 id="complete-5-node-ha-architecture">Complete 5-Node HA Architecture</h3>
+<p>In a standard production topology:
+- <strong>3 Control Plane Nodes</strong> running stacked or external ETCD.
+- <strong>1 Load Balancer</strong> fronting the API servers.
+- <strong>Worker Nodes</strong> executing container workloads.</p>
+<p><img alt="5-Node High Availability Architecture" src="images/image216.png" /></p>
+<hr />
+<h2 id="4-etcd-in-high-availability">4. ETCD in High Availability</h2>
+<h3 id="what-is-etcd-distributed-key-value-architecture">What is ETCD? Distributed Key-Value Architecture</h3>
+<p>ETCD is a strongly consistent, distributed key-value store that houses the complete cluster state, specifications, and metadata.</p>
+<p><img alt="ETCD Distributed Key-Value Store" src="images/image257.png" /></p>
+<hr />
+<h3 id="read-vs-write-operations">Read vs. Write Operations</h3>
+<ul>
+<li><strong>Reads:</strong> Can be served directly from any member node.</li>
+<li><strong>Writes:</strong> Must always be processed through the elected <strong>Leader</strong>. If a write request hits a follower node, the follower forwards the write internally to the cluster leader.</li>
+<li>The leader writes the entry to its local log and propagates it to all followers. The write is only committed once acknowledged by a <strong>quorum</strong> of cluster members.</li>
+</ul>
+<hr />
+<h3 id="distributed-consensus-via-the-raft-protocol">Distributed Consensus via the RAFT Protocol</h3>
+<p>ETCD maintains strict consistency across nodes using the <strong>RAFT consensus algorithm</strong>:
+1. <strong>Randomized Election Timers:</strong> Each node runs a randomized heartbeat timeout (typically 150ms–300ms).
+2. <strong>Leader Election:</strong> If a node does not receive a heartbeat, its timer expires, transitions to candidate state, increments term, and requests votes.
+3. <strong>Log Replication:</strong> Once elected, the leader broadcasts regular heartbeat signals to prevent new elections and replicates all incoming mutations.</p>
+<hr />
+<h3 id="quorum-calculation-fault-tolerance">Quorum Calculation &amp; Fault Tolerance</h3>
+<p>Quorum is the minimum number of functional nodes required to accept writes and make cluster decisions.</p>
+<p><img alt="ETCD Quorum Concept" src="images/image382.png" /></p>
+<p>$$\text{Quorum} = \left\lfloor \frac{N}{2} \right\rfloor + 1$$</p>
+<p><img alt="Quorum for 3 Nodes" src="images/image238.png" /></p>
+<p><img alt="Quorum for 5 Nodes" src="images/image387.png" /></p>
+<p><img alt="Quorum Formula Floor(N/2)+1" src="images/image50.png" /></p>
+<hr />
+<h3 id="why-odd-numbers-of-nodes-3-5-7">Why Odd Numbers of Nodes (3, 5, 7)?</h3>
+<p><img alt="ETCD Quorum and Fault Tolerance Table" src="images/image403.png" /></p>
+<table>
+<thead>
+<tr>
+<th style="text-align: center;">Total Cluster Nodes ($N$)</th>
+<th style="text-align: center;">Quorum ($\lfloor N/2 \rfloor + 1$)</th>
+<th style="text-align: center;">Fault Tolerance ($N - \text{Quorum}$)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">0</td>
+</tr>
+<tr>
+<td style="text-align: center;">2</td>
+<td style="text-align: center;">2</td>
+<td style="text-align: center;">0</td>
+</tr>
+<tr>
+<td style="text-align: center;"><strong>3</strong></td>
+<td style="text-align: center;"><strong>2</strong></td>
+<td style="text-align: center;"><strong>1</strong></td>
+</tr>
+<tr>
+<td style="text-align: center;">4</td>
+<td style="text-align: center;">3</td>
+<td style="text-align: center;">1</td>
+</tr>
+<tr>
+<td style="text-align: center;"><strong>5</strong></td>
+<td style="text-align: center;"><strong>3</strong></td>
+<td style="text-align: center;"><strong>2</strong></td>
+</tr>
+<tr>
+<td style="text-align: center;">6</td>
+<td style="text-align: center;">4</td>
+<td style="text-align: center;">2</td>
+</tr>
+<tr>
+<td style="text-align: center;"><strong>7</strong></td>
+<td style="text-align: center;"><strong>4</strong></td>
+<td style="text-align: center;"><strong>3</strong></td>
+</tr>
+</tbody>
+</table>
+<h4 id="why-even-counts-eg-4-or-6-are-anti-patterns">Why Even Counts (e.g., 4 or 6) are Anti-Patterns:</h4>
+<ol>
+<li><strong>Identical Fault Tolerance:</strong> A 4-node cluster still only tolerates 1 node failure (quorum = 3), identical to a 3-node cluster. Adding the 4th node adds network overhead without improving fault tolerance.</li>
+<li><strong>Split-Brain Risk during Network Partition:</strong>
+   - If a 6-node cluster splits evenly into 3 and 3, <strong>neither half meets the required quorum of 4</strong>. The entire cluster freezes and rejects writes.
+   - If a 5-node cluster splits into 3 and 2, the 3-node partition maintains quorum and continues operating seamlessly.</li>
+</ol>
+<blockquote>
+<p>[!IMPORTANT]
+Always configure ETCD clusters with an <strong>odd number of nodes</strong> (minimum 3 for HA; 5 for higher resilience). Clusters with $&gt; 7$ nodes are rarely recommended due to consensus replication overhead.</p>
+</blockquote>
+<hr />
+<h3 id="etcd-cluster-configuration-service-setup">ETCD Cluster Configuration &amp; Service Setup</h3>
+<p><img alt="ETCD Manual Binary Setup" src="images/image137.png" /></p>
+<p>Each ETCD member requires mutual TLS certificates and systemd unit configuration specifying initial peers:</p>
+<p><img alt="ETCD Systemd Service Configuration" src="images/image99.png" /></p>
+<p>Sample <code>/etc/systemd/system/etcd.service</code> excerpt:</p>
+<pre><code class="language-ini">[Unit]
+Description=etcd distributed reliable key-value store
+Documentation=https://github.com/etcd-io/etcd
+
+[Service]
+Type=notify
+ExecStart=/usr/local/bin/etcd \
+  --name etcd-node-1 \
+  --cert-file=/etc/etcd/kubernetes.pem \
+  --key-file=/etc/etcd/kubernetes-key.pem \
+  --peer-cert-file=/etc/etcd/kubernetes.pem \
+  --peer-key-file=/etc/etcd/kubernetes-key.pem \
+  --trusted-ca-file=/etc/etcd/ca.pem \
+  --peer-trusted-ca-file=/etc/etcd/ca.pem \
+  --peer-client-cert-auth \
+  --client-cert-auth \
+  --initial-advertise-peer-urls https://192.168.56.11:2380 \
+  --listen-peer-urls https://192.168.56.11:2380 \
+  --listen-client-urls https://192.168.56.11:2379,https://127.0.0.1:2379 \
+  --advertise-client-urls https://192.168.56.11:2379 \
+  --initial-cluster etcd-node-1=https://192.168.56.11:2380,etcd-node-2=https://192.168.56.12:2380,etcd-node-3=https://192.168.56.13:2380 \
+  --initial-cluster-token etcd-cluster-token \
+  --initial-cluster-state new \
+  --data-dir=/var/lib/etcd
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
 </code></pre>
-<p>We see that we have configured the number of Master nodes to one and worker nodes to two. And the IP network range is 192.168.56  . This means that when the VMs are created, they are going to get IP addresses within this range. </p>
-<p>So that looks good. We come out of the file and we run the background status command to check the status of the VM And since we have not created them yet, they are in a not created state. But we can see the names of machines that it would create. </p>
-<p>Once we provision, they will be named kubemaster, kubenode01 and kubenode02.</p>
-<p>We will now run the vagrant up command to provision the VMs.</p>
-<p>It uses the Ubuntu Bionic 64 base images. The base image is pulled and the beams are being provisioned.</p>
-<p>Now, depending on your network bandwidth and your hosts resources, this may take some time.</p>
-<p>So let's wait. </p>
-<p>Now, first, the kube-master is provisioned and then the kubenode01  is provisioned and finally,  and kubenode02 gets provisioned </p>
-<p>We now check the status again and see that it's all in our running state to access one of these system, use the vagrant as a search command. So we run the vagrant as a sage cube master command to assist into the master node. </p>
-<p>So we are in the master node. We run just any command to make sure it's working. So we were on the uptime command to check if the commands are working. And then we will now log out of the system and test SSL connectivity to the other nodes01 And followed by node02.</p>
-<p>So they look good. Now we're all set.</p>
-<h3 id="demo-deployment-with-kubeadm">Demo – Deployment with Kubeadm</h3>
-<p>We have now set up the nodes required to set up a kubernetes cluster. We have set up a master node and two worker nodes, node01 and node02. Let us now proceed to the kubeadm documentation page to install a kubernetes cluster.  We will start with the prerequisites. So we must have a supported operating system like, for example, Ubuntu 16.04 or higher, which we already do. That's what we did in the previous demo.</p>
-<p>We have some hardware requirements to have at least 2GB of RAM, 2CPUs  and network connectivity between the VMs, which we have already taken care of in the previous video. Another thing is to make sure that our firewall and network security settings are in place. Otherwise, the nodes will run into connectivity issues. </p>
-<p>For this, we must let IP tables see bridged traffic.  We must first make sure the BR_net filter module is loaded before the step. So we can do that by running the command <code>lsmod |  grep br_netfilter.</code></p>
-<p>So we see that it's not loaded as there is no result. So we run the <code>modprobe</code> command to load the kernel module. <code>sudo modprobe br_netfilter</code> We now execute that on all the notes. Once that is done, we run this set of commands to create the new kernel parameters. </p>
-<pre><code class="language-bash">cat &lt;&lt;EOF | sudo tee /etc/sysctl.d/k8s.conf
-net.bridge.bridge-nf-call-ip6tables = 1
-net.bridge.bridge-nf-call-iptables = 1
+<hr />
+<h3 id="interacting-with-etcd-using-etcdctl-v3-api">Interacting with ETCD using <code>etcdctl</code> (v3 API)</h3>
+<p><img alt="ETCDCTL v3 Operations" src="images/image420.png" /></p>
+<p>Always specify <code>ETCDCTL_API=3</code> when interacting with modern Kubernetes ETCD datastores:</p>
+<pre><code class="language-bash"># Export API version
+export ETCDCTL_API=3
+
+# Store a key-value pair
+etcdctl put /name john
+
+# Retrieve value
+etcdctl get /name
+
+# Retrieve all keys
+etcdctl get / --prefix --keys-only
+
+# Check cluster member list
+etcdctl --endpoints=https://127.0.0.1:2379 \
+  --cacert=/etc/kubernetes/pki/etcd/ca.crt \
+  --cert=/etc/kubernetes/pki/etcd/server.crt \
+  --key=/etc/kubernetes/pki/etcd/server.key \
+  member list
+
+# Check cluster endpoint health
+etcdctl --endpoints=https://127.0.0.1:2379 \
+  --cacert=/etc/kubernetes/pki/etcd/ca.crt \
+  --cert=/etc/kubernetes/pki/etcd/server.crt \
+  --key=/etc/kubernetes/pki/etcd/server.key \
+  endpoint health
+</code></pre>
+<hr />
+<h2 id="5-bootstrapping-with-kubeadm">5. Bootstrapping with Kubeadm</h2>
+<h3 id="kubeadm-overview-responsibilities">Kubeadm Overview &amp; Responsibilities</h3>
+<p>Manually provisioning a production-grade cluster involves generating dozens of TLS certificates, creating PKI infrastructures, authoring complex static Pod manifests, and wiring component flags. <code>kubeadm</code> automates this entire lifecycle following official Kubernetes best practices.</p>
+<p><img alt="Kubeadm Bootstrapping Workflow" src="images/image113.png" /></p>
+<hr />
+<h3 id="high-level-installation-workflow">High-Level Installation Workflow</h3>
+<ol>
+<li><strong>Host Preparation:</strong> Provision 64-bit Linux VMs with unique hostnames, MAC addresses, and network connectivity.</li>
+<li><strong>Container Runtime:</strong> Install supported Container Runtime Interface (CRI) such as <code>containerd</code> or Docker/cri-dockerd.</li>
+<li><strong>Install Binaries:</strong> Install matching versions of <code>kubeadm</code>, <code>kubelet</code>, and <code>kubectl</code>.</li>
+<li><strong>Initialize Control Plane:</strong> Execute <code>kubeadm init</code> on the primary master node.</li>
+<li><strong>Install CNI Plugin:</strong> Deploy a Pod network addon (Calico, Flannel, Weave Net, Cilium) to enable inter-Pod communication.</li>
+<li><strong>Join Worker Nodes:</strong> Run <code>kubeadm join</code> on worker nodes with the generated token and discovery hash.</li>
+</ol>
+<hr />
+<h2 id="6-provisioning-vms-with-vagrant-local-multi-node-setup">6. Provisioning VMs with Vagrant (Local Multi-Node Setup)</h2>
+<h3 id="vagrantfile-configuration">Vagrantfile Configuration</h3>
+<p>Using Vagrant and VirtualBox to provision 1 master (<code>kubemaster</code>) and 2 worker nodes (<code>kubenode01</code>, <code>kubenode02</code>):</p>
+<pre><code class="language-bash"># Clone the repository containing the automated Vagrantfile
+git clone https://github.com/kodekloudhub/certified-kubernetes-administrator-course.git
+cd certified-kubernetes-administrator-course
+</code></pre>
+<p>The sample <code>Vagrantfile</code> configures:
+- Base OS: Ubuntu 18.04 / 20.04 Bionic/Focal 64-bit
+- Network Subnet: <code>192.168.56.0/24</code> (Master: <code>192.168.56.2</code>, Worker 1: <code>192.168.56.3</code>, Worker 2: <code>192.168.56.4</code>)
+- Node specs: 2 vCPUs, 2 GB RAM minimum per node</p>
+<hr />
+<h3 id="provisioning-and-connecting-to-vms">Provisioning and Connecting to VMs</h3>
+<pre><code class="language-bash"># Inspect status of VMs before provisioning
+vagrant status
+
+# Boot and provision all virtual machines
+vagrant up
+
+# Verify running VM instances
+vagrant status
+
+# SSH into the master node
+vagrant ssh kubemaster
+
+# SSH into worker nodes
+vagrant ssh kubenode01
+vagrant ssh kubenode02
+</code></pre>
+<hr />
+<h2 id="7-step-by-step-kubeadm-cluster-deployment-playbook">7. Step-by-Step Kubeadm Cluster Deployment Playbook</h2>
+<h3 id="prerequisites-kernel-bridging-configuration">Prerequisites &amp; Kernel Bridging Configuration</h3>
+<p><em>(Execute on </em><em>ALL</em><em> nodes: Master and Workers)</em></p>
+<pre><code class="language-bash"># 1. Disable swap permanently (Kubernetes requires swap disabled)
+sudo swapoff -a
+sudo sed -i '/ swap / s/^\(.*\)$/#\1/g' /etc/fstab
+
+# 2. Load necessary kernel modules
+cat &lt;&lt;EOF | sudo tee /etc/modules-load.d/k8s.conf
+overlay
+br_netfilter
 EOF
+
+sudo modprobe overlay
+sudo modprobe br_netfilter
+
+# 3. Configure sysctl parameters for iptables to see bridged traffic
+cat &lt;&lt;EOF | sudo tee /etc/sysctl.d/k8s.conf
+net.bridge.bridge-nf-call-iptables  = 1
+net.bridge.bridge-nf-call-ip6tables = 1
+net.ipv4.ip_forward                 = 1
+EOF
+
+# Reload sysctl without rebooting
+sudo sysctl --system
+
+# Verify module is active
+lsmod | grep br_netfilter
 </code></pre>
-<p>We then do that on all the nodes.The next step is to install container runtime on the nodes. We will be using Docker in this example. For this we use the documentation link and click on Docker. </p>
-<p>We will use these commands to install the latest stable version of Docker.These need root privileges.</p>
-<p>So I will switch to sudo to make the next steps easier by running the <code>sudo -i</code>  command. I will now paste the command a copy to set up the software repositories. We will then proceed to execute the same on all the three machines.</p>
-<p>OK, so that's done.</p>
-<p>The next step is to install Docker's official gpg keys. So we will do that. Also on all the machines.  The next step is to add the Docker APT  repository. We will then do the same on all the systems. The next step is to install the docker  runtime.</p>
-<p>We run the commands to install the latest stable version of Docker.   If the version of Docker that is shown here has changed as you're watching this, then feel free to follow the latest version of documentation to install the latest version of Docker. Run that on all the nodes. This may take a few minutes, so wait for that to finish. The next step is to set up the docker daemon.For this, we create a daemon.json file and then create a directory for the docker service. We then run the system a demon reload and restart Docker command to load and start the Docker service To verify Docker's installed, run the <code>systemctl status dockerd</code> service command and verify that it is running.</p>
-<p>Confirmed that that's the case on all the three notes. We now go back to the documentation page to proceed with the installation of kubernetes components using kubeadm. The next step is to install the kubernetes related packages such as the two BDM kubelet and kubectl on all the notes. The cube, the end tool is used to bootstrap the cluster cube.</p>
-<p>That is the process that's responsible for managing pods and containers on the note.</p>
-<p>And the Cube Cuttle utility is the components command line tool for this run the commands to update</p>
-<p>repository and install the required packages.</p>
-<p>Run these on all the notes and wait for it to finish.</p>
-<p>The next section about configuring Seagram driver is not applicable when using Docker as QB, GM will</p>
-<p>automatically detect the group driver for the Kubla.</p>
-<p>If you're not using Docker, then we must follow the step to specify the secret driver so we can skip</p>
-<p>this for now.</p>
-<p>The next step is to configure the QB GM cluster by clicking on this link.</p>
-<p>This takes us to the cluster creation process using cubie a.T.M.</p>
-<p>The first phase is to initialize control plane node.</p>
-<p>The first step in that is only applicable if we are deploying a highly available cluster.</p>
-<p>In this demo, we are not.</p>
-<p>We just have a single master node.</p>
-<p>So we will skip that for now.</p>
-<p>The next step is to choose a part network, add on.</p>
-<p>And when we do that.</p>
-<p>Decide what is network IP address range.</p>
-<p>We are going to use for the port.</p>
-<p>There are multiple network options available for networking between ports in a coronets cluster.</p>
-<p>So if you click on this link, which takes you down in that page today, pertinent Roxette section,</p>
-<p>you will see different options for configuring a network such as Kalikow, Psyllium Quantitive, Kue,</p>
-<p>Browder, Veev, etc..</p>
-<p>In this case, we will make use of Weev and we can choose a network range that does not conflict with</p>
-<p>the network of the nodes.</p>
-<p>Remember that we configure the nodes to be in the 190 to that 168 or 56 network.</p>
-<p>We will use a network sider that's different from that range for parts.</p>
-<p>We will use tender to 44 dot zero zero slash 16 network.</p>
-<p>The third step can be ignored as well, since we are using Docker as our container runtime.</p>
-<p>But in case you're using a different one, you may use this option to specify that the fourth step is</p>
-<p>what we will configure.</p>
-<p>We must specify the cabinet is API servers, IP address as the API server advertize address.</p>
-<p>This is so that the API server listens on that on the correct static IP address.</p>
-<p>We have set on the master node which will make the API server accessible to the worker nodes on any</p>
-<p>other clients on that IP address.</p>
-<p>Once we have decided the values for the options, we can proceed with initializing the cluster, using</p>
-<p>the Cube Edman in its command.</p>
-<p>We will run this on the master node.</p>
-<p>Remember, this step must only be run on the master node because that's where all the cluster components</p>
-<p>have to be installed and initialized.</p>
-<p>We copy and paste the cube admin in his command on the master node.</p>
-<p>We will then pass in all the required parameters such as the pod network spider, which will be tender</p>
-<p>to 44 dodgier Arturo's last 16.</p>
-<p>And the API server advertize address is going to be the static IP address of the master node.</p>
-<p>Which will be one only to 168 dot fifty six dot two, which is the IP address of the master.</p>
-<p>Now if you're not sure about the IP address of the matter node, we can double check that.</p>
-<p>So I will for now comment this command so that it is not executed and that I can later access it African</p>
-<p>from the IP address.</p>
-<p>I will then run the I have conflict command to confirm the IP address of the node.</p>
-<p>I can confirm that it is the correct IP address.</p>
-<p>I will now run the cube idiom in its command.</p>
-<p>It runs a set of pre-flight checks to make sure all prerequisites are in place.</p>
-<p>So let's give it some time to run.</p>
-<p>The checks are complete and everything looks good.</p>
-<p>So we proceed with the creation of security certificates and installation of the various components.</p>
-<p>We give it some more time for the insulation to finish.</p>
-<p>Now the insulation is complete.</p>
-<p>We will now perform the post installation tasks as the output states to start the cluster.</p>
-<p>You need to run the following as a regular user.</p>
-<p>So we have been running things as the route user.</p>
-<p>So we will run the logout command to log out and become the regular user.</p>
-<p>Once we are a regular user, we must create a directory under the user's home directly and copy the</p>
-<p>admin dot com file.</p>
-<p>The admin, not con file, has the necessary information and credentials required to access the cabinet</p>
-<p>cluster using the Cube Cuttle command line utility.</p>
-<p>It must be placed in the user's home directory under the DOT Cube directory.</p>
-<p>So we are on this command to create the DOT Cube directory and copy the admin dot com file into it and</p>
-<p>also set the right ownership on it.</p>
-<p>The next step is to deploy a part network to the cluster.</p>
-<p>Earlier, we decided that we will use Weev as our port network solution.</p>
-<p>So we need to do that.</p>
-<p>After the port network solution is set up, we will have the worker node's join the cluster using the</p>
-<p>command given here.</p>
-<p>Keep a out of the command that will be used to join the work.</p>
-<p>Noticed the cluster.</p>
-<p>I'm just going to copy and echo the command to my screen terminal so that it is available in the terminal</p>
-<p>history and I can retrieve it later.</p>
-<p>Or you may just copy it to an external text editor.</p>
-<p>Let's run the Cucuta's get node's command to check the status of the cluster.</p>
-<p>Now we see that the cluster consists of the cube master node only.</p>
-<p>And the status is not ready.</p>
-<p>As of now, the version is one point eighteen point three.</p>
-<p>The reason is not ready is because we do not have a port network solution for this.</p>
-<p>We go back to the documentation side and go to the port network section, select Weev and copy the command</p>
-<p>to install.</p>
-<p>We've.</p>
-<p>Pasted on the master note and executed.</p>
-<p>We see that the port network solution is being installed and all the required components are created.</p>
-<p>It creates a service account.</p>
-<p>Rolls, roll bindings, deman sets, etc..</p>
-<p>We discuss a lot about each of these in these certified as administrator course.</p>
-<p>We have a section just for networking where we go from the absolute basics of network all the way to</p>
-<p>how a weave solution works.</p>
-<p>So check that out.</p>
-<p>If you have time for now, let's proceed with adding the worker nodes to the cluster.</p>
-<p>For this, we use the command we saved earlier.</p>
-<p>We will copy it and run it on both the worker notes.</p>
-<p>We see that the node has successfully joined the cluster.</p>
-<p>Now we are on the KUKA to get notes.</p>
-<p>Command on the master note and we will check the status.</p>
-<p>It may take a few minutes for the worker notes to be in a ready state.</p>
-<p>So let's monitor that.</p>
-<p>We now see that they are in a red state.</p>
-<p>Our cabinet is cluster is now ready.</p>
-<p>We can now test by creating some objects.</p>
-<p>Let's create a pot using the cube cuttle run engine next command and specify the engine X image.</p>
-<p>We see it's created a pod by running the tube to get pods command.</p>
-<p>The parts are still being created.</p>
-<p>So we wait for a few minutes and we will see that it's now in a running state.</p>
-<p>We will not delete it using the Cucuta delete part command.</p>
-<p>TEST</p>
-<ul>
-<li>Install the kubeadm and kubelet packages on the controlplane and node01. Use the exact version of 1.21.0-00 for both. Note: You can connect to node01 using: ssh node01</li>
-</ul>
-<p>====Follow the steps in the official documentation. These steps have to be performed on both nodes.</p>
-<ul>
-<li>set net.bridge.bridge-nf-call-iptables to 1:</li>
-</ul>
-<pre><code class="language-bash">cat &lt;&lt;EOF | sudo tee /etc/modules-load.d/k8s.conf
+<hr />
+<h3 id="container-runtime-setup">Container Runtime Setup</h3>
+<p><em>(Execute on </em><em>ALL</em><em> nodes)</em></p>
+<pre><code class="language-bash"># Install dependencies
+sudo apt-get update
+sudo apt-get install -y apt-transport-https ca-certificates curl gnupg lsb-release
+
+# Install Docker runtime
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+echo &quot;deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable&quot; | sudo tee /etc/apt/sources.list.d/docker.list &gt; /dev/null
+
+sudo apt-get update
+sudo apt-get install -y docker-ce docker-ce-cli containerd.io
+
+# Configure Docker to use systemd cgroup driver (crucial for Kubernetes stability)
+sudo mkdir -p /etc/docker
+cat &lt;&lt;EOF | sudo tee /etc/docker/daemon.json
+{
+  &quot;exec-opts&quot;: [&quot;native.cgroupdriver=systemd&quot;],
+  &quot;log-driver&quot;: &quot;json-file&quot;,
+  &quot;log-opts&quot;: {
+    &quot;max-size&quot;: &quot;100m&quot;
+  },
+  &quot;storage-driver&quot;: &quot;overlay2&quot;
+}
+EOF
+
+# Restart and enable Docker
+sudo systemctl daemon-reload
+sudo systemctl restart docker
+sudo systemctl enable docker
+sudo systemctl status docker --no-pager
+</code></pre>
+<hr />
+<h3 id="installing-kubeadm-kubelet-and-kubectl">Installing Kubeadm, Kubelet, and Kubectl</h3>
+<p><em>(Execute on </em><em>ALL</em><em> nodes)</em></p>
+<pre><code class="language-bash"># Add Kubernetes package repository key
+sudo curl -fsSLo /usr/share/keyrings/kubernetes-archive-keyring.gpg https://packages.cloud.google.com/apt/doc/apt-key.gpg
+
+# Add Kubernetes APT repository
+echo &quot;deb [signed-by=/usr/share/keyrings/kubernetes-archive-keyring.gpg] https://apt.kubernetes.io/ kubernetes-xenial main&quot; | sudo tee /etc/apt/sources.list.d/kubernetes.list
+
+# Install packages with pinned versions
+sudo apt-get update
+sudo apt-get install -y kubelet=1.21.0-00 kubeadm=1.21.0-00 kubectl=1.21.0-00
+
+# Prevent packages from being accidentally upgraded by automatic updates
+sudo apt-mark hold kubelet kubeadm kubectl
+
+# Verify installed versions
+kubelet --version
+kubeadm version
+kubectl version --client
+</code></pre>
+<hr />
+<h3 id="initializing-the-control-plane-node">Initializing the Control Plane Node</h3>
+<p><em>(Execute on the </em><em>MASTER</em><em> node only)</em></p>
+<pre><code class="language-bash"># Optional: Pre-pull container images to speed up initialization
+sudo kubeadm config images pull
+
+# Initialize the control plane
+sudo kubeadm init \
+  --apiserver-advertise-address=192.168.56.2 \
+  --pod-network-cidr=10.244.0.0/16 \
+  --apiserver-cert-extra-sans=controlplane
+</code></pre>
+<blockquote>
+<p>[!NOTE]
+<code>--pod-network-cidr=10.244.0.0/16</code> is standard when using Weave Net or Flannel. Ensure the Pod CIDR does not overlap with node subnets.</p>
+</blockquote>
+<hr />
+<h3 id="configuring-non-root-kubectl-access">Configuring Non-Root Kubectl Access</h3>
+<p><em>(Execute on the </em><em>MASTER</em><em> node as your regular user)</em></p>
+<pre><code class="language-bash">mkdir -p $HOME/.kube
+sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+sudo chown $(id -u):$(id -g) $HOME/.kube/config
+
+# If operating as root user:
+export KUBECONFIG=/etc/kubernetes/admin.conf
+</code></pre>
+<hr />
+<h3 id="deploying-cni-pod-network-addon">Deploying CNI Pod Network Addon</h3>
+<p><em>(Execute on the </em><em>MASTER</em><em> node)</em></p>
+<p>Before deploying CNI, the control plane node remains in <code>NotReady</code> status because CoreDNS requires a functional cluster network overlay.</p>
+<pre><code class="language-bash"># Deploy Weave Net CNI addon:
+kubectl apply -f https://github.com/weaveworks/weave/releases/download/v2.8.1/weave-daemonset-k8s.yaml
+
+# (Alternative) Deploy Calico CNI addon:
+# kubectl apply -f https://docs.projectcalico.org/manifests/calico.yaml
+
+# Verify CoreDNS and networking DaemonSets are Running:
+kubectl get pods -n kube-system
+</code></pre>
+<hr />
+<h3 id="joining-worker-nodes">Joining Worker Nodes</h3>
+<p><em>(Execute on each </em><em>WORKER</em><em> node as root)</em></p>
+<p>Retrieve the join command from the output of <code>kubeadm init</code>, or generate a fresh join token if the initial 24-hour token expired:</p>
+<pre><code class="language-bash"># Generate fresh join token and command on the master node:
+kubeadm token create --print-join-command
+</code></pre>
+<p>Execute on <code>kubenode01</code> and <code>kubenode02</code>:</p>
+<pre><code class="language-bash">sudo kubeadm join 192.168.56.2:6443 \
+  --token gtmdad.olx54xrbafcionbd \
+  --discovery-token-ca-cert-hash sha256:fb08c01c782ef1d1ad0b643b56c9edd6a864b87cff56e7ff35713cd666659ff4
+</code></pre>
+<hr />
+<h3 id="cluster-verification-smoke-test">Cluster Verification &amp; Smoke Test</h3>
+<p><em>(Execute on the </em><em>MASTER</em><em> node)</em></p>
+<pre><code class="language-bash"># Verify all nodes transitioned to Ready
+kubectl get nodes -o wide
+
+# Check health of all system components
+kubectl get pods -A
+
+# Run a smoke-test NGINX Pod
+kubectl run smoke-test-nginx --image=nginx:alpine --port=80
+kubectl get pods -o wide
+
+# Cleanup smoke test
+kubectl delete pod smoke-test-nginx
+</code></pre>
+<hr />
+<h2 id="8-cka-exam-practice-lab-kubeadm-deployment">8. CKA Exam Practice Lab: Kubeadm Deployment</h2>
+<h3 id="scenario-requirements">Scenario Requirements:</h3>
+<ol>
+<li>Configure kernel bridging on <code>controlplane</code> and <code>node01</code>.</li>
+<li>Install <code>kubeadm=1.21.0-00</code>, <code>kubelet=1.21.0-00</code>, and <code>kubectl=1.21.0-00</code> on both nodes and pin versions.</li>
+<li>Initialize the control plane using:
+   - <code>apiserver-advertise-address</code>: IP of <code>eth0</code>
+   - <code>apiserver-cert-extra-sans</code>: <code>controlplane</code>
+   - <code>pod-network-cidr</code>: <code>10.244.0.0/16</code></li>
+<li>Set up kubeconfig for the user.</li>
+<li>Join <code>node01</code> to the cluster.</li>
+</ol>
+<h3 id="lab-solution-playbook">Lab Solution Playbook:</h3>
+<pre><code class="language-bash"># -----------------------------------------------------------
+# Step 1: Execute on BOTH nodes (controlplane &amp; node01)
+# -----------------------------------------------------------
+cat &lt;&lt;EOF | sudo tee /etc/modules-load.d/k8s.conf
 br_netfilter
 EOF
 
@@ -269,130 +610,46 @@ net.bridge.bridge-nf-call-ip6tables = 1
 net.bridge.bridge-nf-call-iptables = 1
 EOF
 sudo sysctl --system
-</code></pre>
-<ul>
-<li>
-<p>The docker runtime has already been installed on both nodes, so you may skip this step.</p>
-</li>
-<li>
-<p>Install kubeadm, kubectl and kubelet on all nodes:</p>
-</li>
-</ul>
-<pre><code class="language-bash">sudo apt-get update
+
+# Install Kubernetes packages
+sudo apt-get update
 sudo apt-get install -y apt-transport-https ca-certificates curl
 
 sudo curl -fsSLo /usr/share/keyrings/kubernetes-archive-keyring.gpg https://packages.cloud.google.com/apt/doc/apt-key.gpg
-
 echo &quot;deb [signed-by=/usr/share/keyrings/kubernetes-archive-keyring.gpg] https://apt.kubernetes.io/ kubernetes-xenial main&quot; | sudo tee /etc/apt/sources.list.d/kubernetes.list
 
 sudo apt-get update
 sudo apt-get install -y kubelet=1.21.0-00 kubeadm=1.21.0-00 kubectl=1.21.0-00
 sudo apt-mark hold kubelet kubeadm kubectl
-</code></pre>
-<ul>
-<li>What is the version of kubelet installed?</li>
-</ul>
-<p>===</p>
-<pre><code class="language-bash">kubelet --version
-kubectl version
-</code></pre>
-<ul>
-<li>
-<p><code>→</code> Initialize <code>Control Plane Node</code> (Master Node). Use the following options:</p>
-</li>
-<li>
-<p><code>apiserver-advertise-address</code> - Use the IP address allocated to eth0 on the controlplane node</p>
-</li>
-<li>
-<p><code>apiserver-cert-extra-sans</code> - Set it to controlplane</p>
-</li>
-<li>
-<p><code>pod-network-cidr -</code> Set to <code>10.244.0.0/16</code></p>
-</li>
-</ul>
-<p>Once done, set up the <code>default kubeconfig</code> file and wait for node to be part of the cluster.</p>
-<p>======</p>
-<p>run <code>kubeadm init --apiserver-cert-extra-sans=controlplane --apiserver-advertise-address 10.2.223.3 --pod-network-cidr=10.244.0.0/16</code></p>
-<p>The IP address used here is just an example. It will change for your lab session. Make sure to check the IP address allocated to eth0 by running:</p>
-<p>Once you run the init command, you should see an output similar to below:</p>
-<pre><code class="language-bash">[init] Using Kubernetes version: v1.21.0
-[preflight] Running pre-flight checks
-        [WARNING IsDockerSystemdCheck]: detected &quot;cgroupfs&quot; as the Docker cgroup driver. The recommended driver is &quot;systemd&quot;. Please follow the guide at https://kubernetes.io/docs/setup/cri/
-[preflight] Pulling images required for setting up a Kubernetes cluster
-[preflight] This might take a minute or two, depending on the speed of your internet connection
-[preflight] You can also perform this action in beforehand using 'kubeadm config images pull'
-[certs] Using certificateDir folder &quot;/etc/kubernetes/pki&quot;
-[certs] Generating &quot;ca&quot; certificate and key
-[certs] Generating &quot;apiserver&quot; certificate and key
-[certs] apiserver serving cert is signed for DNS names [controlplane kubernetes kubernetes.default kubernetes.default.svc kubernetes.default.svc.cluster.local] and IPs [10.96.0.1 10.2.223.3]
-[certs] Generating &quot;apiserver-kubelet-client&quot; certificate and key
-[certs] Generating &quot;front-proxy-ca&quot; certificate and key
-[certs] Generating &quot;front-proxy-client&quot; certificate and key
-[certs] Generating &quot;etcd/ca&quot; certificate and key
-[certs] Generating &quot;etcd/server&quot; certificate and key
-[certs] etcd/server serving cert is signed for DNS names [controlplane localhost] and IPs [10.2.223.3 127.0.0.1 ::1]
-[certs] Generating &quot;etcd/peer&quot; certificate and key
-[certs] etcd/peer serving cert is signed for DNS names [controlplane localhost] and IPs [10.2.223.3 127.0.0.1 ::1]
-[certs] Generating &quot;etcd/healthcheck-client&quot; certificate and key
-[certs] Generating &quot;apiserver-etcd-client&quot; certificate and key
-[certs] Generating &quot;sa&quot; key and public key
-[kubeconfig] Using kubeconfig folder &quot;/etc/kubernetes&quot;
-[kubeconfig] Writing &quot;admin.conf&quot; kubeconfig file
-[kubeconfig] Writing &quot;kubelet.conf&quot; kubeconfig file
-[kubeconfig] Writing &quot;controller-manager.conf&quot; kubeconfig file
-[kubeconfig] Writing &quot;scheduler.conf&quot; kubeconfig file
-[kubelet-start] Writing kubelet environment file with flags to file &quot;/var/lib/kubelet/kubeadm-flags.env&quot;
-[kubelet-start] Writing kubelet configuration to file &quot;/var/lib/kubelet/config.yaml&quot;
-[kubelet-start] Starting the kubelet
-[control-plane] Using manifest folder &quot;/etc/kubernetes/manifests&quot;
-[control-plane] Creating static Pod manifest for &quot;kube-apiserver&quot;
-[control-plane] Creating static Pod manifest for &quot;kube-controller-manager&quot;
-[control-plane] Creating static Pod manifest for &quot;kube-scheduler&quot;
-[etcd] Creating static Pod manifest for local etcd in &quot;/etc/kubernetes/manifests&quot;
-[wait-control-plane] Waiting for the kubelet to boot up the control plane as static Pods from directory &quot;/etc/kubernetes/manifests&quot;. This can take up to 4m0s
-[kubelet-check] Initial timeout of 40s passed.
-[apiclient] All control plane components are healthy after 85.004816 seconds
-[upload-config] Storing the configuration used in ConfigMap &quot;kubeadm-config&quot; in the &quot;kube-system&quot; Namespace
-[kubelet] Creating a ConfigMap &quot;kubelet-config-1.21&quot; in namespace kube-system with the configuration for the kubelets in the cluster
-[upload-certs] Skipping phase. Please see --upload-certs
-[mark-control-plane] Marking the node controlplane as control-plane by adding the labels: [node-role.kubernetes.io/master(deprecated) node-role.kubernetes.io/control-plane node.kubernetes.io/exclude-from-external-load-balancers]
-[mark-control-plane] Marking the node controlplane as control-plane by adding the taints [node-role.kubernetes.io/master:NoSchedule]
-[bootstrap-token] Using token: gtmdad.olx54xrbafcionbd
-[bootstrap-token] Configuring bootstrap tokens, cluster-info ConfigMap, RBAC Roles
-[bootstrap-token] configured RBAC rules to allow Node Bootstrap tokens to get nodes
-[bootstrap-token] configured RBAC rules to allow Node Bootstrap tokens to post CSRs in order for nodes to get long term certificate credentials
-[bootstrap-token] configured RBAC rules to allow the csrapprover controller automatically approve CSRs from a Node Bootstrap Token
-[bootstrap-token] configured RBAC rules to allow certificate rotation for all node client certificates in the cluster
-[bootstrap-token] Creating the &quot;cluster-info&quot; ConfigMap in the &quot;kube-public&quot; namespace
-[kubelet-finalize] Updating &quot;/etc/kubernetes/kubelet.conf&quot; to point to a rotatable kubelet client certificate and key
-[addons] Applied essential addon: CoreDNS
-[addons] Applied essential addon: kube-proxy
 
-Your Kubernetes control-plane has initialized successfully!
+# -----------------------------------------------------------
+# Step 2: Execute on controlplane ONLY
+# -----------------------------------------------------------
+# Identify eth0 IP
+ETH0_IP=$(ip -4 addr show eth0 | grep -oP '(?&lt;=inet\s)\d+(\.\d+){3}')
 
-To start using your cluster, you need to run the following as a regular user:
+# Initialize controlplane
+sudo kubeadm init \
+  --apiserver-cert-extra-sans=controlplane \
+  --apiserver-advertise-address=$ETH0_IP \
+  --pod-network-cidr=10.244.0.0/16
 
-  mkdir -p $HOME/.kube
-  sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
-  sudo chown $(id -u):$(id -g) $HOME/.kube/config
+# Configure user kubeconfig
+mkdir -p $HOME/.kube
+sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+sudo chown $(id -u):$(id -g) $HOME/.kube/config
 
-Alternatively, if you are the root user, you can run:
+# Install CNI overlay (Weave Net)
+kubectl apply -f &quot;https://cloud.weave.works/k8s/net?k8s-version=$(kubectl version | base64 | tr -d '\n')&quot;
 
-  export KUBECONFIG=/etc/kubernetes/admin.conf
+# -----------------------------------------------------------
+# Step 3: Join node01
+# -----------------------------------------------------------
+# SSH into node01 and run the kubeadm join output from Step 2:
+sudo kubeadm join &lt;controlplane-ip&gt;:6443 --token &lt;token&gt; \
+  --discovery-token-ca-cert-hash sha256:&lt;hash&gt;
 
-You should now deploy a pod network to the cluster.
-Run &quot;kubectl apply -f [podnetwork].yaml&quot; with one of the options listed at:
-  https://kubernetes.io/docs/concepts/cluster-administration/addons/
-
-Then you can join any number of worker nodes by running the following on each as root:
-
-kubeadm join 10.2.223.3:6443 --token gtmdad.olx54xrbafcionbd \
-        --discovery-token-ca-cert-hash sha256:fb08c01c782ef1d1ad0b643b56c9edd6a864b87cff56e7ff35713cd666659ff4 
-
-Once the command has been run successfully, set up the kubeconfig:
-root@controlplane:~# mkdir -p $HOME/.kube
-root@controlplane:~# sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
-root@controlplane:~# sudo chown $(id -u):$(id -g) $HOME/.kube/config
-root@controlplane:~# 
+# Back on controlplane, verify nodes
+kubectl get nodes
 </code></pre></main></body>
 </html>

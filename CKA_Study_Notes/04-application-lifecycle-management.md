@@ -1,253 +1,291 @@
 # 04. Application Lifecycle Management
 
-## Application Lifecycle Management
+## 📑 Table of Contents
+- [1. Rolling Updates and Rollbacks](#1-rolling-updates-and-rollbacks)
+  - [Rollout Revisions & History](#rollout-revisions--history)
+  - [Deployment Strategies: Recreate vs. Rolling Update](#deployment-strategies-recreate-vs-rolling-update)
+  - [Updating Deployments (Declarative vs. Imperative)](#updating-deployments-declarative-vs-imperative)
+  - [Under the Hood: ReplicaSet Management](#under-the-hood-replicaset-management)
+  - [Rollbacks & Undo Operations](#rollbacks--undo-operations)
+  - [Deployment CLI Cheatsheet](#deployment-cli-cheatsheet)
+  - [Rollout Verification Script](#rollout-verification-script)
+- [2. Commands and Arguments in Docker & Kubernetes](#2-commands-and-arguments-in-docker--kubernetes)
+  - [Docker Process Lifecycle & CMD](#docker-process-lifecycle--cmd)
+  - [Docker ENTRYPOINT vs. CMD](#docker-entrypoint-vs-cmd)
+  - [Overriding Entrypoint in Docker](#overriding-entrypoint-in-docker)
+  - [Configuring `command` and `args` in Kubernetes Pods](#configuring-command-and-args-in-kubernetes-pods)
+  - [Docker vs. Kubernetes Direct Mapping](#docker-vs-kubernetes-direct-mapping)
+- [3. Application Environment Variables](#3-application-environment-variables)
+  - [Direct Key-Value Definitions](#direct-key-value-definitions)
+  - [Environment Variables via `valueFrom`](#environment-variables-via-valuefrom)
+- [4. ConfigMaps](#4-configmaps)
+  - [Purpose & Lifecycle](#purpose--lifecycle)
+  - [Imperative ConfigMap Creation](#imperative-configmap-creation)
+  - [Declarative ConfigMap Definition](#declarative-configmap-definition)
+  - [Injecting ConfigMaps into Pods](#injecting-configmaps-into-pods)
+- [5. Kubernetes Secrets](#5-kubernetes-secrets)
+  - [Secrets vs. ConfigMaps](#secrets-vs-configmaps)
+  - [Imperative Secret Creation](#imperative-secret-creation)
+  - [Declarative Secret Definition & Base64 Encoding](#declarative-secret-definition--base64-encoding)
+  - [Injecting Secrets into Pods](#injecting-secrets-into-pods)
+  - [Secret Security Risks & Hardening Best Practices](#secret-security-risks--hardening-best-practices)
+- [6. Multi-Container Pod Patterns](#6-multi-container-pod-patterns)
+  - [Microservice Co-location & Shared Context](#microservice-co-location--shared-context)
+  - [Design Patterns: Sidecar, Adapter, Ambassador](#design-patterns-sidecar-adapter-ambassador)
+  - [Multi-Container Pod Manifest](#multi-container-pod-manifest)
+- [7. Init Containers](#7-init-containers)
+  - [Initialization Lifecycle & Sequential Execution](#initialization-lifecycle--sequential-execution)
+  - [Init Container Manifest & Use Cases](#init-container-manifest--use-cases)
+- [8. Self-Healing Applications & Container Health Probes](#8-self-healing-applications--container-health-probes)
+  - [Probe Types: Startup, Liveness, and Readiness](#probe-types-startup-liveness-and-readiness)
+  - [Probe Handlers](#probe-handlers)
+  - [Production Multi-Probe Manifest](#production-multi-probe-manifest)
 
-### Rolling Updates and Rollbacks
+---
 
-Updates and rollbacks in a deployment. Before we look at how we upgrade our application, let's try to understand rollouts and versioning in a deployment. When you first create a deployment, it triggers a rollout, a new rollout, creates a new **deployment revision**, let's call it revision one.
+## 1. Rolling Updates and Rollbacks
 
-![Diagram](images/image268.png)
+### Rollout Revisions & History
+When a Deployment is created or updated (e.g., container image bumped, labels altered, replicas changed), Kubernetes initiates a **rollout**. Every rollout generates a new **Deployment Revision** (e.g., Revision 1, Revision 2). Tracking revisions enables auditability and atomic rollbacks to previous states.
 
-In the future, when the application is upgraded, meaning when the container version is updated to a new one, a new rollout is triggered and a new **deployment revision** is created named “revision two” this helps us keep track of the changes made to our deployment and enables us to roll back to a previous version of deployment if necessary.
+![Rollout Revisions](images/image268.png)
 
-You can see the status of your rollout by running the command `kubectl rollout status deployment/myapp`, followed by the name of the deployment. 
-
+To inspect the live progress of an active rollout:
 ```bash
-$ kubectl rollout status deployment/myapp-deployment
+kubectl rollout status deployment/myapp-deployment
 ```
 
-![Diagram](images/image194.png)
+![Rollout Status](images/image194.png)
 
-To see the revisions and history of rollout run the `kubectl rollout history` command followed by the deployment name. 
-
+To view the history of revisions:
 ```bash
-$ kubectl rollout history deployment/myapp-deployment And this will show you the revisions and history of our deployment.
+kubectl rollout history deployment/myapp-deployment
 ```
 
-There are two types of deployment strategies. Say, for example, you have five replicas of your Web application instance deployed. One way to upgrade these to a newer version is to destroy all of these and then create newer versions of application instances, meaning first destroy the five running instances and then deploy five new instances of the new application version.The problem with this, as you can imagine, is that during the period after the older versions are down and before any newer version is up, the application is down and inaccessible to users. This strategy is known as the **recreate strategy**, and thankfully, this is not the default deployment strategy.
+---
 
-![Diagram](images/image377.png)
+### Deployment Strategies: Recreate vs. Rolling Update
 
-The second strategy is where we do not destroy all of them at once. Instead, we take down the older version and bring up a newer version one by one, this way the application never goes down and the upgrade is seamless.**Remember, if you do not specify your strategy while creating the deployment, it will assume it to** **be rolling** **update.**In other words, rolling update is the default deployment strategy. 
+| Strategy | Behavior | Downtime | Resource Overhead |
+| :--- | :--- | :--- | :--- |
+| **Recreate** | Terminates all old Pods simultaneously before launching new Pods. | **Yes** (downtime between termination and startup) | Low (no duplicate Pods) |
+| **RollingUpdate** *(Default)* | Gracefully scales down old ReplicaSets while incrementally scaling up new ones. | **Zero Downtime** | Moderate (temporary extra Pod capacity) |
 
-**So we talked about upgrades. How exactly do you update your deployment?**
+![Deployment Strategies](images/image377.png)
 
-**When I say update** it could be different things, such as updating your application version by updating the version of **Docker** containers used, updating their **labels** or updating the number of **replicas**, etc. Since we already have a deployment definition file, it is easy for us to modify these files once we make the necessary changes.
+> [!NOTE]
+> `RollingUpdate` is the default deployment strategy in Kubernetes. You can tune its behavior using `maxSurge` (how many Pods can be created above `replicas`) and `maxUnavailable` (how many Pods can be unavailable during update).
+
+---
+
+### Updating Deployments (Declarative vs. Imperative)
+
+#### Declarative (Recommended)
+Modify the Deployment manifest (`deployment-definition.yaml`) and apply changes:
 
 ```yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
- name: myapp-deployment
- labels:
-  app: nginx
+  name: myapp-deployment
+  labels:
+    app: myapp
 spec:
- template:
-   metadata:
-     name: myap-pod
-     labels:
-       app: myapp
-       type: front-end
-   spec:
-    containers:
-    - name: nginx-container
-      image: nginx:1.7.1
- replicas: 3
- selector:
-  matchLabels:
+  replicas: 3
+  selector:
+    matchLabels:
+      type: front-end
+  template:
+    metadata:
+      labels:
+        app: myapp
+        type: front-end
+    spec:
+      containers:
+      - name: nginx-container
+        image: nginx:1.7.1
 ```
 
-    `type: front-end`    
-
 ```bash
-$ kubectl apply -f deployment-definition.yaml
+kubectl apply -f deployment-definition.yaml
 ```
 
-A new rollout is triggered and a new revision after deployment is created. But there is another way to do the same thing. Alternate way to update a deployment say for example for updating an image.You could use the `kubectl set Image` command, to update the image of your application.
-
+#### Imperative
+Directly update the container image using the CLI:
 ```bash
-$ kubectl set image deployment/myapp-deployment nginx=nginx:1.9.1
+kubectl set image deployment/myapp-deployment nginx-container=nginx:1.9.1
 ```
 
-Note:  **remember, doing it this way will result in the deployment definition file having a different configuration.** So you must be careful when using the same definition file to make changes in the future. 
+> [!WARNING]
+> Updating resources imperatively causes configuration drift between the live cluster state and your source-controlled YAML manifests. Prefer declarative updates with GitOps.
 
-The differences between the recreate and rolling update strategies can also be seen when you view the deployments in detail from the `kubectl describe deployment` command to see the detailed information regarding the deployments. You will notice when the recreated strategy was used, The events indicate that the old ReplicaSet was scaled down to zero first, and then the new replicaSet scaled up to five.
+---
 
-However, when the rolling update strategy was used, the old ReplicaSet was scaled down one at a time.Simultaneously scaling up the new ReplicaSet one at a time.
+### Under the Hood: ReplicaSet Management
+A Deployment does not manage Pods directly; it manages underlying **ReplicaSets**.
+- During a **Recreate** deployment, the old ReplicaSet is scaled to `0`, then the new ReplicaSet scales to the target replica count.
+- During a **Rolling Update**, Kubernetes creates a new ReplicaSet and scales it up in increments while simultaneously scaling down the old ReplicaSet.
 
-![Diagram](images/image323.png)
+![ReplicaSet Scaling Events](images/image323.png)
 
-Let's look at how a deployment performs an upgrade under the hood,  when a new deployment is created. Say  to deploy five replicas. It first creates a replicaSet automatically, which in turn creates the number of PODs required to meet the number of replicas. 
-
-When you upgrade your application, as we saw in the previous `, the kubernetes deployment object creates a new replicaSet under the hood and starts deploying the containers there at the same time, taking down the paths in the old ReplicaSet following a rolling update strategy. 
-
-This can be seen when you try to list the replicaSets using the `kubectl get ReplicaSets` command.
-
-![Diagram](images/image81.png)
-
-Here we see the old ReplicaSet with zero PODs and the new ReplicaSet with five PODs.
-
-Say, for instance, once you upgrade your application, you realise something is inferior, right?
-
-Something's wrong with the new version of Build you used for upgrading. So you would like to roll back your update.
-
-Kubernetes deployments  allow you to roll back to a previous revision.To undo a change run the  `kubectl rollout undo deployment/myapp-deployment` command followed by the name of the deployment. The deployment will then destroy the PODs in the new ReplicaSet and bring the older ones up in the old ReplicaSet. And your application is back to its older format.
-
-When you compare the output of the `kubectl get replicasets` command before and after the roll back, you will be able to notice the difference. 
-
-![Diagram](images/image333.png)
-
-Before the rollback the first ReplicaSet had zero pods and new replicas that had five pods. And this is reversed after the rollback is finished.
-
-To summarise the commands real quick, use the kubectl create command to create the deployment.
-
-get deployment's, command to list the deployments.
-
-Apply and set image commands to update the deployments and `rollout status` commands to see the status of rollouts and `rollout undo` command to roll back a deployment operation.
-
+Inspect the ReplicaSets during and after an upgrade:
 ```bash
-$ kubectl create -f deployment-definition.yaml
-$ kubectl get deployments
-$ kubectl apply -f deployment-definition.yaml
-$ kubectl set image deployment/myapp-deployment nginx=nginx:1.9.1
-$ kubectl rollout status deployment/myapp-deployment
-$ kubectl rollout history deployment/myapp-deployment
-$ kubectl rollout undo deployment/myapp-deployment
+kubectl get replicasets
 ```
 
-#### Practice Test
+![Active and Inactive ReplicaSets](images/image81.png)
+
+---
+
+### Rollbacks & Undo Operations
+If an updated application version is defective (e.g., application crashes, runtime errors), Kubernetes allows an instant rollback to the previous revision.
 
 ```bash
-controlplane ~ ➜  cat curl-test.sh
+# Roll back to the immediately preceding revision
+kubectl rollout undo deployment/myapp-deployment
+
+# Roll back to a specific target revision
+kubectl rollout undo deployment/myapp-deployment --to-revision=1
+```
+
+During a rollback, Kubernetes reverses the process: scaling down the current ReplicaSet and scaling up the older ReplicaSet.
+
+![Rollback Reversal](images/image333.png)
+
+---
+
+### Deployment CLI Cheatsheet
+
+```bash
+# Create deployment
+kubectl create -f deployment-definition.yaml
+
+# List deployments and ReplicaSets
+kubectl get deployments
+kubectl get replicasets
+
+# Update deployment image imperatively
+kubectl set image deployment/myapp-deployment nginx=nginx:1.9.1
+
+# Check rollout progress
+kubectl rollout status deployment/myapp-deployment
+
+# View revision history
+kubectl rollout history deployment/myapp-deployment
+
+# View specific revision details
+kubectl rollout history deployment/myapp-deployment --revision=2
+
+# Roll back deployment
+kubectl rollout undo deployment/myapp-deployment
+
+# Pause and resume rollouts (useful for batching changes)
+kubectl rollout pause deployment/myapp-deployment
+kubectl rollout resume deployment/myapp-deployment
+```
+
+---
+
+### Rollout Verification Script
+
+```bash
+# Verify application availability across rolling update cycles
 for i in {1..35}; do
-   kubectl exec --namespace=kube-public curl -- sh -c 'test=`wget -qO- -T 2  http://webapp-service.default.svc.cluster.local:8080/info 2>&1` && echo "$test OK" || echo "Failed"';
+   kubectl exec --namespace=kube-public curl -- sh -c \
+     'test=$(wget -qO- -T 2 http://webapp-service.default.svc.cluster.local:8080/info 2>&1) && echo "$test OK" || echo "Failed"'
    echo ""
 done
 ```
 
-Configuring applications comprises of understanding the following concepts:
+---
 
-- Configuring Command and Arguments on applications
+## 2. Commands and Arguments in Docker & Kubernetes
 
-- Configuring Environment Variables
+### Docker Process Lifecycle & CMD
+Unlike virtual machines designed to run long-lived operating systems with multiple background daemons, **containers run a single specific foreground task or process**. Once that process terminates or crashes, the container exits immediately.
 
-- Configuring Secrets
-
-### Command and Arguments in a Pod Definition file.
-
-We will first look at command arguments and entry points in Docker. Let's start with a simple scenario.
-
-Say you were to run a docker container from an Ubuntu image, when you run the “`docker run ubuntu`” command, *it runs an instance of Ubuntu image and exits immediately.* If you were to list the running containers you wouldn't see the container running. If you list all containers including those that are stopped you will see that the new container you ran is in an exited state. **Now why is that ?** **Unlike virtual machines, Containers are not meant to host an operating system** 
+![Container Process Lifecycle](images/image130.png)
 
 ```bash
-$ docker run ubuntu # To run a docker container$ docker ps #To list running containers$ docker ps -a #To list all containers including that are stopped
+# Running plain ubuntu exits immediately because bash finds no interactive tty
+docker run ubuntu
+
+# Check running and stopped containers
+docker ps
+docker ps -a
 ```
 
-![Diagram](images/image130.png)
+The process launched inside a container is governed by the `CMD` instruction in the `Dockerfile`:
+- NGINX image: `CMD ["nginx", "-g", "daemon off;"]`
+- MySQL image: `CMD ["mysqld"]`
+- Ubuntu image: `CMD ["bash"]` (exits immediately if no pseudo-TTY is allocated)
 
-“*Containers are meant to run a specific task or process such as to host an instance of a web server or application server or a database or simply to carry out some kind of computation or analysis. Once the task is complete, the container exits. A container only lives as long as the process inside it is alive.”*
+![Dockerfile CMD Instruction](images/image188.png)
 
-If the web service inside the container is stopped or crashes the container exits. 
+To override the default image command at container startup:
+```bash
+docker run ubuntu sleep 5
+```
 
-**So who defines what process is run within the container.**
+---
 
-If you look at the docker file for popular Docker images like NGINX you will see an instruction called CMD which stands for command that defines the program that will be run within the container when it starts. For the NGINX image it is the nginx command, for the mysql image it is the mysqld command. 
+### Docker ENTRYPOINT vs. CMD
 
-![Diagram](images/image188.png)
+To define default executable behavior in a custom image:
 
-What we tried to do earlier was to run a container with a plain Ubuntu Operating System. Let us look at the docker file for this image and you will see that it uses bash as the default command. Now bash is not really a process like a web server or database server. It is a shell that listens for inputs from a terminal if it cannot find a terminal it exits. 
+![Specifying Custom Command](images/image74.png)
 
-When we ran the Ubuntu container earlier Docker created a container from the Ubuntu image and launched the bash program, by default Docker does not attach a terminal to a container when it is run. And so the bash program does not find the terminal and so it exits since the process that was started when the container was created finished and the container exits as well.
+Use JSON array format (exec form) rather than plain shell string form:
+```dockerfile
+# Correct exec form: separate executable and parameters
+CMD ["sleep", "5"]
+```
 
-**So how do you specify a different command to start the container?**
+![JSON Array Syntax](images/image40.png)
 
-One option is to append a command to the docker run command and that way it overrides the default command specified within the image.
+#### `ENTRYPOINT` (Fixed Executable)
+`ENTRYPOINT` defines the executable program that will always execute on startup. Any arguments passed via `docker run` are **appended** to the entrypoint rather than replacing it.
+
+```dockerfile
+FROM ubuntu
+ENTRYPOINT ["sleep"]
+```
 
 ```bash
-$ docker run ubuntu sleep 5
+# Executes: sleep 10
+docker run ubuntu-sleeper 10
 ```
 
-In this case we run the `docker run ubuntu` command with the “sleep 5” command as the added option.
+![ENTRYPOINT Appending Arguments](images/image271.png)
 
-This way when the container starts it runs the sleep program, waits for 5 seconds and then exits.
+#### Combining `ENTRYPOINT` and `CMD` (Default Parameter Pattern)
+When combined, `ENTRYPOINT` sets the base command and `CMD` provides the **default arguments**. CLI arguments override `CMD` while leaving `ENTRYPOINT` intact:
 
-But how do you make that change permanent?
+```dockerfile
+FROM ubuntu
+ENTRYPOINT ["sleep"]
+CMD ["5"]
+```
 
-![Diagram](images/image74.png)
+- `docker run ubuntu-sleeper` $\rightarrow$ Executes: `sleep 5`
+- `docker run ubuntu-sleeper 10` $\rightarrow$ Executes: `sleep 10`
 
-Say you want the image to always run the sleep command when it starts. You would then create your own image from the base Ubuntu image and specify a new command. There are different ways of specifying the command, either the command simply as is in a shell form or Or in a JSON array format like this.
+![Combining ENTRYPOINT and CMD](images/image308.png)
 
-![Diagram](images/image40.png)
+---
 
-But remember, when you specify in a JSON array format, the first element in the array should be the  executable.
-
-Do not specify the command and parameters together like in this case of the sleep program , the command and its parameters should be separate elements in the list. 
-
-So I now build my new image using the docker build command, and name it as ubuntu-sleeper.
-
-I could now simply run the docker Ubuntu sleeper command and get the same results. It always sleeps for five seconds and exits. `$ docker build -t ubuntu-sleeper .`
-
+### Overriding Entrypoint in Docker
+To override the fixed `ENTRYPOINT` at runtime:
 ```bash
-$ docker run ubuntu-sleeper 
+docker run --entrypoint sleep2.0 ubuntu-sleeper 10
 ```
 
-*But what if I wish to change the number of seconds it sleeps currently. It is hard coded to five seconds as we learned before.* 
+---
 
-One option is to run the docker run command with the new command appended to it. 
-
-```bash
-$ docker run ubuntu-sleeper sleep 10 
-```
-
-In this case sleep 10 and so the command that will be run at startup will be sleep 10 but it doesn't look very good.
-
-The name of the image Ubuntu sleeper in itself implies that the container will sleep. So we shouldn't have to specify the sleep command again. Instead we would like it to be something like this.
-
-```text
-$ Docker run Ubuntu sleeper 10
-```
-
-We only want to pass in the number of seconds the containers should sleep and sleep command should be invoked automatically and that is where the entry point instruction comes into play.
-
-The **entry point instruction** is like the command instruction as in you can specify the program that will be run when the container starts and whatever you specify on the command line. In this case 10 will get appended to the entry point so the command that will be run when the container starts is sleep 10.
-
-![Diagram](images/image271.png)
-
-So that's the difference between the two. In case of the CMD instruction the command line parameters passed will get replaced entirely, whereas in case of entry point the command line parameters will get appended. 
-
-Now, in the second case, what if I run the ubuntu-sleeper without appending the number of seconds,  then the command at startup will just sleep and you get the error that the operand is missing.
-
-![Diagram](images/image308.png)
-
-So how do you configure a default value for the command. If one was not specified in the command line that's where you would use both entry point as well as the command instruction. 
-
-In this case the command instruction will be appended to the entry point instruction so at startup the
-
-command would be sleep 5 if you didn't specify any parameters in the command line. if you did then that will override the command instruction and remember for this to happen you should always specify the entry point and command instructions in a JSON format. 
-
-Finally, what if you really really want to modify the entrypoint during runtime say from sleep to an imaginary sleep 2.0 command.
-
-Well in that case you can override it by using the entry point option in the docker run command.
-
-The final command at startup would then be sleep 2.0 10.`docker run --entrypoint sleep2.0 ubuntu-sleeper 10`
-
-### Commands and Arguments in Kubernetes
-
-Command and Arguments in a Kubernetes POD. In the previous lecture we created a simple Docker image that sleeps for a given number of seconds. We named it **ubuntu-sleeper** and we ran it using the docker command 
-
-```bash
-$ docker run --name ubuntu-sleeper ubuntu-sleeper
-```
-
- By default It sleeps for five seconds but you can override it by passing a command line argument. 
-
-```bash
-$ docker run --name ubuntu-sleeper ubuntu-sleeper 10 
-```
-
-We will now create a pod using this image. We start with a blank pod definition template, input the name of the pod and specify the image name.  When the pod is created, it creates a container from the specified image, and the container sleeps for five seconds before exiting. Now if you need the container to sleep for 10 seconds as in the second command how do you specify the additional argument in the pod definition file ? 
-
-Anything that is appended to the docker run command will go into the “args” property of the pod definition file in the form of an array like this. 
+### Configuring `command` and `args` in Kubernetes Pods
+In Kubernetes manifests:
+- `command` overrides the Docker `ENTRYPOINT`.
+- `args` overrides the Docker `CMD`.
 
 ```yaml
 apiVersion: v1
@@ -255,30 +293,39 @@ kind: Pod
 metadata:
   name: ubuntu-sleeper-pod
 spec:
- containers:
- - name: ubuntu-sleeper
-   image: ubuntu-sleeper
-   command: ["sleep2.0"]
-   args: ["10"]
+  containers:
+  - name: ubuntu-sleeper
+    image: ubuntu-sleeper
+    command: ["sleep2.0"]   # Overrides Dockerfile ENTRYPOINT
+    args: ["10"]            # Overrides Dockerfile CMD
 ```
 
-![Diagram](images/image410.png)
+![Kubernetes Command and Args Mapping](images/image410.png)
 
 ```bash
-$ kubectl create -f pod-definition.yaml 
+kubectl apply -f pod-definition.yaml
 ```
 
-Let us try to relate that to the docker file we created earlier. The Dockerfile has an ENTRYPOINT as well as a CMD instruction specified. The ENTRYPOINT is the command that is run at startup, and the CMD is the default parameter passed to the command. With the args option in the pod definition file we **override** the CMD instruction in the Dockerfile. 
+---
 
-But what if you need to override the ENTRYPOINT? Say from sleep to a hypothetical sleep2.0 command? `$ docker run --name ubuntu-sleeper \`       `--entrypoint sleep2.0`        `ubuntu-sleeper 10` 
+### Docker vs. Kubernetes Direct Mapping
 
-In the docker world we would run the docker run command with the entry point option set to the new command the corresponding entry in the pod definition file would be using a command field the command field corresponds to entry point instruction in the docker file 
+| Docker Concept | Kubernetes Equivalent | Purpose |
+| :--- | :--- | :--- |
+| `ENTRYPOINT ["sleep"]` | `command: ["sleep"]` | Specifies the executable binary/process. |
+| `CMD ["5"]` | `args: ["5"]` | Specifies default arguments passed to the executable. |
+| `--entrypoint <cmd>` | `command: ["<cmd>"]` | Overrides the base binary at launch. |
+| `docker run <image> <args>` | `args: ["<args>"]` | Supplies arguments that override default `CMD`. |
 
-So to summarize there are two fields that correspond to two instructions in the docker file. The command field overrides the entry point instruction and the args field overrides the command instruction in the docker file. **Remember** it is not the command field that overrides the CMD instruction in the docker file. 
+> [!IMPORTANT]
+> Do not confuse `command` with Docker `CMD`. In Kubernetes, `command` maps directly to Docker's `ENTRYPOINT`, and `args` maps to Docker's `CMD`.
 
-### Configure Environment Variables in Applications
+---
 
-**How to set an environment variable in Kubernetes ?** Given a pod definition file which uses the same image as the dockor command we ran in the last lecture. To set an environment variable, use the ENV property. `$ docker run -e APP_COLOR=pink simple-webapp-color`
+## 3. Application Environment Variables
+
+### Direct Key-Value Definitions
+Environment variables can be injected directly into containers via the `env` array in the Pod specification:
 
 ```yaml
 apiVersion: v1
@@ -286,92 +333,70 @@ kind: Pod
 metadata:
   name: simple-webapp-color
 spec:
- containers:
- - name: simple-webapp-color
-   image: simple-webapp-color
-   ports:
-   - containerPort: 8080
-   env:
-   - name: APP_COLOR
-     value: pink
+  containers:
+  - name: simple-webapp-color
+    image: simple-webapp-color
+    ports:
+    - containerPort: 8080
+    env:
+    - name: APP_COLOR
+      value: pink
 ```
 
-`env:` is an array so every item under the env property starts with a dash, indicating an item in the array.  Each item has a name and a value property. The name is the name of the environment variable made available with the container and the value is its value.
+---
 
-What we just saw was a direct way of specifying the environment variables using a plain key value pair format, however there are other ways of setting the environment variables such as using configMaps and secrets.
+### Environment Variables via `valueFrom`
+For centralized configuration and credential security, avoid hardcoding values. Use `valueFrom` to reference keys from ConfigMaps or Secrets:
 
-![Diagram](images/image138.png)
-
-The difference in this case is that instead of specifying value, we say valueFrom And then a specification of configMap or secret.
-
-### ConfigMaps in Applications
-
-**How to work with configuration data in Kubernetes.?** In the previous lecture we saw how to define environment variables in the pod definition file. When you have a lot of pod definition files it will become difficult to manage the environment data stored within the various files.
-
-We can take this information out of the pod definition file and manage it centrally using ConfigurationMaps. ConfigMaps are used to pass configuration data in the form of key value pairs in Kubernetes. When the pod is created, inject the config map into the pod. So the key value pairs that are available as environment variables for the application hosted inside the container in the pod. 
-
-There are two phases involved in configuring ConfigMaps. First create the ConfigMaps and second Inject them into the POD. 
-
-Just like any other Kubernetes object there are two ways of creating a configmap. 
-
- **The imperative way** - without using a ConfigMap definition file and  **The Declarative way** by using a Config map definition file. 
-
-If you do not wish to create a configmap definition, you could simply use the `kubectl create configmap` command and specify the required arguments.
-
-Let's take a look at that first with this method. You can directly specify the key value pairs in the command line. To create a configMap of the given values, run the `kubectl create configmap` command. The command is followed by the config name and the option `-–from-literal`. The from literal option is used to specify the key value pairs in the command itself. 
-
-In this example, we are creating a configmap by the name app-config, with a key value pair `APP_COLOR=blue.` If you wish to add additional key value pairs simply specify the `--from-literal` options multiple times.
-
-```bash
-$ kubectl create configmap app-config --from-literal=APP_COLOR=blue --from-literal=APP_MODE=prod
-```
-
-However this will get complicated when you have too many configuration items. Another way to input configuration data is through a file. Use the `--from-file` option and specify a path to the file that contains the required data. The data from this file is read and stored under the name of the file. 
-
-```bash
-$ kubectl create configmap app-config --from-file=app_config.properties #Another way
-```
-
-Let us now look at the declarative approach. For this we create a definition file just like how we did for the pod. The file has apiVersion, kind, metadata and instead of spec, here we have “data”. 
+![Direct vs valueFrom Environment Variables](images/image138.png)
 
 ```yaml
-apiVersion: v1
-kind: ConfigMap
-metadata:
- name: app-config
-data:
- APP_COLOR: blue
- APP_MODE: prod
+env:
+- name: APP_COLOR
+  valueFrom:
+    configMapKeyRef:
+      name: app-config
+      key: APP_COLOR
+- name: DB_PASSWORD
+  valueFrom:
+    secretKeyRef:
+      name: app-secret
+      key: DB_Password
 ```
 
-The apiVersion is v1, kind is ConfigMap. Under metadata specify the name of the configmap. 
+---
 
-We will call it app-config. Under data add the configuration data in a key-value format. Run the `kubectl create` command and specify the configuration file name. So that creates the app-config ConfigMap with the values we specified.`$ kubectl create -f config-map.yaml`
+## 4. ConfigMaps
 
-You can create as many configmaps as you need in the same way for various different purposes. 
+### Purpose & Lifecycle
+ConfigMaps decouple configuration artifacts and parameters from container image builds, making applications portable across environments (development, staging, production).
+
+ConfigMap workflow:
+1. **Define/Create** the ConfigMap (imperatively or declaratively).
+2. **Inject** the ConfigMap into the Pod (as individual environment variables, bulk environment variables, or mounted configuration volume files).
+
+---
+
+### Imperative ConfigMap Creation
 
 ```bash
-$ kubectl get configmaps (or)
-$ kubectl get cm$ kubectl describe configmaps
+# 1. From literal values
+kubectl create configmap app-config \
+  --from-literal=APP_COLOR=blue \
+  --from-literal=APP_MODE=prod
+
+# 2. From a properties file
+kubectl create configmap app-config --from-file=app_config.properties
+
+# 3. From an entire directory of configuration files
+kubectl create configmap app-config --from-file=path/to/configs/
 ```
 
-Here lets say I have one for my application, another for mysql and yet another one for redis. So it is important to name the configmaps appropriately as you will be using these names later while associating it with PODs. To view the configmaps, run the `kubectl get configmaps` command. This lists  the newly created configmap named app-config.  The `describe configmaps` command List the configuration data as well under the data section.  Now that we have the configmap created let us proceed with step 2 configuring it with a pod. Here I have a simple pod definition file that runs a simple web application, to inject an environment variable and add a new property to the container called envFrom. The `envFrom` property is a list, so we can pass as many environment variables as required. 
+---
+
+### Declarative ConfigMap Definition
 
 ```yaml
-apiVersion: v1
-kind: Pod
-metadata:
-  name: simple-webapp-color
-spec:
- containers:
- - name: simple-webapp-color
-   image: simple-webapp-color
-   ports:
-   - containerPort: 8080
-   envFrom:
-   - configMapRef:
-       name: app-config
-
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -379,106 +404,162 @@ metadata:
 data:
   APP_COLOR: blue
   APP_MODE: prod
-
-$ kubectl create -f pod-definition.yaml
 ```
-
-Each item in the list corresponds to a configMap item. Specify the name of the configmap we created earlier. This is how we inject a specific configmap from the ones we created before. 
-
-Creating the pod definition file now creates a web application with a blue background. What we just saw was using configMaps to inject environment variables. There are other ways to inject configuration data into pods; you can inject it as a single environment variable or you can inject the whole data as files in a volume. 
-
-We will look at some of these options in the coding exercises that accompany this lecture. 
 
 ```bash
-$ kubectl create configmap webapp-config-map --from-literal=APP_COLOR=darkblue
+# Create or update ConfigMap
+kubectl apply -f config-map.yaml
+
+# Inspect ConfigMaps
+kubectl get configmaps
+kubectl describe configmap app-config
 ```
 
-### SECRETS
+---
 
-Here we have a simple python web application that connects to a mysql database. On success the application displays a successful message.
+### Injecting ConfigMaps into Pods
 
-![Diagram](images/image89.png)
+#### Method 1: Bulk Injection (`envFrom`)
+Injects all key-value pairs from the ConfigMap as environment variables:
 
-If you look closely into the code you will see the hostname username and password hardcoded. This is of course not a good idea. As we learned in the previous lecture, one option would be to move these values into a configMap. The configMap stores configuration data in plain text format, So while it would be okay to move the hostname and username into a configMap it is definitely not the right place to store a password. 
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: simple-webapp-color
+spec:
+  containers:
+  - name: simple-webapp-color
+    image: simple-webapp-color
+    ports:
+    - containerPort: 8080
+    envFrom:
+    - configMapRef:
+        name: app-config
+```
 
-![Diagram](images/image150.png)
+#### Method 2: Single Key Injection (`valueFrom`)
+```yaml
+env:
+- name: APP_COLOR
+  valueFrom:
+    configMapKeyRef:
+      name: app-config
+      key: APP_COLOR
+```
 
-![Diagram](images/image69.png)
+#### Method 3: Mounted Volume
+Mounts each ConfigMap key as a distinct file inside a directory:
+```yaml
+spec:
+  containers:
+  - name: webapp
+    image: simple-webapp
+    volumeMounts:
+    - name: config-volume
+      mountPath: /etc/config
+  volumes:
+  - name: config-volume
+    configMap:
+      name: app-config
+```
 
-This is where secrets come in, secrets are used to store sensitive information like passwords or keys. They're similar to configMap except that they're stored in an encoded or hashed format. As with config maps. There are two steps involved in working with secrets. First create the secret and second inject it into a pod.   
+---
 
-There are two ways of creating a secret. **The imperative way** - without using a Secret definition file and the **Declarative way** by using a Secret definition file  With the imperative method you can directly specify the key value pairs in the command line itself to create a secret of the given values, run the `kubectl create secret` `generic` command. 
+## 5. Kubernetes Secrets
 
-![Diagram](images/image220.png)
+### Secrets vs. ConfigMaps
+Hardcoding sensitive credentials (passwords, tokens, TLS certificates) in application code or plain ConfigMaps is a critical security vulnerability:
 
-The command is followed by the secret name and the option `–from-literal`. The from literal option is used to specify the key value pairs in the command itself. `$ kubectl create secret generic app-secret --from-literal=DB_Host=mysql --from-literal=DB_User=root --from-literal=DB_Password=paswrd`
+![Hardcoded Credentials Anti-Pattern](images/image89.png)
 
-In this example, we are creating a secret by the name app-secret, with a key value pair `DB_Host=mysql`. If you wish to add additional key value pairs, simply specify the from literal options multiple times however this could get complicated when you have too many secrets to pass in.
+![ConfigMaps vs Secrets](images/image150.png)
 
-Another way to input the secret data is through a file. Use the `–from-file` option to specify a path to the file that contains the required data.  The data from this file is read and stored under the name of the file. `$ kubectl create secret generic app-secret --from-file=app_secret.properties`
+![Plaintext Password Risk](images/image69.png)
 
-**Let us now look at the declarative approach.**
+- **ConfigMaps:** Plaintext configuration keys (non-sensitive).
+- **Secrets:** Intended for sensitive credentials. Stored by default in base64 encoded format within Kubernetes.
 
-For this we create a definition file, just like how we did for the ConfigMap. 
+---
 
-![Diagram](images/image162.png)
+### Imperative Secret Creation
 
-The file has apiVersion, kind, metadata and data. The apiVersion is v1, kind is Secret. Under metadata specify the name of the secret. We will call it app-secret. Under data add the secret data in a key-value format. However one thing we discussed about secrets was that they are used to store sensitive data and are stored in an encoded format. Here we have specified the data in plain text which is not very safe. So while creating a secret with a declarative approach you must specify the secret values in a hashed format. So you must specify the data in an encoded form like this. But how do you convert the data from plain text to an encoded format on a linux host from the command. `echo –n` followed by the text you are trying to convert, which is mysql in this case and pipe  that to the base64 utility. `Generate a hash value of the password and pass it to secret-data.yaml definition value as a value to DB_Password variable.``$ echo -n "mysql" | base64``$ echo -n "root" | base64``$ echo -n "paswrd"| base64`
+```bash
+# 1. From literal values
+kubectl create secret generic app-secret \
+  --from-literal=DB_Host=mysql \
+  --from-literal=DB_User=root \
+  --from-literal=DB_Password=paswrd
 
-![Diagram](images/image276.png)
+# 2. From credential files
+kubectl create secret generic app-secret --from-file=app_secret.properties
+```
 
-Create a secret definition file and run kubectl create to deploy it
+![Imperative Secret Creation](images/image220.png)
 
+---
+
+### Declarative Secret Definition & Base64 Encoding
+
+Declarative Secret manifests require base64 encoded values under `data`:
+
+![Declarative Secret Manifest Structure](images/image162.png)
+
+Generate base64 encoded strings using Linux CLI:
+```bash
+echo -n "mysql"  | base64   # Output: bXlzcWw=
+echo -n "root"   | base64   # Output: cm9vdA==
+echo -n "paswrd" | base64   # Output: cGFzd3Jk
+```
+
+![Base64 Encoding Secret Data](images/image276.png)
+
+Secret manifest (`secret-data.yaml`):
 ```yaml
 apiVersion: v1
 kind: Secret
 metadata:
- name: app-secret
+  name: app-secret
+type: Opaque
 data:
-  DB_Host: bX1zcWw=
+  DB_Host: bXlzcWw=
   DB_User: cm9vdA==
   DB_Password: cGFzd3Jk
-
-$ kubectl create -f secret-data.yaml
 ```
-
-To view secrets run the `kubectl get secrets` command. This lists the newly created secret along with another secret previously created by kubernetes for its internal purposes to view more information on the newly created secret.  run the `kubectl describe secret` command.This shows the attributes in the secret but hides the value themselves to view the values as well. run the kubectl get secret command with the output displayed in a YAML format using the `–o` option.
 
 ```bash
-To view secrets $ kubectl get secrets
-To describe secret $ kubectl describe secret
-To view the values of the secret $ kubectl get secret app-secret -o yaml
+kubectl apply -f secret-data.yaml
 ```
 
-**Now how do you decode these hashed values?** 
+> [!TIP]
+> Use `stringData` in Secret manifests if you prefer entering plain strings. Kubernetes automatically encodes them to base64 upon submission.
 
-Use the same base64 Command used earlier to encode it but this time add a `--decode` option to it.`$ echo -n "bX1zcWw=" | base64 --decode`
+#### Inspecting and Decoding Secrets
+```bash
+# List secrets
+kubectl get secrets
 
-```text
-$ echo -n "cm9vdA==" | base64 --decode
-$ echo -n "cGFzd3Jk" | base64 --decode
+# Describe secret (keys shown, values hidden)
+kubectl describe secret app-secret
+
+# View full manifest including base64 encoded data
+kubectl get secret app-secret -o yaml
+
+# Decode base64 strings
+echo -n "cGFzd3Jk" | base64 --decode
 ```
 
-Now that we have a secret created let us proceed with step 2 configuring it with a pod. 
+---
 
-Here I have a simple pod definition file that runs my application.
+### Injecting Secrets into Pods
 
-To inject an environment variable, add a new property to the container called **envFrom**. The envFrom property is a list so we can pass as many environment variables as required each item in the list corresponds to a secret item.`apiVersion: v1`
-
+#### Method 1: Bulk Injection (`envFrom`)
 ```yaml
-kind: Secret
-metadata:
- name: app-secret
-data:
-  DB_Host: bX1zcWw=
-  DB_User: cm9vdA==
-  DB_Password: cGFzd3Jk
-
 apiVersion: v1
- kind: Pod
- metadata:
-   name: simple-webapp-color
- spec:
+kind: Pod
+metadata:
+  name: simple-webapp-color
+spec:
   containers:
   - name: simple-webapp-color
     image: simple-webapp-color
@@ -487,47 +568,74 @@ apiVersion: v1
     envFrom:
     - secretRef:
         name: app-secret
-
-$ kubectl create -f pod-definition.yaml
 ```
 
-Specify the name of the secret we created earlier. Creating the pod definition file now makes the data in the secret available as environment variables for the application. What we just saw was injecting secrets as environment variables into the PODs. There are other ways to inject **secret** into PODs. You can inject as single environment variables or inject the whole secret as files in a volume if you were to mount the secret as a volume in the pod. Each attribute in the secret is created as a file with the value of the secret as its content.  In this case since we have three attributes in our secret, three files are created and if we look at the contents of the DB password file we see the password in it. **there are other better ways of handling sensitive data like passwords in Kubernetes, such as using tools like Helm Secrets,** [HashiCorp Vault](https://www.vaultproject.io/)**. +**
+#### Method 2: Single Key Injection (`valueFrom`)
+```yaml
+env:
+- name: DB_PASSWORD
+  valueFrom:
+    secretKeyRef:
+      name: app-secret
+      key: DB_Password
+```
 
-#### A note on Secrets
+#### Method 3: Secret Volume Mount
+```yaml
+spec:
+  containers:
+  - name: webapp
+    image: simple-webapp
+    volumeMounts:
+    - name: secret-volume
+      mountPath: /etc/secrets
+      readOnly: true
+  volumes:
+  - name: secret-volume
+    secret:
+      secretName: app-secret
+```
+*Each secret key is mounted as an independent file (e.g., `/etc/secrets/DB_Password`).*
 
-**Remember that secrets encode data in base64 format. Anyone with the base64 encoded secret can easily decode it. As such the secrets can be considered not very safe.**
+---
 
-**The concept of safety of the Secrets is a bit confusing in Kubernetes. The** [kubernetes documentation](https://kubernetes.io/docs/concepts/configuration/secret) **page and a lot of blogs out there refer to secrets as a “safer option” to store sensitive data. They are safer than storing in plain text as they reduce the risk of accidentally exposing passwords and other sensitive data. In my opinion it’s not the secret itself that is safe, it is the practices around it.**
+### Secret Security Risks & Hardening Best Practices
 
-**Secrets are not encrypted, so it is not safer in that sense. However, some best practices around using secrets make it safer. As in best practices like:**
+> [!CAUTION]
+> Base64 is an **encoding scheme**, NOT encryption. Anyone with RBAC access to read Secrets can instantly decode the values.
 
-- *Not checking-in secret object definition files to source code repositories.**
+#### Recommended Production Hardening:
+1. **Never Commit Secrets to Git:** Do not push secret manifests to source control repositories.
+2. **Encryption at Rest:** Enable ETCD Encryption at Rest using `EncryptionConfiguration` (`aescbc`, `secretbox`, or KMS).
+3. **Kubelet In-Memory Storage:** Kubelet writes Secrets only to memory-backed `tmpfs` mounts on worker nodes, deleting them immediately when dependent Pods terminate.
+4. **Least-Privilege Node Delivery:** Kubelet only requests Secrets required by Pods scheduled to its specific node.
+5. **External Secret Stores:** Integrate enterprise secret stores like **HashiCorp Vault**, AWS Secrets Manager, or Azure Key Vault via the Kubernetes Secrets Store CSI Driver or Helm Secrets.
 
-- [Enabling Encryption at Rest](https://kubernetes.io/docs/tasks/administer-cluster/encrypt-data/) **for Secrets so they are stored encrypted in ETCD.**
+---
 
-**Also the way kubernetes handles secrets. Such as:**
+## 6. Multi-Container Pod Patterns
 
-- *A secret is only sent to a node if a pod on that node requires it.**
+### Microservice Co-location & Shared Context
+While microservices advocate decoupling applications into independent containers, helper processes often require tight co-location with the main application (e.g., log forwarders, proxies, local caches).
 
-- *Kubelet stores the secret into a tmpfs so that the secret is not written to disk storage.**
+Multi-container Pods share:
+- **Lifecycle:** Created, scheduled, and destroyed together.
+- **Network Namespace:** Share identical IP address and port space; communicate with each other over `localhost`.
+- **Storage Volumes:** Can mount identical `emptyDir` or persistent volumes to share files directly.
 
-- *Once the Pod that depends on the secret is deleted, kubelet will delete its local copy of the secret data as well.**
+---
 
-**Read about the** [protections](https://kubernetes.io/docs/concepts/configuration/secret/#protections) **and** [risks](https://kubernetes.io/docs/concepts/configuration/secret/#risks) **of using secrets** [here](https://kubernetes.io/docs/concepts/configuration/secret/#risks)
+### Design Patterns: Sidecar, Adapter, Ambassador
 
-**Having said that, there are other better ways of handling sensitive data like passwords in Kubernetes, such as using tools like Helm Secrets,** [HashiCorp Vault](https://www.vaultproject.io/)**. I hope to make a lecture on these in the future.**
+![Multi-Container Design Patterns](images/image320.png)
 
-### Multi Container Pods
+1. **Sidecar Pattern:** Extends and enhances the main container's capabilities without modifying application code (e.g., a logging agent collecting application logs and pushing them to Elasticsearch).
+2. **Adapter Pattern:** Standardizes or normalizes the output of heterogeneous application containers (e.g., transforming non-standard metrics into Prometheus format).
+3. **Ambassador Pattern:** Acts as a local proxy abstracting external network complexities (e.g., proxying local connections to a sharded Redis database cluster).
 
-The idea of decoupling a large monolithic application into sub-components known as microservices enables us to develop and deploy a set of independent small and reusable code. This architecture can then help us scale up and down as well as modify each service as required as opposed to modifying the entire applicationHowever at times you may need two services to work together such as a web server and a logging service. You need one agent instance per web server instance paired together. 
+---
 
-You don't want to march and bloat the code of the two services as each of them target different functionalities and you'd still like them to be developed and deployed separately, you only need the two functionality to work together. 
-
-You need one agent per web server instance paired together that can scale up and down together, and that is why you have multi-container pods that share the same lifecycle which means they are created together and destroyed together they share the same network space which means they can refer to each other as local host and they have access to the same storage volumes. 
-
-This way you do not have to establish volume sharing or services between the pods, to enable communication between them. To create a multi container pod add the new container information to the pod definition file. Remember the container section under the spec section in a pod definition file is an array and the reason it is an array is to allow multiple containers in a single pod. 
-
-In this case we add a new container named log agent to our existing pod.
+### Multi-Container Pod Manifest
 
 ```yaml
 apiVersion: v1
@@ -535,28 +643,43 @@ kind: Pod
 metadata:
   name: simple-webapp
   labels:
-    name: simple-webapp
+    app: simple-webapp
 spec:
   containers:
-  - name: simple-webapp
+  - name: web-app
     image: simple-webapp
     ports:
-    - ContainerPort: 8080
+    - containerPort: 8080
   - name: log-agent
-    image: log-agent 
+    image: log-agent
+    volumeMounts:
+    - name: log-volume
+      mountPath: /var/log/app
+  volumes:
+  - name: log-volume
+    emptyDir: {}
 ```
 
-There are 3 common patterns, when it comes to designing multi-container PODs. The first and what we just saw with the logging service example is known as a side car pattern. The others are the adapter and the ambassador pattern.
+---
 
-![Diagram](images/image320.png)
+## 7. Init Containers
 
-But these fall under the CKAD curriculum and are not required for the CKA exam. So we will be discuss these in more detail in the CKAD course. 
+### Initialization Lifecycle & Sequential Execution
+Main application containers in a Pod are expected to run continuously for the Pod's entire lifecycle. However, setup tasks often need to **run to completion once** before the application starts:
+- Fetching configuration files or cloning a Git repository.
+- Warming up caches or running database schema migrations.
+- Blocking until an external dependent service (API, DB) becomes reachable.
 
-### Init Containers
+#### Execution Rules:
+- Defined under `spec.initContainers`.
+- Execute **one by one in strict sequential order**.
+- Each Init Container must exit successfully (`exit code 0`) before the next begins.
+- If an Init Container fails, Kubernetes restarts the Pod according to `restartPolicy` (default `Always`), re-running Init Containers from the beginning.
+- Main containers start only after **all** Init Containers complete successfully.
 
-In a multi-container pod, each container is expected to run a process that stays alive as long as the POD’s lifecycle. For example in the multi-container pod that we talked about earlier that has a web application and logging agent, both the containers are expected to stay alive at all times. The process running in the log agent container is expected to stay alive as long as the web application is running. If any of them fails, the POD restarts. 
+---
 
-But at times you may want to run a process that runs to completion in a container. For example a process that pulls a code or binary from a repository that will be used by the main web application. That is a task that will be run only one time when the pod is first created. Or a process that waits for an external service or database to be up before the actual application starts. That’s where **initContainers** comes in.An **initContainer** is configured in a pod like all other containers, except that it is specified inside a initContainers section, like this:
+### Init Container Manifest & Use Cases
 
 ```yaml
 apiVersion: v1
@@ -571,66 +694,48 @@ spec:
     image: busybox:1.28
     command: ['sh', '-c', 'echo The app is running! && sleep 3600']
   initContainers:
-  - name: init-myservice
-    image: busybox
-    command: ['sh', '-c', 'git clone <some-repository-that-will-be-used-by-application> ;']
+  - name: wait-for-service
+    image: busybox:1.28
+    command: ['sh', '-c', 'until nslookup myservice.default.svc.cluster.local; do echo waiting for myservice; sleep 2; done;']
+  - name: wait-for-db
+    image: busybox:1.28
+    command: ['sh', '-c', 'until nslookup mydb.default.svc.cluster.local; do echo waiting for mydb; sleep 2; done;']
 ```
 
-When a POD is first created the initContainer is run, and the process in the initContainer must run to a completion before the real container hosting the application starts.You can configure multiple such initContainers as well, like how we did for multi-pod containers. In that case each init container is run **one at a time in sequential order**.
+---
 
-If any of the initContainers fail to complete, Kubernetes restarts the Pod repeatedly until the Init Container succeeds.
-
-```yaml
-apiVersion: v1
-kind: Pod
-metadata:
-  name: myapp-pod
-  labels:
-    app: myapp
-spec:
-  containers:
-  - name: myapp-container
-    image: busybox:1.28
-    command: ['sh', '-c', 'echo The app is running! && sleep 3600']
-  initContainers:
-  - name: init-myservice
-    image: busybox:1.28
-    command: ['sh', '-c', 'until nslookup myservice; do echo waiting for myservice; sleep 2; done;']
-  - name: init-mydb
-    image: busybox:1.28
-    command: ['sh', '-c', 'until nslookup mydb; do echo waiting for mydb; sleep 2; done;']
-```
-
-### Self Healing Applications & Container Probes
+## 8. Self-Healing Applications & Container Health Probes
 
 Kubernetes supports self-healing applications through ReplicaSets, Deployments, and native Container Probes executed by the node's `kubelet`.
 
-#### Container Health Probes (Liveness, Readiness, Startup)
-
-Modern Kubernetes supports three native probe mechanisms to evaluate container status:
+### Probe Types: Startup, Liveness, and Readiness
 
 1. **`startupProbe`**:
-   - Protects slow-starting applications (e.g., legacy enterprise Java/JVM apps) from premature eviction.
+   - Protects slow-starting legacy applications (e.g., enterprise Java/JVM apps) from premature kills.
    - Pauses all `livenessProbe` and `readinessProbe` executions until it succeeds.
    - If it fails `failureThreshold` times, the container is killed and restarted.
 
 2. **`livenessProbe`**:
-   - Detects when an application enters an unrecoverable deadlocked state or infinite loop.
-   - If consecutive failures reach `failureThreshold`, kubelet terminates the container process and triggers a restart according to `restartPolicy`.
+   - Detects whether an application is stuck in an unrecoverable state (deadlock, frozen process, fatal loop).
+   - If failures reach `failureThreshold`, `kubelet` terminates the container and initiates a restart according to `restartPolicy`.
 
 3. **`readinessProbe`**:
-   - Determines whether the container is ready to accept user network traffic.
+   - Validates whether the container is ready to accept incoming client traffic.
    - When a readiness probe fails, the Pod's `Ready` condition is set to `False`.
-   - The endpoints controller immediately removes the Pod's IP from Service backends and `EndpointSlices`. **The container process is not killed**.
+   - The endpoints controller immediately detaches the Pod's IP from Service backends and `EndpointSlices`. **The container process is never killed or restarted**.
 
-#### Probe Handlers
+---
 
-- **`httpGet`**: Performs an HTTP GET on a given path/port. Status codes 200–399 count as success.
-- **`tcpSocket`**: Checks if a TCP 3-way handshake succeeds on the given port.
-- **`exec`**: Runs a command inside the container namespace; exit code 0 indicates success.
-- **`grpc`**: Evaluates response using standard gRPC health checking protocol.
+### Probe Handlers
 
-#### Complete Production Probes Manifest
+- **`httpGet`**: Sends an HTTP GET request to a specified port and path. HTTP status codes $200 \le \text{code} < 400$ indicate success.
+- **`tcpSocket`**: Checks whether a TCP socket handshake succeeds on the designated port.
+- **`exec`**: Runs a command inside the container namespace; an exit status code of `0` indicates success.
+- **`grpc`**: Leverages the gRPC Health Checking Protocol to evaluate service status.
+
+---
+
+### Production Multi-Probe Manifest
 
 ```yaml
 apiVersion: v1
@@ -651,7 +756,7 @@ spec:
         port: 8080
       initialDelaySeconds: 10
       periodSeconds: 5
-      failureThreshold: 20 # Allows up to 100s for initialization
+      failureThreshold: 20 # Allows up to 100s for slow startup
     livenessProbe:
       httpGet:
         path: /healthz

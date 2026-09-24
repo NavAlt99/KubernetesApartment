@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>08. Storage</title>
+  <title>08. Kubernetes Storage</title>
   <style>
     :root { color-scheme: dark; }
     body { max-width: 980px; margin: 0 auto; padding: 2rem 1.25rem 4rem; background: #090d16; color: #e2e8f0; font: 16px/1.65 system-ui, sans-serif; }
@@ -17,221 +17,410 @@
     blockquote { border-left: 3px solid #fb7185; margin-left: 0; padding-left: 1rem; }
   </style>
 </head>
-<body><main class="markdown-page"><h1 id="08-storage">08. Storage</h1>
-<h2 id="storage">STORAGE</h2>
-<h3 id="introduction-to-docker-storage">Introduction to Docker Storage</h3>
-<p>Storage in kubernetes, to understand storage in container orchestration tools like kubernetes, it is important to first understand how storage works with containers. </p>
-<p>Understanding how storage works with Docker first and getting all the basics right will later make it so much easier to understand how it works in kubernetes. When it comes to storage in Docker, there are two concepts you must know about <strong>storage drivers</strong> and <strong>volume driver plug-ins</strong>.  In the upcoming video, we will discuss storage drivers. </p>
-<p>It's something that we've discussed in the docker course. So if you have gone through that already, feel free to skip this video or you may choose to stay and refresh your memory once done. We will talk about volume drivers.</p>
-<h3 id="storage-in-docker">Storage in Docker</h3>
-<p>We are going to talk about Docker's storage drivers and filesystems. We're going to see where and how Docker stores data and how it manages filesystems of the containers.</p>
-<p>Let us start with how docker stores data on the local filesystem.</p>
-<p>When you install docker  on a system, it creates this folder structure /var/lib/docker, you have multiple folders under it called <strong>aufs, containers,image, volumes, etc</strong>. </p>
+<body><main class="markdown-page"><h1 id="08-kubernetes-storage">08. Kubernetes Storage</h1>
+<p>A high-yield, exam-focused study guide covering container storage fundamentals, Kubernetes Volumes, PersistentVolumes (PV), PersistentVolumeClaims (PVC), StorageClasses, Volume Expansion, and CSI Volume Snapshots for the Certified Kubernetes Administrator (CKA) exam.</p>
+<hr />
+<h2 id="table-of-contents">📑 Table of Contents</h2>
+<ul>
+<li><a href="#1-docker-storage-fundamentals">1. Docker Storage Fundamentals</a></li>
+<li><a href="#11-docker-host-storage-architecture">1.1 Docker Host Storage Architecture</a></li>
+<li><a href="#12-layered-architecture--build-cache">1.2 Layered Architecture &amp; Build Cache</a></li>
+<li><a href="#13-image-layers-vs-container-layer-copy-on-write">1.3 Image Layers vs Container Layer (Copy-on-Write)</a></li>
+<li><a href="#14-data-persistence-volume-mounts-vs-bind-mounts">1.4 Data Persistence: Volume Mounts vs Bind Mounts</a></li>
+<li><a href="#15-docker-storage-drivers">1.5 Docker Storage Drivers</a></li>
+<li><a href="#16-docker-volume-driver-plugins">1.6 Docker Volume Driver Plugins</a></li>
+<li><a href="#2-container-storage-interface-csi">2. Container Storage Interface (CSI)</a></li>
+<li><a href="#21-evolution-cri-cni-and-csi">2.1 Evolution: CRI, CNI, and CSI</a></li>
+<li><a href="#22-csi-architecture--rpc-specification">2.2 CSI Architecture &amp; RPC Specification</a></li>
+<li><a href="#3-kubernetes-volumes">3. Kubernetes Volumes</a></li>
+<li><a href="#31-ephemeral-pod-lifecycle--volume-need">3.1 Ephemeral Pod Lifecycle &amp; Volume Need</a></li>
+<li><a href="#32-volume-definition--mount-syntax">3.2 Volume Definition &amp; Mount Syntax</a></li>
+<li><a href="#33-volume-storage-types--hostpath-limitations">3.3 Volume Storage Types &amp; <code>hostPath</code> Limitations</a></li>
+<li><a href="#4-persistent-volumes-pv">4. Persistent Volumes (PV)</a></li>
+<li><a href="#41-architecture--administrator-workflow">4.1 Architecture &amp; Administrator Workflow</a></li>
+<li><a href="#42-access-modes">4.2 Access Modes</a></li>
+<li><a href="#43-persistentvolume-manifest--management">4.3 PersistentVolume Manifest &amp; Management</a></li>
+<li><a href="#5-persistent-volume-claims-pvc">5. Persistent Volume Claims (PVC)</a></li>
+<li><a href="#51-architecture--binding-mechanism">5.1 Architecture &amp; Binding Mechanism</a></li>
+<li><a href="#52-1-to-1-binding-principle--capacity-matching">5.2 1-to-1 Binding Principle &amp; Capacity Matching</a></li>
+<li><a href="#53-pvc-manifest--binding-lifecycle">5.3 PVC Manifest &amp; Binding Lifecycle</a></li>
+<li><a href="#54-persistentvolume-reclaim-policies">5.4 PersistentVolume Reclaim Policies</a></li>
+<li><a href="#55-using-pvcs-in-pods--deployments">5.5 Using PVCs in Pods &amp; Deployments</a></li>
+<li><a href="#6-hands-on-cka-scenarios--troubleshooting">6. Hands-On CKA Scenarios &amp; Troubleshooting</a></li>
+<li><a href="#61-scenario-1-inspecting--persisting-container-logs-with-hostpath">6.1 Scenario 1: Inspecting &amp; Persisting Container Logs with <code>hostPath</code></a></li>
+<li><a href="#62-scenario-2-creating-a-persistentvolume-pv-log">6.2 Scenario 2: Creating a PersistentVolume (<code>pv-log</code>)</a></li>
+<li><a href="#63-scenario-3-troubleshooting-pvc-binding-failures-claim-log-1">6.3 Scenario 3: Troubleshooting PVC Binding Failures (<code>claim-log-1</code>)</a></li>
+<li><a href="#64-scenario-4-mounting-pvc-into-application-pod">6.4 Scenario 4: Mounting PVC into Application Pod</a></li>
+<li><a href="#7-storageclasses--dynamic-provisioning">7. StorageClasses &amp; Dynamic Provisioning</a></li>
+<li><a href="#71-static-vs-dynamic-provisioning">7.1 Static vs Dynamic Provisioning</a></li>
+<li><a href="#72-storageclass-architecture--provisioners">7.2 StorageClass Architecture &amp; Provisioners</a></li>
+<li><a href="#73-volume-binding-modes-immediate-vs-waitforfirstconsumer">7.3 Volume Binding Modes: <code>Immediate</code> vs <code>WaitForFirstConsumer</code></a></li>
+<li><a href="#74-cka-troubleshooting-delayed-binding-with-local-storage">7.4 CKA Troubleshooting: Delayed Binding with Local Storage</a></li>
+<li><a href="#8-pvc-volume-expansion-resizing">8. PVC Volume Expansion (Resizing)</a></li>
+<li><a href="#81-enabling-volume-expansion-in-storageclass">8.1 Enabling Volume Expansion in StorageClass</a></li>
+<li><a href="#82-expanding-an-existing-pvc--filesystem-status">8.2 Expanding an Existing PVC &amp; Filesystem Status</a></li>
+<li><a href="#9-csi-volume-snapshots--volumesnapshotclass">9. CSI Volume Snapshots &amp; VolumeSnapshotClass</a></li>
+<li><a href="#91-volumesnapshotclass">9.1 VolumeSnapshotClass</a></li>
+<li><a href="#92-creating-a-volumesnapshot-from-a-pvc">9.2 Creating a VolumeSnapshot from a PVC</a></li>
+<li><a href="#93-restoring-a-pvc-from-a-volumesnapshot">9.3 Restoring a PVC from a VolumeSnapshot</a></li>
+<li><a href="#10-cka-exam-quick-reference--cheat-sheet">10. CKA Exam Quick Reference &amp; Cheat Sheet</a></li>
+</ul>
+<hr />
+<h2 id="1-docker-storage-fundamentals">1. Docker Storage Fundamentals</h2>
+<p>Understanding Docker's native storage mechanism is the foundation for mastering Kubernetes storage abstractions.</p>
+<h3 id="11-docker-host-storage-architecture">1.1 Docker Host Storage Architecture</h3>
+<p>When Docker is installed on a host, it organizes all runtime data under <code>/var/lib/docker</code>:</p>
+<pre><code class="language-text">/var/lib/docker/
+├── aufs/ (or overlay2/)   # Storage driver specific container layers
+├── containers/             # Metadata and configs for active/stopped containers
+├── image/                  # Image metadata and layer database
+└── volumes/                # Managed persistent Docker volumes
+</code></pre>
 <p><img alt="Diagram" src="images/image351.png" /></p>
-<p>This is where doctor stores all its data by default. When I say data, I mean files related to images and containers running on the docker host.</p>
-<p>For example, all files related to containers are stored under the containers folder and the files related to images are stored under the image folder.</p>
-<p>Any volumes created by the docker containers are created under the volumes folder.</p>
-<p>Well, don't worry about that for now. We will come back to that in a bit. </p>
-<p>For now, let's just understand where docker stores its files and in what format.</p>
-<p>So how exactly does Docker store the files of an image and a container to understand that we need to understand Docker's layered architecture?</p>
-<p>Let's quickly recap something we learned when Docker builds images. It builds these in a layered architecture.</p>
+<ul>
+<li><strong><code>image/</code></strong>: Stores read-only layers representing container images.</li>
+<li><strong><code>containers/</code></strong>: Stores container configurations and execution metadata.</li>
+<li><strong><code>volumes/</code></strong>: Default location where Docker creates and manages persistent volumes.</li>
+</ul>
+<hr />
+<h3 id="12-layered-architecture-build-cache">1.2 Layered Architecture &amp; Build Cache</h3>
+<p>Docker images are composed of immutable, read-only layers stacked on top of each other. Each instruction in a <code>Dockerfile</code> generates a distinct layer containing only the diff from the previous layer.</p>
 <p><img alt="Diagram" src="images/image287.png" /></p>
 <p><img alt="Diagram" src="images/image280.png" /></p>
-<p>Each line of instruction in the Docker file creates a new layer in the Docker image with just the changes from the previous layer. For example, the first layer is a base Ubuntu operating system, followed by the second instruction that creates a second layer which installs all the apt packages. And then the third instruction creates a third layer, with the Python packages followed by the fourth layer that copies the source code over. And then finally, the fifth layer that updates the entry point of the image.</p>
-<p>Since each layer only stores the changes from the previous layer, it is reflected in the size as well. If you look at the base ubuntu image, it is around 120 megabytes in size. The apt packages that are installed is around 300MB, and then the remaining layers are small.</p>
-<p>To understand the advantages of this layered architecture, let's consider a second application.</p>
-<p>This application has a different Docker file, but it's very similar to our first application as it uses the same basic image as Ubuntu, and uses the same python and flasks dependencies, but uses a different source code to create a different application.</p>
-<p>And so a different entry point as well.When I run the Docker build command to build a new image for this application, since the first three layers of both the applications are the same, Docker is not going to build the first three layers. Instead, it reuses the same three layers it built for the first application from the cache and only creates the last two layers with the new sources and the new entry point.</p>
+<h4 id="build-cache-layer-reusability">Build Cache &amp; Layer Reusability</h4>
+<p>When multiple images share identical base instructions (e.g., base OS, package updates, dependencies), Docker pulls or reuses existing cached layers rather than rebuilding them. Only layers after a modified instruction are rebuilt.</p>
 <p><img alt="Diagram" src="images/image17.png" /></p>
-<p>This way, Docker builds images faster and efficiently, saves disk space.</p>
-<p>This is also applicable if you were to update your application code, whenever you update your application code, such as the app2.py in this case, Docker simply reuses all the previous layers from cache and quickly rebuilds the application image by updating the latest source code, thus saving us a lot of time during rebuilds and updates. </p>
-<p>Let's rearrange the layers bottom up so we can understand it better. At the bottom , we have the base ubuntu layer, then the packages, then the dependencies, and then the source code of the application and then the entry point.</p>
+<hr />
+<h3 id="13-image-layers-vs-container-layer-copy-on-write">1.3 Image Layers vs Container Layer (Copy-on-Write)</h3>
+<p>Arranging image layers bottom-up:</p>
 <p><img alt="Diagram" src="images/image397.png" /></p>
-<p>All of these layers are created when we run the locker, build command to form the final docker image.</p>
-<p>So all of these are the docker image layers.Once the build is complete, you cannot modify the contents of these layers. And so they are read only and you can only modify them by initiating a new build. </p>
-<p>When you run a container based off of this image using the doctor run command, Docker creates a container based off of these layers and creates a new writable layer on top of the image layer. The writable layer is used to store data created by the container, such as log files, used by the applications, any temporary files generated by the container or just any file modified by the user on that container. The life of this layer, though, is only as long as the container is alive, when the container is destroyed, this layer and all of the changes stored in it are also destroyed. </p>
-<p>Remember that the same image layer is shared by all containers created using this image.</p>
+<ol>
+<li><strong>Image Layers (Read-Only)</strong>: Generated during <code>docker build</code>. Once built, these layers are completely immutable and shared across all container instances running that image.</li>
+<li><strong>Container Layer (Read-Write)</strong>: Created when <code>docker run</code> starts a container. All runtime changes (temporary files, log files, modified configs) reside exclusively in this writable layer.</li>
+</ol>
 <p><img alt="Diagram" src="images/image172.png" /></p>
-<p>If I were to log into the newly created container and say, create a new file called temp.txt, it would create that file in the container layer, which is read and write. </p>
-<p>We just said that the files in the image layer are read-only, meaning you cannot edit anything in those layers.</p>
-<p>Let's take an example of our application code. Since we bake our code into the image. The code is part of the image layer and as such is read only after running a container.</p>
-<p>What if I wish to modify the source code to say test to change? </p>
-<p>Remember, the same image layer may be shared between multiple containers created from this image.</p>
-<p>So does it mean that I cannot modify this file inside the container?</p>
-<p>No, I can still modify this file, but before I save the modified file, Docker automatically creates a copy of the file in the read right layer and I will then be modifying a different version of the file in the read write layer.</p>
-<p>All future modifications will be done on this copy of the file in the rewrite layer.</p>
-<p>This is called the copy on write mechanism. </p>
-<p>The image layer being read only just means that the files in these layers will not be modified in the image itself. So the image will remain the same all the time until you rebuild the image using the docker build command.</p>
-<p>What happens when we get rid of the container, all of the data that was stored in the container layer also gets deleted.The change we made to the app.py and the new temp file we created will also get removed.</p>
-<p>So what if we wish to persist this data, for example, if we were working with a database and we would like to preserve the data created by the container, we could add a persistent volume to the container. To do this first, create a volume using the Docker volume, create command.</p>
-<p>So when I run the <code>docker volume create data_volume</code> command. It creates a folder called data_underscore volume under the <code>/var/lib/docker/volumes</code> directory.</p>
-<p>Then when I run the docker container using the Docker Run command, I could mount this volume inside the docker container's rewrite layer using the -v option like this.</p>
-<pre><code class="language-bash">docker run -v data_volume:/var/lib/mysql mysql 
-</code></pre>
-<p>So I would do a <code>docker run -v</code> then specify my newly created volume name, followed by a colon and the location inside my container, which is the default location where mysql stores data. And that is <code>/var/lib/mysql</code> and then the image name mysql.</p>
-<p>This will create a new container and mount the data volume we created into /var/lib/mysql  folder inside the container, so all data written by the database is in fact stored on the volume created on the docker host.</p>
-<p><img alt="Diagram" src="images/image314.png" /></p>
-<p>Even if the container is destroyed, the data is still active.</p>
-<p>Now, what if you didn't run the docker volume create command to create the volume before the <code>docker run</code> command.</p>
-<p>For example, if I run the <code>docker run</code> command to create a new instance of mysql container with the volume data_volume2, which I have not created yet, Docker will automatically createa volume named data_volume2 and mount to the container.</p>
-<pre><code class="language-bash">docker run -v data_volume2:/var/lib/mysql mysql 
-</code></pre>
-<p>You should be able to see all these volumes if you list the contents of the /var/lib/docker/volumes folder.</p>
-<p>This is called <strong>volume mounting</strong> as we are mounting a volume created by Docker under the /var/lib/docker/volumes folder. </p>
-<p>But what if we had our data already at another location, for example, let's say we have some external storage on the docker host at our /data and we would like to store database data on that volume and not in the default /var/lib/docker/volumes folder. </p>
-<p>In that case, we would run a container using the command docker run -v, but in this case we will provide the complete path to the folder we would like to mount. </p>
-<pre><code class="language-bash">docker run -v /data/mysql:/var/lib/mysql mysql 
-</code></pre>
-<p>so it will create a container and mount the folder to the container.</p>
-<p>This is called <strong>bind mounding</strong>, so there are two types of mounts, a <strong>volume mounting</strong> and a <strong>bind Mount</strong></p>
-<p><strong>Volume Mount mounts a volume from the volumes directory and bind Mount mounts and directory from any location on the Docker host.</strong></p>
-<p>One final point to note before I let you go, using the -v is an old style. The new way is to use -mount option.</p>
+<h4 id="copy-on-write-cow-mechanism">Copy-on-Write (CoW) Mechanism</h4>
 <ul>
-<li>-mount is the preferred way as it is more verbose. So you have to specify each parameter in a key=value format.</li>
+<li>Files baked into the base image remain unaltered in their read-only layers.</li>
+<li>If a running container modifies an existing image file, Docker copies that file from the read-only layer up into the read-write container layer, where modifications are saved.</li>
+<li><strong>Lifecycle Limitation</strong>: When the container is destroyed, its writable container layer and all uncommitted modifications are permanently deleted.</li>
 </ul>
-<p>For example, the previous command can be written with the -mount option as this using the type,source and target options.</p>
-<pre><code class="language-bash">docker run \ --mount type=bind, source=/data/mysql, target=/var/lib/mysql mysql 
-</code></pre>
-<p>The type in this case is bind. The source is the location on my host and the target is the location on my container. </p>
-<p>So who is responsible for doing all of these operations, maintaining the layered architecture, creating a writable layer, moving files across layers to enable copy and write, et cetera?  </p>
-<p><strong>It's the storage drivers.</strong></p>
-<p>So Docker uses storage drivers to enable layered architecture. Some of the common storage drivers are AUFS,ZFS,BTRFS,device Mapper,Overlay and Overlay2</p>
-<p>The selection of the storage driver depends on the underlying OS being used, for example, with Ubuntu, the default storage driver is  AUFS, whereas this storage driver is not available on other operating systems like Fedora or CentOS In that case, <strong>device Mapper</strong> may be a better option.</p>
-<p>Docker will choose the best storage driver available automatically based on the operating system, </p>
-<p>The different storage drivers also provide different performance and stability characteristics. So you may want to choose one that fits the needs of your application and your organization. If you would like to read more on any of these storage drivers, please refer to the links in the attached documentation.</p>
-<h3 id="volume-driver-plugins-in-docker">Volume Driver Plugins in Docker</h3>
-<p>OK, so in the previous lesson we discussed about storage drivers, storage drivers help manage storage on images and containers.</p>
-<p>We also briefly touched upon volumes in the previous lecture. We learned that if you want to persist storage, you must create volumes. Remember that volumes are not handled by storage drivers. Volumes are handled by volume driver plug ins.</p>
-<p>The default volume driver plug in is local. The local volume plug in helps create a volume on the Docker host and store its data under /var/lib/docker/volumes directory.</p>
-<p>There are many other volume driver plugins that allow you to create a volume on third party solutions like Azur File Storage, Convoy, DigitalOcean Block storage, flocker, gce-docker | GlusterFS, NetApp | RexRay | Portworx| VMware vSphere storage </p>
-<p>And remember this for storage. These are just a few of the many.</p>
-<p><img alt="Diagram" src="images/image187.png" /></p>
-<p>Some of these volume drivers support different storage providers, for instance, RexRay storage driver can be used to provision storage on AWS EBS,S3 EMC storage arrays like Isilon and ScaleIO or Google Persistent Desk or openstack cinder.</p>
-<p>When you run a docker container, you can choose to use a specific volume driver such as the RexRay EBS to provision a volume from Amazon EBS</p>
-<p><img alt="Diagram" src="images/image128.png" /></p>
-<p>This will create a container and attach a volume from the aws cloud when the container exits, your data is safe in the cloud.</p>
-<h3 id="container-storage-interface">Container Storage Interface</h3>
-<p>Let us now look at the container storage interface. In the past, kubernetes has used docker alone as the container runtime engine and all the code to work with Docker was embedded within the kubernetes source code with other container run times coming in, such as rocket and cri-o. It was important to open up and extend support to work with different container run times and not be dependent on the kubernetes source code.</p>
-<p>And that's how the <strong>container runtime interface</strong> came to be. </p>
-<p><img alt="Diagram" src="images/image41.png" /></p>
-<p>The container runtime interface is a standard that defines how an orchestration solution like kubernetes would communicate with container run times like Docker.  So in the future, if any new container runtime interface is developed, they can simply follow the CRI standards, and that new container runtime would work with kubernetes without really having to work with the kubernetes team of developers or touch the kubernetes source code.</p>
-<p>Similarly, as we saw in the networking lectures, to extend support for different networking solutions, the <strong>container networking interface</strong> was introduced. Now any new networking vendors could simply develop their plug-in based on the CNI standards and make their solution work with kubernetes.</p>
-<p>And as you can guess, the <strong>container storage interface</strong> was developed to support multiple storage solutions with CSI, you can now write your own drivers for your own storage to work with kubernetes.</p>
-<p>portworx, Amazon EBS, Azure disk, Dell EMC Isilon, Powermax, Unity, XtremIO, NetApp, Nutanix, HP, Hitachi, pure storage. Everyone's got their own CSI drivers.</p>
-<p><img alt="Diagram" src="images/image142.png" /></p>
-<p>Note that CSI is not a kubernetes specific standard, it is meant to be a universal standard, and if implemented, allows any container orchestration tool to work with any storage vendor with a supported plug in.</p>
-<p>Currently, kubernetes, Cloud Foundry and mesos are on board with CSI.</p>
-<p><img alt="Diagram" src="images/image284.png" /></p>
-<p>So here's what the CSI kind of looks like, it defines a set of RPCs or remote procedure calls that will be called by the container orchestrator and these must be implemented by the storage drivers.For example, CSI says that when a pod is created and requires a volume, the container orchestrator in this case, kubernetes, should call the <strong>create</strong> <strong>volume</strong> RPC and pass a set of details such as the volume name.The storage driver should implement this RPC and handle that request and provision a new volume on the storage array and return the results of the operation.Similarly, Container Orchestrator should call the delete volume RPC when a volume is to be deleted and the storage driver should implement the code to decommission the volume from the array when that call is made.And the specification details exactly what parameters should be sent by the caller, what should be received by the solution and what error codes should be exchanged. If you're interested, you can review all these details in the CSI specification on GitHub at this url.</p>
-<p><img alt="Diagram" src="images/image317.png" /></p>
-<h3 id="volumes">Volumes</h3>
-<p>Persistent Volumes in Kubernetes.</p>
-<p>Before we head into persistent volumes let us start with Volumes in Kubernetes. Let us look at volumes in Docker first. Docker containers are meant to be transient in nature which means they are meant to last only for a short period of time. They are called upon when required to process data and destroyed once finished. The same is true for the data within the container the data is destroyed along with the container. </p>
-<p>To persist data processed by the containers we attach a volume to the containers when they are created.  The data processed by the container is now placed in this volume thereby retaining it permanently. Even if the container is deleted the data generated or processed by it remains. </p>
-<p><strong>So how does that work in the Kubernetes world?</strong> </p>
-<p>Just as in Docker, the PODs created in Kubernetes are transient in nature. When a POD is created to process data and then deleted, the data processed by it gets deleted as well. For this we attach a volume to the POD. The data generated by the POD is now stored in the volume, and even after the POD is deleted, the data remains. </p>
-<p>Let’s look at a simple implementation of volumes. We have a single node kubernetes cluster. We create a simple POD that generates a random between 1 and 100 and writes that to a file at <strong>/opt/number.out</strong> and then gets deleted along with the random number. To retain the number generated by the pod.We create a volume and a volume needs storage. When you create a volume you can choose to configure its storage in different ways. We will look at the various options in a bit but for now we will simply configure it to use a directory on the host.</p>
-<p>In this case I specify a path <strong>/data</strong> on the host. This way any files created in the volume would be stored in the directory data on my node. Once the volume is created, to access it from a container we mount the volume to a directory inside the container. We use the <strong>volumeMounts</strong> field in each container to mount the data-volume to the directory /opt within the container.</p>
-<p><img alt="Diagram" src="images/image122.png" /></p>
-<p>The random number will now be written to /opt mount inside the container, which happens to be on the data-volume which is in fact <strong>/data</strong> directory on the host. </p>
-<p>When the pod gets deleted, the file with the random number still lives on the host. </p>
-<p><strong>Let's take a step back and look at the volume storage options.</strong> </p>
-<p>We just used the host path option to configure a directory and the host as storage space for the volume. Now that works fine on a single node however it is not recommended for use in a multi node cluster. This is because the PODs would use the /data directory on all the nodes, and expect all of them to be the same and have the same data since they are on different servers. They are in fact not the same unless you configure some kind of external replicated cluster storage solution.</p>
-<p><img alt="Diagram" src="images/image398.png" /></p>
-<p>Kubernetes supports several types of standard storage solutions such as NFS, glusterFS, Flocker, FibreChannel, CephFS, ScaleIO or public cloud solutions like AWS EBS, Azure Disk or File or Google’s Persistent Disk.</p>
-<p>For example, to configure an AWS Elastic Block Store volume as the storage or the volume, we replace</p>
-<p>hostPath field of the volume with awsElasticBlockStore field along with the volumeID and filesystem type. The Volume storage will now be on AWS EBS. Reference docs</p>
-<pre><code class="language-yaml">volumes:
-- name: data-volume
-  awsElasticBlockStore:
-    volumeID: &lt;volume-id&gt;
-    fsType: ext4
-</code></pre>
-<h3 id="persistent-volumes">Persistent Volumes</h3>
-<p>In the last lecture. We learned about volumes. Now we will discuss Persistent Volumes in Kubernetes. When we created volumes in the previous section We configured volumes within the pod definition file so every configuration information required to configure storage for the volume goes within the pod definition file. </p>
-<p>Now when you have a large environment with a lot of users deploying a lot of pods the users would have to configure storage every time for each pod. Whatever storage solution is used the users who deploys the pods would have to configure that on all pod definition files in his own environment every time it changes to be made. The user would have to make them on all of his pods. </p>
-<p>Instead you would like to manage storage more centrally. You would like it to be configured in a way that an administrator can create a large pool of storage and then have users carve out pieces from it as required.</p>
-<p>That is where persistent volumes can help us. <strong>A persistent volume is a cluster wide pool of storage volumes configured by an administrator to be used by users deploying applications on the Cluster.</strong> </p>
-<p>The users can now select storage from this pool using persistent volume claims.</p>
-<p><img alt="Diagram" src="images/image399.png" /></p>
-<p>let us now create a persistent volume.</p>
-<p>We start with the base template and update the API version, set the client to persistent volume and name it <strong>pv-vol1</strong> under the specs section specify the access modes, access mode defines how a volume should be mounted on the hosts whether in a read only mode or read write mode etc. </p>
-<p><img alt="Diagram" src="images/image251.png" /></p>
-<p>The supported values are <strong>ReadOnlyMany, ReadWriteOnes or ReadWriteMany,</strong> next is the capacity specify the amount of storage to be reserved for this persistent volume which is set to 1 GB here. Next comes the volume type. We will start with the host path option that uses storage from the nodes local directory. Remember this option is not to be used in a production environment. </p>
-<pre><code class="language-yaml">pv-definition.yaml
+<hr />
+<h3 id="14-data-persistence-volume-mounts-vs-bind-mounts">1.4 Data Persistence: Volume Mounts vs Bind Mounts</h3>
+<p>To retain data beyond container deletion, Docker supports two primary mount mechanisms:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Feature</th>
+<th style="text-align: left;">Volume Mount</th>
+<th style="text-align: left;">Bind Mount</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>Source Location</strong></td>
+<td style="text-align: left;">Managed inside <code>/var/lib/docker/volumes/</code></td>
+<td style="text-align: left;">Any arbitrary path on the host (<code>/data</code>, etc.)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Creation</strong></td>
+<td style="text-align: left;">Docker automatically creates the volume directory</td>
+<td style="text-align: left;">Path must already exist or Docker creates it as root</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Management</strong></td>
+<td style="text-align: left;">Managed via Docker CLI (<code>docker volume ...</code>)</td>
+<td style="text-align: left;">Managed directly by host OS file system tools</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Portability</strong></td>
+<td style="text-align: left;">High; decoupled from host filesystem structure</td>
+<td style="text-align: left;">Low; tightly coupled to specific host paths</td>
+</tr>
+</tbody>
+</table>
+<p><img alt="Diagram" src="images/image314.png" /></p>
+<h4 id="volume-mount-example">Volume Mount Example</h4>
+<pre><code class="language-bash"># 1. Create a managed volume
+docker volume create data_volume
 
+# 2. Mount into container (-v syntax)
+docker run -d -v data_volume:/var/lib/mysql mysql
+
+# Auto-creation: If data_volume2 does not exist, Docker creates it automatically
+docker run -d -v data_volume2:/var/lib/mysql mysql
+</code></pre>
+<h4 id="bind-mount-example">Bind Mount Example</h4>
+<pre><code class="language-bash"># Old -v syntax
+docker run -d -v /data/mysql:/var/lib/mysql mysql
+
+# Preferred modern --mount syntax (verbose key-value format)
+docker run -d \
+  --mount type=bind,source=/data/mysql,target=/var/lib/mysql \
+  mysql
+</code></pre>
+<hr />
+<h3 id="15-docker-storage-drivers">1.5 Docker Storage Drivers</h3>
+<p>Storage drivers manage the container's read-write layer and implement the Copy-on-Write (CoW) mechanism across image layers.</p>
+<ul>
+<li><strong>Common Drivers</strong>: <code>overlay2</code> (default for modern Linux), <code>aufs</code>, <code>btrfs</code>, <code>zfs</code>, <code>devicemapper</code>.</li>
+<li><strong>Selection</strong>: Automatically chosen by Docker based on the host kernel and underlying OS filesystem support.</li>
+</ul>
+<blockquote>
+<p>[!NOTE]
+Storage drivers only manage ephemeral image and container layers. They <strong>do not</strong> manage persistent volumes. Persistent volumes are handled by <strong>Volume Driver Plugins</strong>.</p>
+</blockquote>
+<hr />
+<h3 id="16-docker-volume-driver-plugins">1.6 Docker Volume Driver Plugins</h3>
+<p>Volume driver plugins allow Docker to create volumes on external, remote, or cloud storage solutions rather than the default local <code>/var/lib/docker/volumes</code> path.</p>
+<p><img alt="Diagram" src="images/image187.png" /></p>
+<ul>
+<li><strong>Common Plugins</strong>: Local (default), RexRay, Portworx, Flocker, DigitalOcean Block Storage, GlusterFS, NetApp.</li>
+<li><strong>Multi-Cloud Support</strong>: Plugins like RexRay connect directly to AWS EBS, GCP Persistent Disk, or OpenStack Cinder.</li>
+</ul>
+<p><img alt="Diagram" src="images/image128.png" /></p>
+<pre><code class="language-bash"># Running container backed by cloud block storage via volume plugin
+docker run -d \
+  --volume-driver rexray/ebs \
+  -v ebs-volume:/var/lib/mysql \
+  mysql
+</code></pre>
+<hr />
+<h2 id="2-container-storage-interface-csi">2. Container Storage Interface (CSI)</h2>
+<h3 id="21-evolution-cri-cni-and-csi">2.1 Evolution: CRI, CNI, and CSI</h3>
+<p>Early Kubernetes versions maintained in-tree storage drivers where vendor-specific code lived directly inside the core Kubernetes codebase. To decouple third-party plugins from Kubernetes releases, standard interfaces were introduced:</p>
+<ol>
+<li><strong>CRI (Container Runtime Interface)</strong>: Standard interface for container engines (containerd, CRI-O).</li>
+<li><strong>CNI (Container Network Interface)</strong>: Standard interface for network plugins (Calico, Flannel, Cilium).</li>
+<li><strong>CSI (Container Storage Interface)</strong>: Standard universal interface for storage providers.</li>
+</ol>
+<p><img alt="Diagram" src="images/image41.png" /></p>
+<p><img alt="Diagram" src="images/image142.png" /></p>
+<hr />
+<h3 id="22-csi-architecture-rpc-specification">2.2 CSI Architecture &amp; RPC Specification</h3>
+<p>CSI is a vendor-neutral specification allowing container orchestrators (Kubernetes, Mesos, Cloud Foundry) to interact with any storage provider through standardized gRPC remote procedure calls.</p>
+<p><img alt="Diagram" src="images/image284.png" /></p>
+<p><img alt="Diagram" src="images/image317.png" /></p>
+<h4 id="key-csi-operations">Key CSI Operations:</h4>
+<ul>
+<li><strong><code>CreateVolume</code> / <code>DeleteVolume</code></strong>: Orchestrator requests storage creation or decommission on the storage backend.</li>
+<li><strong><code>ControllerPublishVolume</code> / <code>ControllerUnpublishVolume</code></strong>: Storage controller attaches/detaches block storage to/from a specific compute node.</li>
+<li><strong><code>NodeStageVolume</code> / <code>NodePublishVolume</code></strong>: Formats the volume and mounts it into the Pod container target filesystem.</li>
+</ul>
+<hr />
+<h2 id="3-kubernetes-volumes">3. Kubernetes Volumes</h2>
+<h3 id="31-ephemeral-pod-lifecycle-volume-need">3.1 Ephemeral Pod Lifecycle &amp; Volume Need</h3>
+<p>Pods are ephemeral resources. When a container terminates or a Pod restarts, all data written inside the container's root filesystem is lost. </p>
+<p>Attaching a volume at the Pod level decouples storage lifecycle from container lifecycles:
+- Data persists across container crashes within the same Pod.
+- Different containers in the same Pod can share files by mounting the same volume.</p>
+<hr />
+<h3 id="32-volume-definition-mount-syntax">3.2 Volume Definition &amp; Mount Syntax</h3>
+<p>A volume is defined in <code>spec.volumes</code> and mounted into container paths using <code>spec.containers[*].volumeMounts</code>.</p>
+<p><img alt="Diagram" src="images/image122.png" /></p>
+<pre><code class="language-yaml">apiVersion: v1
+kind: Pod
+metadata:
+  name: random-number-generator
+spec:
+  containers:
+  - name: alpine
+    image: alpine
+    command: [&quot;/bin/sh&quot;, &quot;-c&quot;]
+    args: [&quot;shuf -i 1-100 -n 1 &gt; /opt/number.out; sleep 3600&quot;]
+    volumeMounts:
+    - name: data-volume
+      mountPath: /opt
+  volumes:
+  - name: data-volume
+    hostPath:
+      path: /data
+      type: DirectoryOrCreate
+</code></pre>
+<hr />
+<h3 id="33-volume-storage-types-hostpath-limitations">3.3 Volume Storage Types &amp; <code>hostPath</code> Limitations</h3>
+<p>While <code>hostPath</code> maps a directory from the local worker node into the Pod:
+- <strong>Single Node Clusters</strong>: Works fine for local testing.
+- <strong>Multi-Node Clusters</strong>: <strong>Never recommended for production</strong>. If the Pod is rescheduled onto another worker node, it accesses a completely different local directory lacking previous data.</p>
+<p><img alt="Diagram" src="images/image398.png" /></p>
+<h4 id="cluster-cloud-storage-alternatives">Cluster &amp; Cloud Storage Alternatives:</h4>
+<p>Kubernetes supports enterprise networked and cloud storage solutions:
+- <strong>Network Storage</strong>: NFS, CephFS, GlusterFS, iSCSI.
+- <strong>Cloud Volumes</strong>: AWS EBS, GCE Persistent Disk, Azure Disk/File.</p>
+<pre><code class="language-yaml"># Mounting an AWS EBS volume directly inside a Pod
+spec:
+  volumes:
+  - name: data-volume
+    awsElasticBlockStore:
+      volumeID: &quot;vol-049df61146c4d7951&quot;
+      fsType: ext4
+</code></pre>
+<blockquote>
+<p>[!WARNING]
+Defining storage configurations directly inside Pod manifests tightly couples application manifests with cluster infrastructure. This operational limitation led to the separation of <strong>PersistentVolumes (PV)</strong> and <strong>PersistentVolumeClaims (PVC)</strong>.</p>
+</blockquote>
+<hr />
+<h2 id="4-persistent-volumes-pv">4. Persistent Volumes (PV)</h2>
+<h3 id="41-architecture-administrator-workflow">4.1 Architecture &amp; Administrator Workflow</h3>
+<ul>
+<li><strong>PersistentVolume (PV)</strong>: A cluster-scoped storage resource provisioned by a cluster administrator (or dynamically via StorageClasses). It captures low-level storage details (e.g., NFS server IP, cloud disk ID, local disk path).</li>
+<li><strong>Decoupling</strong>: Developers request storage via <strong>PersistentVolumeClaims (PVC)</strong> without needing to know underlying storage backend IPs, credentials, or volume IDs.</li>
+</ul>
+<p><img alt="Diagram" src="images/image399.png" /></p>
+<hr />
+<h3 id="42-access-modes">4.2 Access Modes</h3>
+<p>Access modes specify how nodes can attach and mount the volume:</p>
+<p><img alt="Diagram" src="images/image251.png" /></p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Access Mode</th>
+<th style="text-align: left;">CLI Abbr</th>
+<th style="text-align: left;">Description</th>
+<th style="text-align: left;">Common Backends</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>ReadWriteOnce</strong></td>
+<td style="text-align: left;"><code>RWO</code></td>
+<td style="text-align: left;">Mounted as read-write by a <strong>single node</strong> only</td>
+<td style="text-align: left;">AWS EBS, GCE PD, Azure Disk</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>ReadOnlyMany</strong></td>
+<td style="text-align: left;"><code>ROX</code></td>
+<td style="text-align: left;">Mounted as read-only by <strong>many nodes</strong> simultaneously</td>
+<td style="text-align: left;">NFS, CephFS</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>ReadWriteMany</strong></td>
+<td style="text-align: left;"><code>RWX</code></td>
+<td style="text-align: left;">Mounted as read-write by <strong>many nodes</strong> simultaneously</td>
+<td style="text-align: left;">NFS, Azure File, GlusterFS</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>ReadWriteOncePod</strong></td>
+<td style="text-align: left;"><code>RWOP</code></td>
+<td style="text-align: left;">Mounted as read-write by a <strong>single Pod</strong> across the cluster</td>
+<td style="text-align: left;">CSI-supported drivers (k8s 1.22+)</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>[!IMPORTANT]
+Access modes indicate <strong>node-level concurrency</strong>, not Pod concurrency. Multiple Pods running on the <strong>same worker node</strong> can all access an <code>RWO</code> volume simultaneously.</p>
+</blockquote>
+<hr />
+<h3 id="43-persistentvolume-manifest-management">4.3 PersistentVolume Manifest &amp; Management</h3>
+<pre><code class="language-yaml">apiVersion: v1
 kind: PersistentVolume
-apiVersion: v1
 metadata:
   name: pv-vol1
 spec:
-  accessModes: [ &quot;ReadWriteOnce&quot; ]
   capacity:
-   storage: 1Gi
+    storage: 1Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
   hostPath:
-   path: /tmp/data
-
-$ kubectl create -f pv-definition.yaml
-persistentvolume/pv-vol1 created
-
-$ kubectl get pv
-NAME      CAPACITY   ACCESS MODES   RECLAIM POLICY   STATUS      CLAIM   STORAGECLASS   REASON   AGE
-pv-vol1   1Gi        RWO            Retain           Available                                   3min
-
-$ kubectl delete pv pv-vol1
-persistentvolume &quot;pv-vol1&quot; deleted
+    path: /tmp/data
 </code></pre>
-<p>To create the volume run <code>kubectl create</code> command and to list the created volume. Run the <code>kubectl get persistentvolume</code> command replace the host path option with one of the supported storage solutions as we saw in the previous lecture like AWS elastic blocks store etc. kubernetes.io</p>
-<h3 id="persistent-volume-claims">Persistent Volume Claims</h3>
-<p>In the previous lesson. We created a persistent volume. Now we will create a Persistent Volume Claim to make the storage available to a node. Persistent Volumes and Persistent Volume Claims are two separate objects in the Kubernetes namespace.  An Administrator creates a set of Persistent Volumes and a user creates Persistent Volume Claims to use the storage.</p>
-<p>Once the Persistent Volume Claims are created, Kubernetes binds the Persistent Volumes to Claims based on the request and properties set on the volume. Every Persistent Volume Claim is bound to single Persistent volume during the binding process Kubernetes tries to find a persistent volume that has sufficient capacity as requested by the claim and any other request properties such as <strong>access modes, volume modes, storage class</strong> etc. However if there are multiple possible matches for a single claim and you would like to specifically use a particular volume you could still use labels and selectors to bind to the right volumes.</p>
-<p><img alt="Diagram" src="images/image226.png" /></p>
-<p>Finally note that a smaller claim may get bound to a larger volume if all the other criteria matches and there are no better options.</p>
-<p><img alt="Diagram" src="images/image84.png" /></p>
-<p>There is a one to one relationship between claims and volumes so no other claims can utilize the remaining capacity in the volume.</p>
-<p>If there are no volumes available the persistent volume claim will remain in a pending state until newer volumes are made available to the cluster, once newer volumes are available. The claim would automatically be bound to the newly available volume.  </p>
-<p>let us now create a persistent volume claim.</p>
-<p>We start with a blank template saying the API version to v1 and kind to PersistentVolumeClaim.We will name it <strong>myclaim</strong>. Under specification set the accessModes to <strong>ReadWriteOnce</strong>. And set resources to request a storage of 500megabytes. </p>
-<pre><code class="language-yaml"> pvc-definition.yaml
+<h4 id="core-cli-commands">Core CLI Commands:</h4>
+<pre><code class="language-bash"># Create PersistentVolume
+kubectl apply -f pv-vol1.yaml
 
+# Verify PV creation &amp; status
+kubectl get pv
+
+# Sample Output:
+# NAME      CAPACITY   ACCESS MODES   RECLAIM POLICY   STATUS      CLAIM   STORAGECLASS   AGE
+# pv-vol1   1Gi        RWO            Retain           Available                          12s
+
+# Describe details
+kubectl describe pv pv-vol1
+
+# Delete PV
+kubectl delete pv pv-vol1
+</code></pre>
+<hr />
+<h2 id="5-persistent-volume-claims-pvc">5. Persistent Volume Claims (PVC)</h2>
+<h3 id="51-architecture-binding-mechanism">5.1 Architecture &amp; Binding Mechanism</h3>
+<p>A <strong>PersistentVolumeClaim (PVC)</strong> is a namespace-scoped request for storage by a user. Kubernetes automatically searches for an <code>Available</code> PersistentVolume that satisfies the claim's requirements and binds them together.</p>
+<p>Binding criteria evaluated:
+1. <strong>Sufficient Storage Capacity</strong> (<code>requests.storage</code> $\le$ PV capacity).
+2. <strong>Matching Access Modes</strong> (<code>accessModes</code>).
+3. <strong>Matching StorageClass</strong> (<code>storageClassName</code>).
+4. <strong>Label Selectors</strong> (<code>selector.matchLabels</code> if specified).</p>
+<p><img alt="Diagram" src="images/image226.png" /></p>
+<hr />
+<h3 id="52-1-to-1-binding-principle-capacity-matching">5.2 1-to-1 Binding Principle &amp; Capacity Matching</h3>
+<ul>
+<li><strong>Strict 1-to-1 Mapping</strong>: Every bound PVC is bound to exactly one PV. No other PVC can claim remaining surplus capacity of that PV.</li>
+<li><strong>Smaller Claim vs Larger Volume</strong>: If a PVC requests <code>500Mi</code> and the only available matching PV is <code>1Gi</code>, Kubernetes binds the <code>500Mi</code> claim to the <code>1Gi</code> volume. The remaining <code>500Mi</code> is locked and unusable by other claims.</li>
+</ul>
+<p><img alt="Diagram" src="images/image84.png" /></p>
+<ul>
+<li><strong>Pending Claims</strong>: If no suitable PV is available, the PVC remains in <code>Pending</code> status until a matching volume is created or dynamic provisioning triggers.</li>
+</ul>
+<hr />
+<h3 id="53-pvc-manifest-binding-lifecycle">5.3 PVC Manifest &amp; Binding Lifecycle</h3>
+<pre><code class="language-yaml">apiVersion: v1
 kind: PersistentVolumeClaim
-apiVersion: v1
 metadata:
   name: myclaim
 spec:
-  accessModes: [ &quot;ReadWriteOnce&quot; ]
+  accessModes:
+    - ReadWriteOnce
   resources:
-   requests:
-     storage: 1Gi
-
-pv-definition.yaml
-kind: PersistentVolume
-apiVersion: v1
-metadata:
-    name: pv-vol1
-spec:
-    accessModes: [ &quot;ReadWriteOnce&quot; ]
-    capacity:
-     storage: 1Gi
-    hostPath:
-     path: /tmp/data
-
-$ kubectl create -f pv-definition.yaml
-persistentvolume/pv-vol1 created
-
-$ kubectl get pv
-NAME      CAPACITY   ACCESS MODES   RECLAIM POLICY   STATUS      CLAIM   STORAGECLASS   REASON   AGE
-pv-vol1   1Gi        RWO            Retain           Available                                   10s
+    requests:
+      storage: 500Mi
 </code></pre>
-<p>Create the claim using the <code>kubectl create</code> command. To view the created claim run the <code>kubectl get persistentvolumeclaim</code> command. We see the claim in a pending state. </p>
-<p>When the claim is created, kubernetes looks at the volume created previously. The access Modes match. The capacity requested is 500 Megabytes but the volume is configured with 1 GB of storage. Since there are no other volumes available. The persistent volume claim is bound to persistent volume, when we run to <code>get</code> <code>volumes</code> commands again .</p>
-<p>We see the claim is bound to the persistent volume we created. Perfect. </p>
-<p>To delete a PVC run the <code>kubectl delete persistentvolumeclaim</code> command but what happens to the underlying persistent volume when the claim is deleted.</p>
-<p>You can choose what is to happen to the volume by default. It is set to retain meaning the persistent volume will remain until it is manually deleted by the administrator.</p>
-<p>It is not available for reuse by any other claims or it can be deleted automatically.  This way as soon as the claim is deleted the volume will be deleted as well thus freeing up storage on the end storage device or a third option is to recycle. </p>
-<p>In this case the data in the data volume will be scrubbed before making it available to other claims. </p>
-<h3 id="using-pvc-in-pods">Using PVC in PODs</h3>
-<p>Once you create a PVC use it in a POD definition file by specifying the PVC Claim name under persistentVolumeClaim section in the volumes section like this:</p>
+<pre><code class="language-bash"># Apply PVC manifest
+kubectl apply -f myclaim.yaml
+
+# Check PVC binding status
+kubectl get pvc
+# NAME      STATUS   VOLUME    CAPACITY   ACCESS MODES   STORAGECLASS   AGE
+# myclaim   Bound    pv-vol1   1Gi        RWO                           5s
+
+# Check corresponding PV status (becomes Bound to default/myclaim)
+kubectl get pv
+# NAME      CAPACITY   ACCESS MODES   RECLAIM POLICY   STATUS   CLAIM             STORAGECLASS   AGE
+# pv-vol1   1Gi        RWO            Retain           Bound    default/myclaim                  2m
+</code></pre>
+<hr />
+<h3 id="54-persistentvolume-reclaim-policies">5.4 PersistentVolume Reclaim Policies</h3>
+<p>The reclaim policy tells Kubernetes what to do with the physical volume once its associated PVC is deleted:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Reclaim Policy</th>
+<th style="text-align: left;">Behavior upon PVC Deletion</th>
+<th style="text-align: left;">Target PV Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong><code>Retain</code></strong> (Default for manual PV)</td>
+<td style="text-align: left;">Underlying volume and storage remain untouched. Data is preserved.</td>
+<td style="text-align: left;"><code>Released</code>. Needs manual cleanup before re-use.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong><code>Delete</code></strong> (Default for Dynamic PV)</td>
+<td style="text-align: left;">Automatically deletes the Kubernetes PV object and the physical storage asset (e.g. AWS EBS).</td>
+<td style="text-align: left;">N/A (Destroyed).</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong><code>Recycle</code></strong> (<em>Deprecated</em>)</td>
+<td style="text-align: left;">Scrubs volume data via basic <code>rm -rf /thevolume/*</code> and makes the PV available again.</td>
+<td style="text-align: left;"><code>Available</code>.</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h3 id="55-using-pvcs-in-pods-deployments">5.5 Using PVCs in Pods &amp; Deployments</h3>
+<p>To consume a PVC inside a Pod, reference the claim name under <code>spec.volumes[*].persistentVolumeClaim.claimName</code>:</p>
 <pre><code class="language-yaml">apiVersion: v1
 kind: Pod
 metadata:
@@ -241,188 +430,242 @@ spec:
     - name: myfrontend
       image: nginx
       volumeMounts:
-      - mountPath: &quot;/var/www/html&quot;
-        name: mypd
+      - name: mypd
+        mountPath: /var/www/html
   volumes:
     - name: mypd
       persistentVolumeClaim:
         claimName: myclaim
 </code></pre>
-<p>The same is true for ReplicaSets or Deployments. Add this to the pod template section of a Deployment on ReplicaSet.</p>
-<p>Test commands </p>
+<blockquote>
+<p>[!TIP]
+In Deployments or StatefulSets, place <code>volumes</code> under <code>spec.template.spec.volumes</code> and <code>volumeMounts</code> under <code>spec.template.spec.containers[*].volumeMounts</code>.</p>
+</blockquote>
+<hr />
+<h2 id="6-hands-on-cka-scenarios-troubleshooting">6. Hands-On CKA Scenarios &amp; Troubleshooting</h2>
+<h3 id="61-scenario-1-inspecting-persisting-container-logs-with-hostpath">6.1 Scenario 1: Inspecting &amp; Persisting Container Logs with <code>hostPath</code></h3>
+<p><strong>Problem Statement:</strong> An application Pod named <code>webapp</code> outputs logs directly to <code>/log/app.log</code>. Because storage is ephemeral, deleting the Pod destroys the log history. Configure a hostPath volume to persist logs to <code>/var/log/webapp</code> on the host.</p>
+<ol>
+<li>
+<p>Inspect container logs via <code>exec</code>:
+   <code>bash
+   kubectl exec webapp -- cat /log/app.log</code></p>
+</li>
+<li>
+<p>Export the current Pod definition:
+   <code>bash
+   kubectl get pod webapp -o yaml &gt; webapp.yaml</code></p>
+</li>
+<li>
+<p>Update <code>webapp.yaml</code> with <code>volumeMounts</code> and <code>hostPath</code>:
+   ```yaml
+   apiVersion: v1
+   kind: Pod
+   metadata:
+     name: webapp
+   spec:
+     containers:</p>
 <ul>
-<li>
-<p>The application stores logs at location <code>/log/app.log</code>. View the logs. , You can exec in to the container and open the file:  <code>kubectl exec webapp -- cat /log/app.log</code></p>
-</li>
-<li>
-<p>If the POD was to get deleted now, would you be able to view these logs? -- No</p>
-</li>
+<li>name: event-simulator
+   image: kodekloud/event-simulator
+   env:</li>
+<li>name: LOG_HANDLERS
+     value: file
+   volumeMounts:</li>
+<li>mountPath: /log
+     name: log-volume
+ volumes:</li>
+<li>name: log-volume
+   hostPath:
+     path: /var/log/webapp
+     type: DirectoryOrCreate
+   ```</li>
 </ul>
-<p>Use the command kubectl delete to delete a webapp pod and try to view those logs again.</p>
-<p>Sol ;The logs are stored in the Container's file system that lives only as long as the Container does. Once the pod is destroyed, you cannot view the logs again.</p>
-<ul>
-<li>Configure a volume to store these logs at <code>/var/log/webapp</code> on the host. Use the spec provided below.</li>
-</ul>
-<pre><code class="language-bash">kubectl get po webapp -o yaml &gt; webapp.yaml
-</code></pre>
-<p>Use the command <code>kubectl get po webapp -o yaml &gt; webapp.yaml</code> and add the given properties under the <code>spec.volumes</code> and <code>spec.containers.volumeMounts.</code>ORUse the command <code>kubectl run</code> to create a new pod and use the <code>flag --dry-run=client -o yaml</code> to generate the manifest file.</p>
-<p>In the manifest file add <code>spec.volumes</code> and <code>spec.containers.volumeMounts</code> property.</p>
-<p>After that, run the following command to create a pod called webapp: -</p>
-<pre><code class="language-yaml">kubectl replace -f webapp.yaml --force 
-kubectl replace -f: - It will remove the existing resource and will replace it with the new one from the given manifest file. 
-apiVersion: v1
-kind: Pod
-metadata:
-  name: webapp
-spec:
-  containers:
-  - env:
-- name: LOG_HANDLERS
-  value: file
-image: kodekloud/event-simulator
-name: event-simulator
-volumeMounts:
-- mountPath: /log
-  name: log-volume
-  volumes:
-- name: log-volume
-  hostPath:
-    path: /var/log/webapp
-    type: Directory
-</code></pre>
-<p>Create a <code>Persistent Volume</code> with the given specification </p>
-<ul>
-<li>
-<p>Volume Name: pv-log</p>
 </li>
 <li>
-<p>Storage: 100Mi</p>
+<p>Recreate the Pod using <code>--force</code>:
+   <code>bash
+   kubectl replace -f webapp.yaml --force</code></p>
 </li>
-<li>
-<p>Access Modes: ReadWriteMany</p>
-</li>
-<li>
-<p>Host Path: /pv/log</p>
-</li>
-<li>
-<p>Reclaim Policy: Retain</p>
-</li>
-</ul>
+</ol>
+<hr />
+<h3 id="62-scenario-2-creating-a-persistentvolume-pv-log">6.2 Scenario 2: Creating a PersistentVolume (<code>pv-log</code>)</h3>
+<p><strong>Requirements:</strong>
+- Volume Name: <code>pv-log</code>
+- Capacity: <code>100Mi</code>
+- Access Modes: <code>ReadWriteMany</code>
+- Host Path: <code>/pv/log</code>
+- Reclaim Policy: <code>Retain</code></p>
 <pre><code class="language-yaml">apiVersion: v1
 kind: PersistentVolume
 metadata:
   name: pv-log
 spec:
   capacity:
-storage: 100Mi
-  hostPath:
-path: /pv/log
+    storage: 100Mi
   accessModes:
-- ReadWriteMany
+    - ReadWriteMany
   persistentVolumeReclaimPolicy: Retain
-
-
-##does not work 
+  hostPath:
+    path: /pv/log
+</code></pre>
+<p>Apply and verify:</p>
+<pre><code class="language-bash">kubectl apply -f pv-log.yaml
+kubectl get pv pv-log
+</code></pre>
+<hr />
+<h3 id="63-scenario-3-troubleshooting-pvc-binding-failures-claim-log-1">6.3 Scenario 3: Troubleshooting PVC Binding Failures (<code>claim-log-1</code>)</h3>
+<p><strong>Diagnostic Exercise:</strong> A student created a PVC that remained in <code>Pending</code> status.</p>
+<h4 id="non-working-manifest-analysis">❌ Non-Working Manifest Analysis</h4>
+<pre><code class="language-yaml"># BROKEN SPEC: Will remain in Pending state
 apiVersion: v1 
 kind: PersistentVolumeClaim
 metadata:
   name: claim-log-1
 spec:
   accessModes:
-    - ReadWriteOnce
+    - ReadWriteOnce                      # ERROR 1: pv-log only supports ReadWriteMany
   volumeMode: Filesystem
   resources:
     requests:
       storage: 50Mi
-  storageClassName: “”
+  storageClassName: &quot;&quot;                   # Restricts to PVs with no storageClassName
   selector:
     matchLabels:
-      release: &quot;stable&quot;
+      release: &quot;stable&quot;                  # ERROR 2: pv-log does not possess this label
     matchExpressions:
-      - {key: environment, operator: In, values: [dev]}
-
-
-##works##
+      - {key: environment, operator: In, values: [dev]} # ERROR 3: Label missing on PV
+</code></pre>
+<p><strong>Why it failed:</strong>
+1. <strong>Access Mode Mismatch</strong>: <code>pv-log</code> offers <code>ReadWriteMany</code>, but claim requests <code>ReadWriteOnce</code>.
+2. <strong>Selector Mismatch</strong>: The claim requires labels <code>release: stable</code> and <code>environment: dev</code> which do not exist on <code>pv-log</code>.</p>
+<h4 id="fixed-working-manifest">✅ Fixed Working Manifest</h4>
+<pre><code class="language-yaml">apiVersion: v1
 kind: PersistentVolumeClaim
-apiVersion: v1
 metadata:
   name: claim-log-1
 spec:
   accessModes:
-    - ReadWriteOnce
+    - ReadWriteMany
   resources:
     requests:
       storage: 50Mi
-
-
-kubectl get pvc -o wide
-kubectl get pv -o wide
 </code></pre>
-<ul>
-<li>Update the <code>webapp</code> pod to use the persistent volume claim as its storage. Replace <code>hostPath</code> configured earlier with the newly created <code>PersistentVolumeClaim.</code></li>
-</ul>
+<p>Apply and verify:</p>
+<pre><code class="language-bash">kubectl apply -f claim-log-1.yaml
+kubectl get pvc claim-log-1
+kubectl get pv pv-log
+</code></pre>
+<hr />
+<h3 id="64-scenario-4-mounting-pvc-into-application-pod">6.4 Scenario 4: Mounting PVC into Application Pod</h3>
+<p>Update the <code>webapp</code> Pod to consume <code>claim-log-1</code>:</p>
 <pre><code class="language-yaml">apiVersion: v1
 kind: Pod
 metadata:
   name: webapp
 spec:
   containers:
-  - env:
-- name: LOG_HANDLERS
-  value: file
-image: kodekloud/event-simulator
-name: event-simulator
-volumeMounts:
-- mountPath: /log
-  name: log-volume
+  - name: event-simulator
+    image: kodekloud/event-simulator
+    env:
+    - name: LOG_HANDLERS
+      value: file
+    volumeMounts:
+    - mountPath: /log
+      name: log-volume
   volumes:
-- name: log-volume
+  - name: log-volume
     persistentVolumeClaim:
-          claimName: claim-log-1
+      claimName: claim-log-1
 </code></pre>
-<h3 id="storage-classes">Storage Classes</h3>
-<p>In the previous lectures we discussed about how to create PVs and then create PVCs to claim that storage and then use the PVCs in the pod definition files as volumes. </p>
+<p>Apply the updated Pod:</p>
+<pre><code class="language-bash">kubectl replace -f webapp.yaml --force
+</code></pre>
+<hr />
+<h2 id="7-storageclasses-dynamic-provisioning">7. StorageClasses &amp; Dynamic Provisioning</h2>
+<h3 id="71-static-vs-dynamic-provisioning">7.1 Static vs Dynamic Provisioning</h3>
+<h4 id="static-provisioning-manual">Static Provisioning (Manual)</h4>
+<ol>
+<li>Storage admin manually creates disks in cloud/SAN (e.g. AWS EBS, GCE PD).</li>
+<li>Admin manually writes and creates a <code>PersistentVolume</code> manifest pointing to disk ID.</li>
+<li>User writes a <code>PersistentVolumeClaim</code>.</li>
+<li>Kubernetes binds PVC to PV.</li>
+</ol>
 <p><img alt="Diagram" src="images/image176.png" /></p>
 <p><img alt="Diagram" src="images/image233.png" /></p>
-<p>In this case, we create a PVC from a Google cloud  persistent disk.  The problem here is that before this PV is created, you must have created the disk on Google Cloud. Every time an application requires storage, you have to first manually provision the disk on Google Cloud and then manually create a persistent volume definition file using the same name as that of the disk that you created.<strong>That's called static provisioning volumes.</strong></p>
 <p><img alt="Diagram" src="images/image121.png" /></p>
-<p>It would have been nice if the volume gets provisioned automatically when the application requires it, and that's where <strong>storage classes</strong> come in. With storage classes, you can define a provisioner such as Google storage that can automatically provision storage on Google Cloud and attach that to PODs when a claim is made. That's called <strong>dynamic provisioning</strong> of volumes. You do that by creating a storage class object with the API version set to <strong>storage.k8s.io/v1</strong>, specify a name and use provisioner as  <strong>kubernates.io/gce-pd</strong>So going back to our original state where we have a pod using a PVC for its storage and the PVC is bound to a PV, we now have a storage class. So we no longer need the PV definition, because the PV and any associated storage is going to be created automatically when the storage class is created. </p>
+<p><em>Bottleneck: Highly manual, slow, and doesn't scale for large multi-tenant clusters.</em></p>
+<hr />
+<h4 id="dynamic-provisioning-automated-via-storageclass">Dynamic Provisioning (Automated via StorageClass)</h4>
+<ol>
+<li>Administrator defines a <strong><code>StorageClass</code></strong> with a provisioner and parameters.</li>
+<li>User submits a <code>PersistentVolumeClaim</code> specifying <code>storageClassName</code>.</li>
+<li>The StorageClass automatically provisions the cloud disk, creates a <code>PersistentVolume</code>, and binds it to the PVC.</li>
+</ol>
 <p><img alt="Diagram" src="images/image307.png" /></p>
-<p>For the PVC to use the storage class we defined, we specify the storage class name in the PVC definition. That's how the PVC knows which storage class to use, Next time a PVC is created the storage class associated with it, uses the defined provisioner to provision a new disk with the required size on GCP and then creates a persistent volume and then binds the PVC to that volume. </p>
 <p><img alt="Diagram" src="images/image96.png" /></p>
-<p>So remember that it still creates a PV. It's just that you don't have to manually create PVs anymore. It's created automatically by the storage class. We used the GCE provisioner to create a volume on GCP, there are many other provisioners as well, </p>
-<p>such as for AWS EBS, Azure File, Azure disk,cephFS,PortWorx,scaleIO and so on. </p>
-<p>With each of these provisions, you can pass in additional parameters, such as the type of disk to provision, the replication type, etc… These parameters are very specific to the provision that you are using. For Google Persistent disk. ⇒You can specify the type which could be standard or SSD.  ⇒You can specify the replication mode which could be none or regional-pd</p>
+<hr />
+<h3 id="72-storageclass-architecture-provisioners">7.2 StorageClass Architecture &amp; Provisioners</h3>
+<p>A StorageClass specifies the provisioner plugin and backend storage attributes:</p>
 <p><img alt="Diagram" src="images/image213.png" /></p>
-<p>sc-definition.yaml</p>
 <pre><code class="language-yaml">apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
-   name: google-storage
+  name: google-storage
 provisioner: kubernetes.io/gce-pd
+parameters:
+  type: pd-ssd
+  replication-type: none
 </code></pre>
-<p>So you see, you can create different storage classes, each using different types of disks, for example, a silver storage class with the standard disks, a gold class with SSD drives, and a platinum class with SSD drives and replication. </p>
-<p>And that's why it's called a storage class. You can create different classes of service. Next time you create a PVC, you can simply specify the class of storage you need for your volumes.</p>
-<pre><code class="language-bash">Test Question and solutions 
-
-→ How many StorageClasses exist in the cluster right now?
-kubectl get storageclasess -- for how many storage classes are present in the cluster
+<h4 id="common-in-tree-csi-provisioners">Common In-Tree &amp; CSI Provisioners:</h4>
+<ul>
+<li><strong>AWS EBS CSI</strong>: <code>ebs.csi.aws.com</code> (legacy: <code>kubernetes.io/aws-ebs</code>)</li>
+<li><strong>GCP Persistent Disk CSI</strong>: <code>pd.csi.storage.gke.io</code> (legacy: <code>kubernetes.io/gce-pd</code>)</li>
+<li><strong>Azure Disk CSI</strong>: <code>disk.csi.azure.com</code></li>
+<li><strong>Local Storage (No Dynamic Provisioning)</strong>: <code>kubernetes.io/no-provisioner</code></li>
+</ul>
+<hr />
+<h3 id="73-volume-binding-modes-immediate-vs-waitforfirstconsumer">7.3 Volume Binding Modes: <code>Immediate</code> vs <code>WaitForFirstConsumer</code></h3>
+<p>The <code>volumeBindingMode</code> attribute determines when volume provisioning and binding occur:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Binding Mode</th>
+<th style="text-align: left;">Description</th>
+<th style="text-align: left;">Typical Use Case</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong><code>Immediate</code></strong> (Default)</td>
+<td style="text-align: left;">PV is created and bound immediately once the PVC is submitted.</td>
+<td style="text-align: left;">Centralized cloud storage unconstrained by topology.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong><code>WaitForFirstConsumer</code></strong></td>
+<td style="text-align: left;">Delays volume binding and provisioning until a Pod requesting the PVC is created and scheduled.</td>
+<td style="text-align: left;">Topology-constrained storage (Local PVs, specific Availability Zones).</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>[!IMPORTANT]
+With <code>WaitForFirstConsumer</code>, the scheduler factors in Pod scheduling constraints (node affinity, tolerations, resource availability) <strong>before</strong> creating or binding the volume on the targeted node.</p>
+</blockquote>
+<hr />
+<h3 id="74-cka-troubleshooting-delayed-binding-with-local-storage">7.4 CKA Troubleshooting: Delayed Binding with Local Storage</h3>
+<h4 id="1-inspect-cluster-storageclasses">1. Inspect Cluster StorageClasses</h4>
+<pre><code class="language-bash">kubectl get storageclasses
+# OR
+kubectl get sc
 </code></pre>
 <p><img alt="Diagram" src="images/image248.png" /></p>
-<pre><code class="language-yaml">→ What is the name of the Storage Class that does not support dynamic volume provisioning?
-Look for the storage class name that uses no-provisioner
-The local-storage storage class makes use of the no-provisioner and currently does not support dynamic provisioning.
-Refer to the tab above the terminal (called Local Storage) to read more about it.
-
-→ What is the Provisioner used for the storage class called portworx-io-priority-high?
-
-run the command: kubectl describe sc portworx-io-priority-high or kubectl get sc portworx-io-priority-high and look under the PROVISIONER section.
-→ Is there a PersistentVolumeClaim that is consuming the PersistentVolume called local-pv?
-kubectl get pvc -o wide 
-
-→ Create a new PersistentVolumeClaim by the name of local-pvc that should bind to the volume local-pv. Inspect the pv local-pv for the specs.
-
-
+<h4 id="2-identifying-non-dynamic-provisioners">2. Identifying Non-Dynamic Provisioners</h4>
+<p>StorageClasses using <code>kubernetes.io/no-provisioner</code> do <strong>not</strong> support dynamic volume provisioning. PVs for these classes must be manually created.</p>
+<h4 id="3-analyzing-pending-pvc-with-waitforfirstconsumer">3. Analyzing Pending PVC with <code>WaitForFirstConsumer</code></h4>
+<p>A PVC named <code>local-pvc</code> is created with <code>storageClassName: local-storage</code>. A matching PV <code>local-pv</code> exists, but the PVC stays in <code>Pending</code> state.</p>
+<p><img alt="Diagram" src="images/image165.png" /></p>
+<pre><code class="language-yaml"># local-pvc definition
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -430,19 +673,15 @@ metadata:
 spec:
   accessModes:
     - ReadWriteOnce
+  storageClassName: local-storage
   resources:
     requests:
       storage: 500Mi
-  storageClassName: local-storage
-
-→ Why is the PVC in a pending state despite making a valid request to claim the volume called local-pv?
 </code></pre>
-<p><img alt="Diagram" src="images/image165.png" /></p>
-<pre><code class="language-yaml">Ans: A Pod consuming the volume is not scheduled 
-The StorageClass used by the PVC uses WaitForFirstConsumer volume binding mode. This means that the persistent volume will not bind to the claim until a pod makes use of the PVC to request storage.
-→ The Storage Class called local-storage makes use of VolumeBindingMode set to WaitForFirstConsumer. This will delay the binding and provisioning of a PersistentVolume until a Pod using the PersistentVolumeClaim is created. 
-→ Create a new pod called nginx with the image nginx:alpine. The Pod should make use of the PVC local-pvc and mount the volume at the path /var/www/html. The PV local-pv should in a bound state.
-apiVersion: v1
+<p><strong>Diagnostic Reason:</strong>
+The StorageClass <code>local-storage</code> defines <code>volumeBindingMode: WaitForFirstConsumer</code>. The binding will remain delayed until a Pod actively claiming <code>local-pvc</code> is scheduled.</p>
+<h4 id="4-resolving-by-creating-the-consuming-pod">4. Resolving by Creating the Consuming Pod</h4>
+<pre><code class="language-yaml">apiVersion: v1
 kind: Pod
 metadata:
   name: nginx
@@ -451,61 +690,76 @@ spec:
     - name: nginx
       image: nginx:alpine
       volumeMounts:
-      - mountPath: &quot;/var/www/html&quot;
-        name: mypd
+      - name: mypd
+        mountPath: /var/www/html
   volumes:
     - name: mypd
       persistentVolumeClaim:
         claimName: local-pvc
-
-create a storage class which has following attributes 1. volumeBindingMode: WaitForFirstConsumer2. provisioner: kubernetes.io/no-provisioner
-apiVersion: storage.k8s.io/v1
+</code></pre>
+<p>Once <code>nginx</code> is applied, the Pod is scheduled to a node, triggering immediate binding of <code>local-pvc</code> to <code>local-pv</code>.</p>
+<h4 id="5-defining-a-delayed-binding-storageclass">5. Defining a Delayed-Binding StorageClass</h4>
+<pre><code class="language-yaml">apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
-   name: delayed-volume-sc
+  name: delayed-volume-sc
 provisioner: kubernetes.io/no-provisioner
 volumeBindingMode: WaitForFirstConsumer
 </code></pre>
 <hr />
-<h3 id="persistentvolumeclaim-pvc-volume-expansion">PersistentVolumeClaim (PVC) Volume Expansion</h3>
+<h2 id="8-pvc-volume-expansion-resizing">8. PVC Volume Expansion (Resizing)</h2>
 <p>Kubernetes allows online resizing of Persistent Volumes without downtime if supported by the underlying storage provider and CSI driver.</p>
-<h4 id="enabling-volume-expansion-in-storageclass">Enabling Volume Expansion in StorageClass</h4>
+<h3 id="81-enabling-volume-expansion-in-storageclass">8.1 Enabling Volume Expansion in StorageClass</h3>
 <p>The StorageClass must have <code>allowVolumeExpansion: true</code>:</p>
 <pre><code class="language-yaml">apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
   name: expandable-sc
 provisioner: csi.example.com
-allowVolumeExpansion: true # Essential for resizing PVCs
+allowVolumeExpansion: true # REQUIRED for PVC resizing
 volumeBindingMode: Immediate
 </code></pre>
-<h4 id="expanding-an-existing-pvc">Expanding an Existing PVC</h4>
-<p>You can only increase a PVC's storage size (reducing volume size is never supported).</p>
+<hr />
+<h3 id="82-expanding-an-existing-pvc-filesystem-status">8.2 Expanding an Existing PVC &amp; Filesystem Status</h3>
+<blockquote>
+<p>[!CAUTION]
+You can <strong>only increase</strong> volume size. Shrinking volume capacity is never supported in Kubernetes.</p>
+</blockquote>
 <ol>
-<li>Edit the PVC:
+<li>Edit the PVC directly or patch the storage request:
+   ```bash
+   # Option A: Interactive edit
+   kubectl edit pvc data-pvc</li>
+</ol>
+<p># Option B: Imperative JSON patch
+   kubectl patch pvc data-pvc -p '{"spec":{"resources":{"requests":{"storage":"20Gi"}}}}'
+   ```</p>
+<ol start="2">
+<li>
+<p>Inspect expansion progress:
    <code>bash
-   kubectl edit pvc data-pvc</code></li>
-<li>Or patch the request directly:
-   <code>bash
-   kubectl patch pvc data-pvc -p '{"spec":{"resources":{"requests":{"storage":"20Gi"}}}}'</code></li>
-<li>Inspect expansion progress:
-   <code>bash
-   kubectl describe pvc data-pvc</code>
-   <em>If the underlying volume is resized but the filesystem inside the Pod has not yet expanded, the PVC status condition will show <code>FileSystemResizePending</code>. Once a Pod mounts the volume, kubelet resizes the filesystem and clears the condition.</em></li>
+   kubectl describe pvc data-pvc</code></p>
+</li>
+<li>
+<p><strong><code>FileSystemResizePending</code> Condition</strong>:
+   - If the underlying physical volume is resized by the CSI controller, but the filesystem within the Pod has not yet expanded, the PVC status reports <code>FileSystemResizePending</code>.
+   - Once a Pod mounts the volume, <code>kubelet</code> resizes the internal filesystem and clears the condition.</p>
+</li>
 </ol>
 <hr />
-<h3 id="csi-volume-snapshots-volumesnapshotclass">CSI Volume Snapshots &amp; VolumeSnapshotClass</h3>
-<p>Kubernetes provides standard CRDs (<code>snapshot.storage.k8s.io</code>) for point-in-time copies of volumes.</p>
-<h4 id="1-volumesnapshotclass">1. VolumeSnapshotClass</h4>
+<h2 id="9-csi-volume-snapshots-volumesnapshotclass">9. CSI Volume Snapshots &amp; VolumeSnapshotClass</h2>
+<p>Kubernetes provides standard Custom Resource Definitions (<code>snapshot.storage.k8s.io</code>) for point-in-time copies of volumes.</p>
+<h3 id="91-volumesnapshotclass">9.1 VolumeSnapshotClass</h3>
 <p>Defines the CSI snapshot driver and deletion policy:</p>
 <pre><code class="language-yaml">apiVersion: snapshot.storage.k8s.io/v1
 kind: VolumeSnapshotClass
 metadata:
   name: csi-aws-vsc
 driver: ebs.csi.aws.com
-deletionPolicy: Delete # Or 'Retain' to preserve physical snapshot when object deleted
+deletionPolicy: Delete # Or 'Retain' to preserve cloud snapshot after object deletion
 </code></pre>
-<h4 id="2-creating-a-volumesnapshot-from-a-pvc">2. Creating a VolumeSnapshot from a PVC</h4>
+<hr />
+<h3 id="92-creating-a-volumesnapshot-from-a-pvc">9.2 Creating a VolumeSnapshot from a PVC</h3>
 <pre><code class="language-yaml">apiVersion: snapshot.storage.k8s.io/v1
 kind: VolumeSnapshot
 metadata:
@@ -518,10 +772,12 @@ spec:
 </code></pre>
 <p>Check snapshot readiness:</p>
 <pre><code class="language-bash">kubectl get volumesnapshot -n database
-# READYTOUSE column should become 'true'
+# NAME                    READYTOUSE   SOURCEPVC        RESTORESIZE   AGE
+# mysql-backup-snapshot   true         mysql-data-pvc   10Gi          45s
 </code></pre>
-<h4 id="3-restoring-a-pvc-from-a-volumesnapshot">3. Restoring a PVC from a VolumeSnapshot</h4>
-<p>You can create a brand new PVC initialized with data from a previous snapshot:</p>
+<hr />
+<h3 id="93-restoring-a-pvc-from-a-volumesnapshot">9.3 Restoring a PVC from a VolumeSnapshot</h3>
+<p>Create a new PVC initialized with data from an existing snapshot by configuring the <code>dataSource</code> field:</p>
 <pre><code class="language-yaml">apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -538,5 +794,31 @@ spec:
   resources:
     requests:
       storage: 20Gi # Must be greater than or equal to snapshot size
-</code></pre></main></body>
+</code></pre>
+<hr />
+<h2 id="10-cka-exam-quick-reference-cheat-sheet">10. CKA Exam Quick Reference &amp; Cheat Sheet</h2>
+<pre><code class="language-bash"># Core Resource Queries
+kubectl get pv
+kubectl get pvc -n &lt;namespace&gt;
+kubectl get sc
+kubectl get volumesnapshot -n &lt;namespace&gt;
+
+# Describe &amp; Inspect Events
+kubectl describe pvc &lt;pvc-name&gt;
+kubectl describe pv &lt;pv-name&gt;
+
+# Fast Dry-Run Generation
+kubectl run test-pod --image=nginx --dry-run=client -o yaml &gt; pod.yaml
+
+# Patching Resources
+kubectl patch pvc &lt;pvc-name&gt; -p '{&quot;spec&quot;:{&quot;resources&quot;:{&quot;requests&quot;:{&quot;storage&quot;:&quot;10Gi&quot;}}}}'
+</code></pre>
+<h3 id="essential-exam-takeaways">Essential Exam Takeaways:</h3>
+<ol>
+<li><strong>Scope Distinction</strong>: <code>PersistentVolume</code> and <code>StorageClass</code> are <strong>cluster-scoped</strong> resources. <code>PersistentVolumeClaim</code> and <code>Pod</code> are <strong>namespace-scoped</strong> resources.</li>
+<li><strong>1-to-1 Rule</strong>: One PVC binds to exactly one PV. Unused capacity in a bound PV cannot be shared.</li>
+<li><strong>Delayed Binding</strong>: If a PVC is <code>Pending</code> with <code>WaitForFirstConsumer</code>, inspect whether a Pod utilizing the claim has been scheduled.</li>
+<li><strong>Volume Expansion</strong>: Requires <code>allowVolumeExpansion: true</code> on the <code>StorageClass</code>. Can only expand, never reduce.</li>
+<li><strong>Snapshot Restoration</strong>: PVC created from snapshot must request capacity $\ge$ the snapshot's <code>restoreSize</code>.</li>
+</ol></main></body>
 </html>

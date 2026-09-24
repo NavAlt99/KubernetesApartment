@@ -18,102 +18,132 @@
   </style>
 </head>
 <body><main class="markdown-page"><h1 id="10-troubleshooting">10. Troubleshooting</h1>
-<h2 id="troubleshooting">Troubleshooting</h2>
-<h3 id="application-failure">Application Failure</h3>
-<p>Throughout this course we have actually worked on a number of troubleshooting exercises with respect to the topic we were going through at that point in time.So a lot of troubleshooting is already covered. We will go through an overview of troubleshooting techniques and procedures and work on some more practice tests in this section. We start with application failures.</p>
-<p>Let's take a look at a two tier application that has a web and a database server. The database pod hosts a database and serves the web servers through a database service. The web server is hosted on a Web pod and serves users through the web service. It's good to write down or draw a map or chart of how your application is configured before you start. Depending on how much you know about the failure you may choose to start from either end of this map. </p>
-<p><img alt="Diagram" src="images/image270.png" /></p>
-<p>But remember to check every object and link in this map until you find the root cause of the issue. Say in our case, users report some issue with accessing the application. First we start with the application front-end. Use standard ways of testing if your application is accessible. If it’s a web application, check if the web server is accessible on the IP of the <strong>node-port</strong> using curl. </p>
-<p><img alt="Diagram" src="images/image293.png" /></p>
-<p><code>curl</code> <a href="about:blank">http://web-service-ip:node-port</a>Next, check the service. Has it discovered endpoints for the web pod? </p>
-<p><img alt="Diagram" src="images/image149.png" /></p>
-<p><img alt="Diagram" src="images/image140.png" /></p>
-<p><code>kubectl describe service web-service</code>In this case it did. But if it did not then you might want to check the service to pod discovery. Compare the selectors configured on the service to the ones on the pod to make sure they match. Next, check the pod itself and make sure it is in a running state. <strong>The status of the pod as well as the number of restarts can give you an idea of whether the application on the pod is running or is getting restarted.</strong>  Check the events related to the pod using the describe command, check the logs of the application using the logs command. If the pod is restarting due to a failure then the logs in the current version of the pod that's running the current version of the container may not reflect why it failed the last time.So you either have to watch these logs using the <strong>–f option</strong> and wait for the application to fail again or use the previous option to view the logs of a previous pod. Next check the status of the db-service as before. And finally check the DB pod itself. Check the logs of the DB. pod and look for any errors in the database.</p>
-<p>There are some more tips documented in the Kubernetes documentation page for Troubleshooting applications.</p>
-<pre><code class="language-bash">kubectl logs web -f --previous
-</code></pre>
-<p><img alt="Diagram" src="images/image328.png" /></p>
-<p><img alt="Diagram" src="images/image68.png" /></p>
-<p>Test <strong>→ Troubleshooting Test 1:</strong> A simple 2 tier application is deployed in the alpha namespace. It must display a green web page on success. Click on the App tab at the top of your terminal to view your application. It is currently failed. Troubleshoot and fix the issue. Stick to the given architecture. Use the same names and port numbers as given in the below architecture diagram. Feel free to edit, delete or recreate objects as necessary.Check the object names and make sure they match the ones given in the architecture diagram.</p>
-<p>The service name used for the MySQL Pod is incorrect. According to the Architecture diagram, it should be mysql-service.</p>
-<p>To fix this, first delete the current service: kubectl -n alpha delete svc mysql</p>
-<p>Then create a new service with the following YAML file (or use imperative command):======<code>apiVersion: v1</code></p>
-<pre><code class="language-yaml">kind: Service
-metadata:
-  name: mysql-service
-  namespace: alpha
-spec:
-  clusterIP: 10.43.241.111
-  clusterIPs:
-  - 10.43.241.111
-  internalTrafficPolicy: Cluster
-  ipFamilies:
-  - IPv4
-  ipFamilyPolicy: SingleStack
-  ports:
-  - port: 3306
-protocol: TCP
-targetPort: 3306
-  selector:
-name: mysql
-  sessionAffinity: None
-  type: ClusterIP
-status:
-  loadBalancer: {}
-
-
-→ Troubleshooting Test 2: The same 2 tier application is deployed in the beta namespace. It must display a green web page on success. Click on the App tab at the top of your terminal to view your application. It is currently failed. Troubleshoot and fix the issue.
-Stick to the given architecture. Use the same names and port numbers as given in the below architecture diagram. Feel free to edit, delete or recreate objects as necessary.
-controlplane ~ ➜  cat mysql-service.yaml
-apiVersion: v1
-kind: Service
-metadata:
-  creationTimestamp: &quot;2022-05-18T12:13:17Z&quot;
-  name: mysql-service
-  namespace: beta
-  resourceVersion: &quot;1068&quot;
-  uid: 7a0ce034-059d-4522-b0ef-eb1a5ca4711b
-spec:
-  clusterIP: 10.43.104.205
-  clusterIPs:
-  - 10.43.104.205
-  internalTrafficPolicy: Cluster
-  ipFamilies:
-  - IPv4
-  ipFamilyPolicy: SingleStack
-  ports:
-  - port: 3306
-protocol: TCP
-targetPort: 8080
-  selector:
-name: mysql
-  sessionAffinity: None
-  type: ClusterIP
-status:
-  loadBalancer: {}
-</code></pre>
+<h2 id="table-of-contents">📑 Table of Contents</h2>
 <ul>
-<li><em>→ Troubleshooting Test 3:</em>* The same 2 tier application is deployed in the gamma namespace. It must display a green web page on success. Click on the App tab at the top of your terminal to view your application. It is currently in a failed state. Troubleshoot and fix the issue.</li>
+<li><a href="#1-application-failure-troubleshooting">1. Application Failure Troubleshooting</a></li>
+<li><a href="#systematic-two-tier-diagnosis-flow">Systematic Two-Tier Diagnosis Flow</a></li>
+<li><a href="#common-triage-scenarios--solutions">Common Triage Scenarios &amp; Solutions</a></li>
+<li><a href="#2-control-plane-failure-troubleshooting">2. Control Plane Failure Troubleshooting</a></li>
+<li><a href="#manifest-directory--bootstrapping">Manifest Directory &amp; Bootstrapping</a></li>
+<li><a href="#diagnosing-kube-apiserver-failure">Diagnosing kube-apiserver Failure</a></li>
+<li><a href="#diagnosing-etcd-failure--quorum-loss">Diagnosing etcd Failure &amp; Quorum Loss</a></li>
+<li><a href="#3-worker-node-failure-troubleshooting">3. Worker Node Failure Troubleshooting</a></li>
+<li><a href="#triage-steps-on-failing-nodes">Triage Steps on Failing Nodes</a></li>
+<li><a href="#4-network-failure-troubleshooting">4. Network Failure Troubleshooting</a></li>
+<li><a href="#coredns-failure-diagnosis">CoreDNS Failure Diagnosis</a></li>
+<li><a href="#kube-proxy--iptables-troubleshooting">Kube-Proxy &amp; iptables Troubleshooting</a></li>
+<li><a href="#cni-plugin-verification">CNI Plugin Verification</a></li>
+<li><a href="#5-interactive-troubleshooting-with-kubectl-debug">5. Interactive Troubleshooting with kubectl debug</a></li>
+<li><a href="#ephemeral-containers">Ephemeral Containers</a></li>
+<li><a href="#pod-copy-with-custom-entrypoint">Pod Copy with Custom Entrypoint</a></li>
+<li><a href="#worker-node-host-chroot-access">Worker Node Host Chroot Access</a></li>
 </ul>
-<p>Stick to the given architecture. Use the same names and port numbers as given in the below architecture diagram. Feel free to edit, delete or recreate objects as necessary.</p>
-<p>Inspect the selector used by the mysql-service. Is this correct?</p>
-<p>If you inspect the mysql-service, you will see that that the selector used does not match the label on the mysql pod.</p>
-<pre><code class="language-yaml">apiVersion: v1
-kind: Service
-metadata:
-  name: mysql-service
-  namespace: gamma
-spec:
-  ports:
-  - port: 3306
-    targetPort: 3306
-  selector:
-    name: mysql
-</code></pre>
 <hr />
-<h3 id="control-plane-failure-troubleshooting">Control Plane Failure Troubleshooting</h3>
+<h2 id="1-application-failure-troubleshooting">1. Application Failure Troubleshooting</h2>
+<h3 id="systematic-two-tier-diagnosis-flow">Systematic Two-Tier Diagnosis Flow</h3>
+<p>When users report application downtime in a multi-tier setup (e.g., Web Frontend ➔ Database), triage step-by-step across all layers:</p>
+<p><img alt="Application Architecture" src="images/image270.png" /></p>
+<ol>
+<li>
+<p><strong>Verify Web Access (Front-End Layer):</strong>
+   - Test connectivity to the NodePort or ClusterIP:
+     <code>bash
+     curl http://&lt;node-ip&gt;:&lt;node-port&gt;</code>
+   <img alt="NodePort Access" src="images/image293.png" /></p>
+</li>
+<li>
+<p><strong>Inspect Web Service &amp; Endpoints:</strong>
+   - Verify that the Service has discovered healthy Pod endpoints:
+     <code>bash
+     kubectl describe svc web-service
+     kubectl get endpoints web-service</code>
+   <img alt="Service Verification" src="images/image149.png" />
+   <img alt="Endpoints Check" src="images/image140.png" />
+   - If <code>Endpoints: &lt;none&gt;</code>, verify that the Service <code>selector</code> matches the Pod labels exactly.</p>
+</li>
+<li>
+<p><strong>Check Web Pod Health &amp; Logs:</strong>
+   - Verify pod status and restart count:
+     <code>bash
+     kubectl get pods -o wide
+     kubectl describe pod &lt;web-pod-name&gt;</code>
+   - Stream container logs or inspect previous crashed instances:
+     <code>bash
+     kubectl logs &lt;web-pod-name&gt; -f
+     kubectl logs &lt;web-pod-name&gt; --previous</code>
+   <img alt="Pod Logs" src="images/image328.png" />
+   <img alt="Log Analysis" src="images/image68.png" /></p>
+</li>
+<li>
+<p><strong>Verify Backend Database Service &amp; Pod:</strong>
+   - Verify DB Service name, port, targetPort, and selector:
+     <code>bash
+     kubectl describe svc db-service</code>
+   - Inspect DB Pod logs for database engine crashes or permission errors:
+     <code>bash
+     kubectl logs &lt;db-pod-name&gt;</code></p>
+</li>
+</ol>
+<hr />
+<h3 id="common-triage-scenarios-solutions">Common Triage Scenarios &amp; Solutions</h3>
+<h4 id="scenario-1-service-name-mismatch">Scenario 1: Service Name Mismatch</h4>
+<ul>
+<li><strong>Symptom:</strong> Web application fails to resolve backend database hostname.</li>
+<li><strong>Root Cause:</strong> Web pod configuration expects <code>mysql-service</code>, but the service was created as <code>mysql</code>.</li>
+<li><strong>Resolution:</strong> Recreate the service with the matching name:
+  <code>bash
+  kubectl -n alpha delete svc mysql
+  kubectl -n alpha expose pod mysql --name=mysql-service --port=3306 --target-port=3306</code></li>
+</ul>
+<h4 id="scenario-2-targetport-misconfiguration">Scenario 2: TargetPort Misconfiguration</h4>
+<ul>
+<li><strong>Symptom:</strong> Service endpoints exist, but connections time out or drop.</li>
+<li><strong>Root Cause:</strong> <code>targetPort</code> in the Service manifest does not match container port:
+  ```yaml
+  apiVersion: v1
+  kind: Service
+  metadata:
+    name: mysql-service
+    namespace: beta
+  spec:
+    ports:<ul>
+<li>port: 3306
+  targetPort: 8080 # INCORRECT: MySQL listens on 3306
+selector:
+  name: mysql
+type: ClusterIP
+  ```</li>
+</ul>
+</li>
+<li><strong>Resolution:</strong> Change <code>targetPort</code> to <code>3306</code> and apply:
+  <code>bash
+  kubectl -n beta patch svc mysql-service --type='json' -p='[{"op": "replace", "path": "/spec/ports/0/targetPort", "value": 3306}]'</code></li>
+</ul>
+<h4 id="scenario-3-label-selector-mismatch">Scenario 3: Label Selector Mismatch</h4>
+<ul>
+<li><strong>Symptom:</strong> Service endpoints show <code>&lt;none&gt;</code>.</li>
+<li><strong>Root Cause:</strong> Service selector <code>name: mysql</code> does not match Pod label <code>app: mysql</code>.</li>
+<li><strong>Resolution:</strong> Align the selector in the Service definition:
+  ```yaml
+  apiVersion: v1
+  kind: Service
+  metadata:
+    name: mysql-service
+    namespace: gamma
+  spec:
+    ports:<ul>
+<li>port: 3306
+  targetPort: 3306
+selector:
+  app: mysql  # Matched to Pod metadata.labels
+  ```</li>
+</ul>
+</li>
+</ul>
+<hr />
+<h2 id="2-control-plane-failure-troubleshooting">2. Control Plane Failure Troubleshooting</h2>
 <p>Control plane components (<code>kube-apiserver</code>, <code>etcd</code>, <code>kube-scheduler</code>, <code>kube-controller-manager</code>) run as <strong>Static Pods</strong> managed directly by the Kubelet on control plane nodes.</p>
-<h4 id="1-manifest-directory-bootstrapping">1. Manifest Directory &amp; Bootstrapping</h4>
+<h3 id="manifest-directory-bootstrapping">Manifest Directory &amp; Bootstrapping</h3>
 <p>Static pod manifests reside in:</p>
 <pre><code class="language-bash">/etc/kubernetes/manifests/
 ├── kube-apiserver.yaml
@@ -122,16 +152,16 @@ spec:
 └── kube-controller-manager.yaml
 </code></pre>
 <ul>
-<li>Modifying any manifest triggers the Kubelet on that node to restart the container automatically.</li>
-<li>A YAML syntax error or invalid command flag in any file causes the component to fail or enter a crash loop.</li>
+<li>Modifying any manifest triggers the local <code>kubelet</code> to restart that container immediately.</li>
+<li>A YAML syntax error or invalid command flag in any manifest causes the component to crash or enter a crash loop.</li>
 </ul>
-<h4 id="2-diagnosing-kube-apiserver-failure">2. Diagnosing kube-apiserver Failure</h4>
+<h3 id="diagnosing-kube-apiserver-failure">Diagnosing kube-apiserver Failure</h3>
 <p>If <code>kubectl</code> returns <code>The connection to the server &lt;host&gt;:6443 was refused</code>:</p>
 <pre><code class="language-bash"># 1. SSH into the control plane node
 # 2. Check if the kube-apiserver container is running via CRI
 sudo crictl ps -a | grep kube-apiserver
 
-# 3. View the container log directly from disk (bypassing the dead API server)
+# 3. View container log directly from disk (bypassing dead API server)
 sudo crictl logs &lt;container-id&gt;
 # Or read raw container logs:
 ls -lt /var/log/pods/kube-system_kube-apiserver*/
@@ -142,8 +172,8 @@ cat /etc/kubernetes/manifests/kube-apiserver.yaml
 # 5. Check if control plane certificates have expired
 kubeadm certs check-expiration
 </code></pre>
-<h4 id="3-diagnosing-etcd-failure-quorum-loss">3. Diagnosing etcd Failure &amp; Quorum Loss</h4>
-<p>etcd stores all cluster state. If etcd is down, the API server cannot function:</p>
+<h3 id="diagnosing-etcd-failure-quorum-loss">Diagnosing etcd Failure &amp; Quorum Loss</h3>
+<p><code>etcd</code> stores all cluster state. If <code>etcd</code> is unavailable, <code>kube-apiserver</code> cannot function:</p>
 <pre><code class="language-bash"># Check etcd member health
 ETCDCTL_API=3 etcdctl --cacert=/etc/kubernetes/pki/etcd/ca.crt \
   --cert=/etc/kubernetes/pki/etcd/server.crt \
@@ -154,9 +184,9 @@ ETCDCTL_API=3 etcdctl --cacert=/etc/kubernetes/pki/etcd/ca.crt \
 df -h /var/lib/etcd
 </code></pre>
 <hr />
-<h3 id="worker-node-failure-troubleshooting">Worker Node Failure Troubleshooting</h3>
+<h2 id="3-worker-node-failure-troubleshooting">3. Worker Node Failure Troubleshooting</h2>
 <p>When a worker node shows <code>STATUS: NotReady</code> in <code>kubectl get nodes</code>:</p>
-<pre><code class="language-bash"># 1. Inspect the Node conditions and events
+<pre><code class="language-bash"># 1. Inspect Node conditions and events
 kubectl describe node &lt;node-name&gt;
 </code></pre>
 <p>Look for:
@@ -164,7 +194,7 @@ kubectl describe node &lt;node-name&gt;
 - <code>MemoryPressure = True</code>
 - <code>DiskPressure = True</code>
 - <code>PIDPressure = True</code></p>
-<h4 id="step-by-step-node-triage-on-the-worker-node">Step-by-Step Node Triage on the Worker Node:</h4>
+<h3 id="triage-steps-on-failing-nodes">Triage Steps on Failing Nodes</h3>
 <pre><code class="language-bash"># 1. SSH into the failing worker node
 
 # 2. Check Kubelet systemd service status
@@ -194,9 +224,9 @@ sudo systemctl restart containerd
 sudo systemctl restart kubelet
 </code></pre>
 <hr />
-<h3 id="network-failure-troubleshooting">Network Failure Troubleshooting</h3>
+<h2 id="4-network-failure-troubleshooting">4. Network Failure Troubleshooting</h2>
 <p>Network failures typically manifest as DNS resolution errors or inter-pod routing failures.</p>
-<h4 id="1-coredns-failure-diagnosis">1. CoreDNS Failure Diagnosis</h4>
+<h3 id="coredns-failure-diagnosis">CoreDNS Failure Diagnosis</h3>
 <p>If pods cannot resolve service names (<code>&lt;svc&gt;.&lt;ns&gt;.svc.cluster.local</code>):</p>
 <pre><code class="language-bash"># 1. Check CoreDNS pod status
 kubectl get pods -n kube-system -l k8s-app=kube-dns
@@ -207,7 +237,7 @@ kubectl logs -n kube-system -l k8s-app=kube-dns
 # 3. Test DNS resolution from a temporary debug container
 kubectl run test-dns --rm -it --image=busybox:1.36 -- nslookup kubernetes.default.svc.cluster.local
 </code></pre>
-<h4 id="2-kube-proxy-iptables-troubleshooting">2. Kube-Proxy &amp; iptables Troubleshooting</h4>
+<h3 id="kube-proxy-iptables-troubleshooting">Kube-Proxy &amp; iptables Troubleshooting</h3>
 <p>If pods cannot reach Service virtual ClusterIPs:</p>
 <pre><code class="language-bash"># 1. Check kube-proxy daemonset pods
 kubectl get pods -n kube-system -l k8s-app=kube-proxy
@@ -218,7 +248,7 @@ kubectl logs -n kube-system -l k8s-app=kube-proxy
 # 3. Inspect iptables NAT rules on the node
 sudo iptables -t nat -L KUBE-SERVICES -n -v
 </code></pre>
-<h4 id="3-cni-plugin-verification">3. CNI Plugin Verification</h4>
+<h3 id="cni-plugin-verification">CNI Plugin Verification</h3>
 <pre><code class="language-bash"># Verify CNI configuration files exist on the host
 ls -la /etc/cni/net.d/
 
@@ -226,19 +256,19 @@ ls -la /etc/cni/net.d/
 ls -la /opt/cni/bin/
 </code></pre>
 <hr />
-<h3 id="interactive-troubleshooting-with-kubectl-debug">Interactive Troubleshooting with <code>kubectl debug</code></h3>
+<h2 id="5-interactive-troubleshooting-with-kubectl-debug">5. Interactive Troubleshooting with <code>kubectl debug</code></h2>
 <p><code>kubectl debug</code> is the modern, non-invasive debugging standard for CKA:</p>
-<h4 id="1-debugging-a-running-pod-with-an-ephemeral-container">1. Debugging a Running Pod with an Ephemeral Container</h4>
+<h3 id="ephemeral-containers">Ephemeral Containers</h3>
 <p>When a distroless or minimal container lacks <code>curl</code>, <code>netstat</code>, or <code>sh</code>:</p>
 <pre><code class="language-bash"># Attach an ephemeral debug container with full diagnostic tools
 kubectl debug -it &lt;pod-name&gt; --image=nicolaka/netshoot --target=&lt;container-name&gt;
 </code></pre>
-<h4 id="2-debugging-a-crashed-pod-by-creating-a-copy">2. Debugging a Crashed Pod by Creating a Copy</h4>
+<h3 id="pod-copy-with-custom-entrypoint">Pod Copy with Custom Entrypoint</h3>
 <p>If a pod crashes immediately upon startup (e.g. wrong command or entrypoint):</p>
 <pre><code class="language-bash"># Copy the pod, override the entrypoint with an interactive shell
 kubectl debug &lt;pod-name&gt; -it --copy-to=&lt;new-pod-name&gt; --container=&lt;container-name&gt; -- sh
 </code></pre>
-<h4 id="3-debugging-a-worker-node-host-directly">3. Debugging a Worker Node Host Directly</h4>
+<h3 id="worker-node-host-chroot-access">Worker Node Host Chroot Access</h3>
 <p>If SSH access to a worker node is unavailable:</p>
 <pre><code class="language-bash"># Launch a privileged pod on the target node with the host root filesystem mounted at /host
 kubectl debug node/&lt;node-name&gt; -it --image=busybox

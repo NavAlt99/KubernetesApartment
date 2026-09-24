@@ -18,47 +18,89 @@
   </style>
 </head>
 <body><main class="markdown-page"><h1 id="03-logging-monitoring">03. Logging &amp; Monitoring</h1>
-<h2 id="logging-monitoring">Logging &amp; Monitoring</h2>
+<h2 id="table-of-contents">📑 Table of Contents</h2>
 <ul>
-<li>
-<p>In this section we discussed the various logging and monitoring options available.</p>
-</li>
-<li>
-<p>We first see how to monitor the kubernetes cluster components as well as the applications hosted on them.</p>
-</li>
-<li>
-<p>We then see how to view and manage the logs for the cluster components as well as the applications.</p>
-</li>
+<li><a href="#1-cluster-resource-monitoring">1. Cluster Resource Monitoring</a></li>
+<li><a href="#key-metrics-architecture">Key Metrics Architecture</a></li>
+<li><a href="#metrics-server--cadvisor">Metrics Server &amp; cAdvisor</a></li>
+<li><a href="#cli-commands-for-node--pod-utilization">CLI Commands for Node &amp; Pod Utilization</a></li>
+<li><a href="#2-managing-application-logs">2. Managing Application Logs</a></li>
+<li><a href="#docker-vs-kubernetes-logging">Docker vs. Kubernetes Logging</a></li>
+<li><a href="#multi-container-pod-logs">Multi-Container Pod Logs</a></li>
+<li><a href="#3-advanced-container-logging-exam-essentials">3. Advanced Container Logging (Exam Essentials)</a></li>
+<li><a href="#4-jsonpath-queries--data-extraction">4. JSONPath Queries &amp; Data Extraction</a></li>
+<li><a href="#5-custom-columns--sorting">5. Custom Columns &amp; Sorting</a></li>
+<li><a href="#6-cluster-event-investigation">6. Cluster Event Investigation</a></li>
+<li><a href="#7-host--systemd-journal-logging">7. Host &amp; Systemd Journal Logging</a></li>
 </ul>
-<h3 id="monitor-cluster-components">Monitor Cluster Components</h3>
-<p><strong>So how do you monitor resource consumption on Kubernetes?</strong>  <strong>Or more importantly what would you like to monitor?</strong></p>
-<p>Let's Say I’d like to know <strong>Node level metrics</strong> such as the number of nodes in the cluster, how many of them are healthy as well as performance metrics such as <strong>CPU. Memory, network and disk utilization.</strong> As well as <strong>POD level metrics</strong> such as the number of PODs, and performance metrics of each POD such as the <strong>CPU and Memory consumption on them</strong>. So we need a solution that will monitor these metrics, store them and provide analytics around this data. Kubernetes does not come with a full featured built-in monitoring solution. However, there are a number of open-source solutions available today, such as the <strong>Metrics-Server, Prometheus, Elastic Stack,</strong> and proprietary solutions like <strong>Datadog and Dynatrace.</strong> </p>
-<p>Heapster was one of the original projects that enabled monitoring and analysis features for kubernetes You will see a lot of references online when you look for reference architectures on monitoring Kubernetes. However, <strong>Heapster is now Deprecated</strong> and a slimmed down version was formed known as the <strong>Metrics Server.</strong></p>
-<p><strong>Metrics server</strong>You can have one metrics server per kubernetes cluster. The metric server retrieves metrics from each of the kubernetes nodes and pods, aggregates them and stores them in memory.  <strong>Note</strong> that the metric server is only an in memory monitoring solution and does not store the metrics on a disk and as a result you cannot see historical performance data. </p>
-<p><strong>So how are the metrics generated for the PODs on these nodes?</strong>  Kubernetes  runs an agent on each node known as the <strong>kubelet</strong>, which is responsible for receiving instructions from the kubernetes API master server and running PODs on the nodes. The kubelet also contains a subcomponent known as <em>cAdvisor or Container Advisor</em>. <strong>cAdvisor</strong> is responsible for retrieving performance metrics from pods, and exposing them through the kubelet API to make the metrics available for the Metrics Server. If you are using minikube for your local cluster, run the command minikube addons enable metrics-server. For all other environments deploy the metrics server by cloning the metrics-server deployment files from the github repository. And then deploying the required components using the kubectl create command. This command deploys a set of pods, services and roles to enable metrics server to poll for performance metrics from the nodes in the cluster. Once deployed, give the metrics-server some time to collect and process data. Once processed, cluster performance can be viewed by running the command <code>kubectl top node.</code> This provides the CPU and Memory consumption of each of the nodes. </p>
-<p>As you can see 8% of the CPU on my master node is consumed, which is about 166 milli cores. </p>
-<p>Use the <code>kubectl top pod</code> command to view performance metrics of pods in kubernetes.</p>
-<h3 id="managing-application-logs">Managing Application Logs</h3>
-<p>There are  various logging mechanisms in kubernetes. Let us start with logging in Docker.</p>
-<pre><code class="language-bash">$ docker run -d kodekloud/event-simulator  
+<hr />
+<h2 id="1-cluster-resource-monitoring">1. Cluster Resource Monitoring</h2>
+<h3 id="key-metrics-architecture">Key Metrics Architecture</h3>
+<p>Kubernetes requires external metric pipelines to track resource usage:
+- <strong>Node-Level Metrics:</strong> Node count, status, CPU, memory, disk, and network I/O.
+- <strong>Pod-Level Metrics:</strong> Pod count, per-container CPU, and memory consumption.
+- <strong>Storage &amp; Analytics:</strong> Metric Server stores metrics <strong>in-memory only</strong> (no historical data). For historical time-series analytics, solutions like Prometheus, Elastic Stack, Datadog, or Dynatrace are deployed.</p>
+<blockquote>
+<p>[!NOTE]
+<strong>Heapster</strong> is deprecated. The lightweight <strong>Metrics Server</strong> is the official in-cluster metric source.</p>
+</blockquote>
+<h3 id="metrics-server-cadvisor">Metrics Server &amp; cAdvisor</h3>
+<ul>
+<li><strong>cAdvisor (Container Advisor):</strong> Built into the <code>kubelet</code> daemon on each worker node; collects container performance metrics and exposes them via the Kubelet API.</li>
+<li><strong>Metrics Server:</strong> Discovers nodes, polls cAdvisor over the Kubelet API, aggregates metrics, and serves them via the Metrics API (<code>metrics.k8s.io</code>).</li>
+</ul>
+<p><strong>Installation:</strong></p>
+<pre><code class="language-bash"># Minikube
+minikube addons enable metrics-server
+
+# Standard / Kubeadm Clusters
+kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
+</code></pre>
+<h3 id="cli-commands-for-node-pod-utilization">CLI Commands for Node &amp; Pod Utilization</h3>
+<pre><code class="language-bash"># View CPU and Memory usage across all nodes
+kubectl top node
+
+# View CPU and Memory consumption across all Pods in the current namespace
+kubectl top pod
+
+# View Pod metrics across all namespaces
+kubectl top pod -A
+
+# View container-level breakdown inside Pods
+kubectl top pod --containers
+</code></pre>
+<hr />
+<h2 id="2-managing-application-logs">2. Managing Application Logs</h2>
+<h3 id="docker-vs-kubernetes-logging">Docker vs. Kubernetes Logging</h3>
+<p>Applications running in containers stream standard output (<code>stdout</code>) and standard error (<code>stderr</code>) to the container engine:</p>
+<pre><code class="language-bash"># Run background container
+docker run -d --name event-sim kodekloud/event-simulator
+
+# View and follow Docker logs
+docker logs -f &lt;container-id&gt;
 </code></pre>
 <p><img alt="Diagram" src="images/image240.png" /></p>
-<p>I run a docker container, called event-simulator and all that it does is generate random events simulating a web server. These are events streamed to the standard output by the application. Now, if I were to run the docker container in the background, in a detached mode using the <code>–d</code> option, I wouldn't see the logs if I wanted to view the logs.</p>
-<p>I could use the docker logs command followed by the container ID. The <code>–f</code> option helps us see the live log trail. </p>
-<p>Now back to Kubernetes. We create a pod with the same docker image using the pod definition file. Once the pod is running, we can view the logs using the kubectl logs command with the pod name. </p>
-<p>Use the <code>–f</code> option to stream the logs live just like the docker command. Now these logs are specific to the container running inside the pod. As we learned before, Kubernetes PODs can have multiple docker containers in them. In this case I modify my pod definition file to include an additional container called image-processor. If you ran the kubectl logs command now with the pod name, which container’s log would it show? If there are multiple containers within a pod. You must specify the name of the container explicitly in the command. Otherwise it would fail asking you to specify a name. In this case I will specify the name of the first container event-simulator and that prints the relevant log messages.</p>
-<h3 id="advanced-application-container-logging">Advanced Application &amp; Container Logging</h3>
-<p>In the CKA exam, logging tasks often involve multi-container pods, previous container crashes, or filtering logs across deployments:</p>
+<p>In Kubernetes, <code>kubelet</code> captures these streams and stores them on the host node (<code>/var/log/pods/</code>).</p>
+<h3 id="multi-container-pod-logs">Multi-Container Pod Logs</h3>
+<pre><code class="language-bash"># Single container Pod:
+kubectl logs &lt;pod-name&gt; -f
+
+# Multi-container Pod (container name is required):
+kubectl logs &lt;pod-name&gt; -c &lt;container-name&gt; -f
+</code></pre>
+<hr />
+<h2 id="3-advanced-container-logging-exam-essentials">3. Advanced Container Logging (Exam Essentials)</h2>
+<p>Essential flags for filtering, crashed containers, and live streaming:</p>
 <pre><code class="language-bash"># 1. Stream logs from a specific container in a multi-container Pod
 kubectl logs &lt;pod-name&gt; -c &lt;container-name&gt; -f
 
-# 2. View logs from a previous, crashed container instance (CrashLoopBackOff)
+# 2. View logs from previous crashed container instance (CrashLoopBackOff)
 kubectl logs &lt;pod-name&gt; -c &lt;container-name&gt; --previous
 
-# 3. Stream logs with timestamps and limit output to the last 50 lines
+# 3. Stream logs with timestamps and limit to the last 50 lines
 kubectl logs &lt;pod-name&gt; --tail=50 --timestamps=true -f
 
-# 4. View logs generated in the last 15 minutes or 1 hour
+# 4. View logs generated within the last 15 minutes or 1 hour
 kubectl logs &lt;pod-name&gt; --since=15m
 kubectl logs &lt;pod-name&gt; --since=1h
 
@@ -69,45 +111,47 @@ kubectl logs &lt;pod-name&gt; --all-containers=true -f
 kubectl logs -l app=web-frontend --all-containers=true --tail=100 -f
 </code></pre>
 <hr />
-<h3 id="jsonpath-queries-data-extraction-essential-for-cka">JSONPath Queries &amp; Data Extraction (Essential for CKA)</h3>
-<p>The CKA exam frequently requires querying specific fields using <code>kubectl</code> JSONPath without installing external utilities like <code>jq</code>.</p>
-<h4 id="1-basic-jsonpath-syntax">1. Basic JSONPath Syntax</h4>
+<h2 id="4-jsonpath-queries-data-extraction">4. JSONPath Queries &amp; Data Extraction</h2>
+<p>The CKA exam frequently tests querying fields with <code>-o jsonpath</code> without external tools like <code>jq</code>.</p>
+<h3 id="jsonpath-syntax-cheatsheet">JSONPath Syntax Cheatsheet</h3>
 <ul>
-<li>Root object: <code>$</code> or <code>.</code></li>
-<li>Wildcard (all elements in a list): <code>[*]</code></li>
+<li>Root node: <code>$</code> or <code>.</code></li>
+<li>Wildcard (all elements in array): <code>[*]</code></li>
 <li>Specific index: <code>[0]</code></li>
-<li>String formatting: <code>{"\n"}</code> for newline, <code>{"\t"}</code> for tab</li>
+<li>Filter expression: <code>[?(@.property == "value")]</code></li>
+<li>Range loop: <code>{range .items[*]} ... {end}</code></li>
+<li>Output formatting: <code>{"\n"}</code> (newline), <code>{"\t"}</code> (tab)</li>
 </ul>
-<h4 id="2-practical-jsonpath-examples-for-exam-tasks">2. Practical JSONPath Examples for Exam Tasks</h4>
+<h3 id="practical-exam-examples">Practical Exam Examples</h3>
 <pre><code class="language-bash"># Get Internal IPs of all worker nodes
 kubectl get nodes -o jsonpath='{.items[*].status.addresses[?(@.type==&quot;InternalIP&quot;)].address}'
 
-# Output node names and their internal IPs line by line
+# Output node names and their internal IPs line-by-line
 kubectl get nodes -o jsonpath='{range .items[*]}{.metadata.name}{&quot;\t&quot;}{.status.addresses[?(@.type==&quot;InternalIP&quot;)].address}{&quot;\n&quot;}{end}'
 
-# Get the container images used by all Pods in the default namespace
+# Get container images used by all Pods in default namespace
 kubectl get pods -o jsonpath='{.items[*].spec.containers[*].image}'
 
-# Get all Pod names and their allocated node names line by line
+# List all Pod names and assigned nodes across all namespaces
 kubectl get pods -A -o jsonpath='{range .items[*]}{.metadata.namespace}{&quot;\t&quot;}{.metadata.name}{&quot;\t&quot;}{.spec.nodeName}{&quot;\n&quot;}{end}'
 
-# Get the storage capacity of all PersistentVolumes
+# Get storage capacity of all PersistentVolumes
 kubectl get pv -o jsonpath='{range .items[*]}{.metadata.name}{&quot;\t&quot;}{.spec.capacity.storage}{&quot;\n&quot;}{end}'
 
-# Get the Operating System image of all nodes
+# Get Operating System image of all nodes
 kubectl get nodes -o jsonpath='{.items[*].status.nodeInfo.osImage}'
 </code></pre>
 <hr />
-<h3 id="custom-columns-sorting">Custom Columns &amp; Sorting</h3>
-<p>When JSONPath syntax is too cumbersome or a clean tabular output is needed, use <code>-o custom-columns</code> and <code>--sort-by</code>:</p>
-<h4 id="1-custom-columns-table">1. Custom Columns Table</h4>
-<pre><code class="language-bash"># Display Pod name, namespace, node, and IP in custom columns
+<h2 id="5-custom-columns-sorting">5. Custom Columns &amp; Sorting</h2>
+<p>Clean tabular presentation without complex JSONPath templates:</p>
+<h3 id="custom-columns-table">Custom Columns Table</h3>
+<pre><code class="language-bash"># Display Pod name, namespace, node, and IP
 kubectl get pods -A -o custom-columns=NAME:.metadata.name,NAMESPACE:.metadata.namespace,NODE:.spec.nodeName,IP:.status.podIP
 
 # Display Node name, CPU capacity, and OS image
 kubectl get nodes -o custom-columns=NODE:.metadata.name,CPU:.status.capacity.cpu,OS:.status.nodeInfo.osImage
 </code></pre>
-<h4 id="2-sorting-output">2. Sorting Output</h4>
+<h3 id="sorting-output">Sorting Output</h3>
 <pre><code class="language-bash"># Sort Pods by creation timestamp (oldest first)
 kubectl get pods -A --sort-by=.metadata.creationTimestamp
 
@@ -118,24 +162,24 @@ kubectl get nodes --sort-by=.status.capacity.cpu
 kubectl get pv --sort-by=.spec.capacity.storage
 </code></pre>
 <hr />
-<h3 id="cluster-event-monitoring">Cluster Event Monitoring</h3>
-<p>Cluster events record lifecycle changes, failures, scheduling decisions, and evictions:</p>
+<h2 id="6-cluster-event-investigation">6. Cluster Event Investigation</h2>
+<p>Cluster events record lifecycle changes, scheduling actions, and failures:</p>
 <pre><code class="language-bash"># 1. View all events across all namespaces sorted by time
 kubectl get events -A --sort-by=.metadata.creationTimestamp
 
 # 2. Watch cluster events in realtime
 kubectl get events -A -w
 
-# 3. Filter only Warning events (e.g. FailedScheduling, BackOff, Unhealthy)
+# 3. Filter only Warning events (FailedScheduling, BackOff, Unhealthy)
 kubectl get events -A --field-selector type=Warning
 
-# 4. View events for a specific Pod or deployment
+# 4. View events for a specific Pod or Deployment
 kubectl get events -n &lt;namespace&gt; --field-selector involvedObject.name=&lt;pod-name&gt;
 </code></pre>
 <hr />
-<h3 id="host-systemd-journal-logging-control-plane-node-daemons">Host &amp; Systemd Journal Logging (Control Plane &amp; Node Daemons)</h3>
-<p>When Kubernetes components fail before the API server can respond, inspect systemd logs directly on the node:</p>
-<pre><code class="language-bash"># 1. Kubelet daemon logs
+<h2 id="7-host-systemd-journal-logging">7. Host &amp; Systemd Journal Logging</h2>
+<p>When control-plane or node daemons fail before the API server can respond:</p>
+<pre><code class="language-bash"># 1. Kubelet daemon logs on the node
 sudo journalctl -u kubelet -n 100 --no-pager
 sudo journalctl -u kubelet -f
 
@@ -143,7 +187,6 @@ sudo journalctl -u kubelet -f
 sudo journalctl -u containerd -n 100 --no-pager
 
 # 3. Static Pod raw log files on disk (bypassing API server)
-# Logs for static pods (apiserver, etcd, scheduler, controller-manager) are written to:
 ls -la /var/log/pods/
 ls -la /var/log/containers/
 </code></pre></main></body>

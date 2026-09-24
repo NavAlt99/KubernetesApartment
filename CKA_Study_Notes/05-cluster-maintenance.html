@@ -18,208 +18,119 @@
   </style>
 </head>
 <body><main class="markdown-page"><h1 id="05-cluster-maintenance">05. Cluster Maintenance</h1>
-<h2 id="cluster-maintenance">Cluster Maintenance</h2>
-<h3 id="os-upgrades">OS Upgrades</h3>
-<p>Scenarios where you might have to take down nodes as part of your cluster, say for maintenance purposes like upgrading a base software or applying patches like security patches etc on your cluster.</p>
-<p>So you have a cluster with a few nodes and pods serving applications. <strong>What happens when one of these nodes goes down ?</strong> </p>
-<p><img alt="Diagram" src="images/image429.png" /></p>
-<p>Of course the pods on them are not accessible. Now depending upon how you deployed those PODs your users may be impacted. For example, since you have multiple replicas of the blue pod, the users accessing the blue application are not impacted as they are being served through the other blue pod that's online.  However users accessing the green pod, are impacted as that was the only pod running the green application. <strong>Now what does kubernetes do in this case? (HOW IT WORKS)</strong>  </p>
+<h2 id="table-of-contents">📑 Table of Contents</h2>
 <ul>
-<li>
-<p>If the node comes back online immediately, then the kubectl process starts and the pods come back online.</p>
-</li>
-<li>
-<p>However, if the node was down for more than 5 minutes, then the pods are terminated from that node.Well, kubernetes considers them as dead.</p>
-</li>
-<li>
-<p>If the PODs were part of a replicaset then they are recreated on other nodes.</p>
-</li>
-<li>
-<p>The time it waits for a pod to come back online is known as the <strong>pod eviction timeout</strong> and is set on the controller manager with a <strong>default value of five minutes</strong>.</p>
-</li>
+<li><a href="#1-node-maintenance--os-upgrades">1. Node Maintenance &amp; OS Upgrades</a></li>
+<li><a href="#node-failure--pod-eviction-timeout">Node Failure &amp; Pod Eviction Timeout</a></li>
+<li><a href="#drain-cordon-and-uncordon">Drain, Cordon, and Uncordon</a></li>
+<li><a href="#2-kubernetes-software-versions--skew-policy">2. Kubernetes Software Versions &amp; Skew Policy</a></li>
+<li><a href="#version-anatomy">Version Anatomy</a></li>
+<li><a href="#component-version-skew-rules">Component Version Skew Rules</a></li>
+<li><a href="#support-lifecycle">Support Lifecycle</a></li>
+<li><a href="#3-step-by-step-kubeadm-cluster-upgrade-playbook">3. Step-by-Step Kubeadm Cluster Upgrade Playbook</a></li>
+<li><a href="#phase-1-upgrade-the-control-plane-node">Phase 1: Upgrade the Control Plane Node</a></li>
+<li><a href="#phase-2-upgrade-worker-nodes-one-by-one">Phase 2: Upgrade Worker Nodes (One by One)</a></li>
+<li><a href="#4-kubeadm-certificate-management--renewal">4. Kubeadm Certificate Management &amp; Renewal</a></li>
+<li><a href="#check-expiration">Check Expiration</a></li>
+<li><a href="#renew-certificates">Renew Certificates</a></li>
+<li><a href="#post-renewal-verification">Post-Renewal Verification</a></li>
+<li><a href="#5-etcd-backup-and-snapshot-restore">5. ETCD Backup and Snapshot Restore</a></li>
+<li><a href="#backup-strategies-declarative-vs-etcd-snapshot">Backup Strategies: Declarative vs. etcd Snapshot</a></li>
+<li><a href="#creating-an-etcd-snapshot">Creating an ETCD Snapshot</a></li>
+<li><a href="#restoring-an-etcd-snapshot-static-pod-architecture">Restoring an ETCD Snapshot (Static Pod Architecture)</a></li>
+<li><a href="#tls-authentication-flags-for-etcdctl">TLS Authentication Flags for etcdctl</a></li>
 </ul>
-<pre><code class="language-text">$ kube-controller-manager --pod-eviction-timeout=5m0s .. 
-</code></pre>
-<p>So whenever a node goes offline, the master node waits for up to 5 minutes before considering the node dead.When the node comes back on line after the pod eviction timeout it comes up blank without any pods scheduled on it. Since the blue pod was part of a replicaSet, it had a new pod created on another node. However since the green pod was not part of the ReplicaSet it's just gone. </p>
-<p><img alt="Diagram" src="images/image298.png" /></p>
-<p>Thus if you have maintenance tasks to be performed on a node if you know that the workloads running on the Node have other replicas and if it's okay that they go down for a short period of time. And if you're sure the node will come back online within five minutes, you can make a quick upgrade and reboot. However you do not  know for sure if a node is going to be back online in five minutes. Well you cannot for sure say it is going to be back at all. So there is a safer way to do it.  You can purposefully drain the node of all the workloads so that the workloads are moved to other nodes in the cluster. </p>
-<p>Well technically they are not moved. When you drain the node the pods are gracefully terminated from the node that they're on and recreated on another. The node is also <strong>cordoned</strong> or marked as unschedulable. Meaning no pods can be scheduled on this node until you specifically remove the restriction. </p>
-<p>Now that the pods are safe on the other nodes, you can reboot the first node. When it comes back online it is still unschedulable. You then need to <strong>uncordon</strong> it, so that pods can be scheduled on it again. </p>
-<p>Now, remember the pods that were moved to the other nodes, don’t automatically fall back. If any of those pods were deleted or if new pods were created in the cluster, Then they would be created on this node.</p>
-<p>Apart from drain and uncordon, there is also another command called cordon. Cordon simply marks a node unschedulable.Unlike drain it does not terminate or move the pods on an existing node. It simply makes sure that new pods are not scheduled on that node.</p>
-<p>Practice. </p>
-<p>How many applications are hosted ? → check the number of deployments </p>
-<p>which nodes are the applications hosted on ? </p>
-<p>We need to take node01 out for maintenance. Empty the node of all applications and mark it unschedulable. ?</p>
-<p><img alt="Diagram" src="images/image100.png" /></p>
-<pre><code class="language-bash">$ kubectl drain node01 --ignore-daemonsets
-</code></pre>
-<p><img alt="Diagram" src="images/image36.png" /></p>
-<h3 id="kubernetes-software-versions">Kubernetes Software versions.</h3>
-<p>Kubernetes releases and versions.</p>
-<p><img alt="Diagram" src="images/image279.png" /></p>
-<p>So what do we know about API versions in Kubernetes so far? We know that when we install a kubernetes cluster, we install a specific version of kubernetes. We can see that when we run the kubectl get nodes command. In this case its v1.11.3.​​</p>
-<p>How does the kubernetes project manage software releases ? </p>
-<p><img alt="Diagram" src="images/image210.png" /></p>
-<p>Let's take a closer look at that version number. The kubernetes release version consists of 3 parts. </p>
-<p>The first is the major version, followed by the minor version and then the Patch version. While minor versions are released every few months with new features and functionalities, patches are released more often with critical bug fixes. Just like many other popular applications out there, kubernetes follows a standard software release versioning procedure. Every few months it comes out with new features and functionalities through a minor release. </p>
-<p>The first major version 1.0 was released in July of 2015. As of this date the latest stable version is 1.13.0. Whatever we have seen here are stable releases of kubernetes. Apart from this you will also see Alpha and  beta releases all the bug fixes and improvements first go into an alpha release tagged alpha. In this release the features are disabled by default and maybe buggy. Then from there they make their way to beta release  where the code is well tested the new features are enabled by default. And finally they make their way to the main stable release.  You can find all the releases in the releases page of the Kubernetes Github repository.  </p>
-<p>https://github.com/kubernetes/kubernetes/releases</p>
-<p>Download the kubernetes.tar.gz file and extract it to find executables for all the kubernetes components. The downloaded package when extracted has all the control plane components in it. All of them of the same version.Remember that there are other components within the control plane that do not have the same version numbers. The ETCD cluster and CoreDNS servers have their own versions as they are separate projects. The release notes of each release provides information about the supported versions of externally dependent applications like ETCD and CoreDNS etc. </p>
-<p><a href="https://kubernetes.io/docs/concepts/overview/kubernetes-api/">https://kubernetes.io/docs/concepts/overview/kubernetes-api/</a></p>
-<p>Here is a link to kubernetes documentation if you want to learn more about this topic (You don’t need it for the exam though):</p>
-<p><a href="https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md">https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md</a><a href="https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api_changes.md">https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api_changes.md</a><a href="https://blog.risingstack.com/the-history-of-kubernetes/">https://blog.risingstack.com/the-history-of-kubernetes/</a>https://kubernetes.io/releases/version-skew-policy/</p>
-<h3 id="cluster-upgrade-introduction">Cluster Upgrade Introduction</h3>
-<p>We will discuss the cluster upgrade process in Kubernetes.  We will keep dependency on external components like ETCD and coreDNS aside for now and focus on the core control plane components. </p>
-<p><img alt="Diagram" src="images/image117.png" /></p>
-<p><strong>Is it mandatory for all of these to have the same version?</strong> No. The components can be at different released versions since the <strong>KubeAPI</strong> server is the primary component in the control plane, and that is the component that all other components talk to.None of the other components should ever be at a version higher than the KubeAPI server. The <strong>controller-manage</strong>r and <strong>kube-scheduler</strong> can be at one version lower.  So if KubeAPI server was at X, controller-managers and Kube-schedulers can be at X-1, and the Kubelet and kube-proxy components can be at two versions lower, X-2.</p>
-<p>So if KubeAPI server was at 1.10  the controller manager and scheduler could be at 1.10 or 1.9, and the Kubelet and kube-proxy could be at 1.8 None of them could be  at a version higher than the KubeAPI server like 1.11. Now, this is not the case with kubectl, The kubectl utility could be at 1.11 A version higher than the API Server, 1.10 the same version as the API server, or at 1.9 version lower than the API server. Now, this permissible skew in versions allows us to carry out live upgrades. We can upgrade component by component if required. </p>
-<p><img alt="Diagram" src="images/image299.png" /></p>
-<p><strong>So when should you upgrade?</strong> Say you were at 1.10 and Kubernetes releases versions, 1.11 and 1.12, at any time, Kubernetes supports only up to the recent three minor versions. So with 1.12 being the latest release, Kubernetes supports versions 1.12, 1.11 and 1.10. So when 1.13 is released, only versions 1.13 1.12  or 1.11 are supported, before the release of version 1.13 would be a good time to upgrade your cluster to the next release. </p>
-<p><strong>So how do we upgrade? Do we upgrade directly from 1.10 to 1.13?</strong> No. The recommended approach is to upgrade one minor version at a time. Version 1.10 to 1.11, then 1.11 to 1.12 and then 1.12 to 1.13. The upgrade process depends on how your cluster is set up, for example, if your cluster is a managed Kubernetes cluster deployed on cloud service providers like Google, for instance, Google Kubernetes Engine lets you upgrade your cluster easily with just a few clicks. If you have deployed  your cluster using tools like Kubeadm, then the tool can help you plan and upgrade the cluster. If you have deployed your cluster from scratch, then you manually upgrade the different components of the cluster yourself. In this lecture, we will look at the options by kubeadm. </p>
-<p>So you have a cluster with master and worker nodes running in production, hosting PODs and serving users. The nodes and components are at version 1.10. Upgrading a cluster involves two major steps.→ First, you upgrade your master nodes and then upgrade to worker nodes. </p>
-<p>While the master is being upgraded, the control plane components such as the API server, Scheduler and controller managers go down briefly, the master going down does not mean your worker nodes and  applications on the cluster are impacted, all workloads hosted on the worker nodes continue to serve users as normal since the master is down. </p>
-<p>All management functions are down, you cannot access the cluster using Kube Control or other Kubernetes API. You cannot deploy new applications or delete or modify existing ones. The controller managers don't function, either. If a POD was to fail, a new POD won't be automatically created. </p>
-<p>But as long as the nodes and the PODs are up, your applications should be up and users will not be impacted. Once the upgrade is complete and the cluster is back up, it should function normally. We now have the master and the master components at version 1.11 and the worker nodes at version 1.10, as we saw earlier. This is a supported configuration. It is now time to upgrade the worker nodes.  → There are different strategies available to upgrade the worker nodes. </p>
-<ul>
-<li>
-<p>One is to upgrade all of them at once. But then your PODs are down and users are no longer able to access the applications. Once the upgrade is complete, the nodes are back up. New PODs are scheduled and users can resume access. That's one strategy that requires downtime.</p>
-</li>
-<li>
-<p>The second strategy is to upgrade one node at a time. So going back to the state where we have our master upgraded and nodes waiting to be upgraded, we first upgrade the first node where the workloads move to the second and third node. And users are so from there.Once the first node is upgraded and back up with an update, the second node where the workloads move to the first and third nodes. And finally, the third node where the workloads are shared between the first two until we have all nodes upgraded to a newer version. We then followed the same procedure to upgrade the node from 1.11 to 1.12 and then version 1.13.</p>
-</li>
-<li>
-<p>A third strategy would be to add new nodes to the cluster. Nodes with newer software versions. This is especially convenient if you're on a cloud environment where you can easily provision new nodes and decommissioned old ones; nodes with the newer software version can be added to the cluster move the workload over to the new and then remove the old nodes.Until you finally have all new nodes with the new software version.</p>
-</li>
-</ul>
-<p><strong>Let us now see how it is done.</strong></p>
-<p><img alt="Diagram" src="images/image6.png" /></p>
-<p>So we were to upgrade this cluster from 1.11 to 1.13. Kubadm has an upgrade command that helps in upgrading clusters with kubeadm run the <code>kubadm upgrade plan</code> command, and it will give you a lot of good information. </p>
-<ul>
-<li>
-<p>The current cluster version,</p>
-</li>
-<li>
-<p>the kubeadm tool version,</p>
-</li>
-<li>
-<p>the latest stable version of Kubernetes.</p>
-</li>
-</ul>
-<p>Then it lists all the control plane components and their versions and what version these can be upgraded to.It also tells you that after we upgrade the control plane components, you must manually upgrade the  Kubelet versions on each node. Remember kubeadm does not install or upgrade kubelets.  </p>
-<p>Finally, it gives you the command to upgrade the cluster.  Also, note that you must upgrade the kubeadm tool itself before you can upgrade the cluster.</p>
-<p>The kubeadm tool also follows the same software version as Kubernetes, so we're at 1.11 and we want to go to 1.13. But remember, we can only go one minor version at a time, so we first go to version 1.12. First upgrade the kubeadm tool itself to version 1.12, then upgrade the cluster using the command from the upgrade plan output kubeadm upgrade apply. <code>apt-get upgrade -y kubeadm=1.12.0-00``kubeadm upgrade apply v1.12.0</code> </p>
-<p><img alt="Diagram" src="images/image11.png" /></p>
-<p>It pulls the necessary images and upgrades the cluster components. Once complete, your control plane components are now at 1.12.  If you run the <code>kubectl get nodes</code> command, you will still see the master node at 1.11. This is because in the output of this command, it is showing the versions of kubelets on each of these nodes registered with the API server and not the version of the API server itself. </p>
-<p><img alt="Diagram" src="images/image258.png" /></p>
-<p>So the next step is to upgrade the Kubelets. Remember, depending on your setup You may or may not have kubelets running on your master node. In this case, the cluster deployed with kubeadm has kubelets on the master node, which are used to run the control plane components as PODs of the master nodes. When we set up a Kubernetes cluster from scratch later during this course, we did not install kubelet on the master node.  You will not see the master node in the output of this command in that case. So the next step is to upgrade kubelet on the master node. If you have kubelet on them, run the <code>apt-get  kubelet</code> command for this. Once the package is upgraded, restart the kubelet service. Running the kubectl get nodes command now shows that the master has been upgraded to 1.12, the worker nodes are still at 1.11 </p>
-<p>So next, the worker nodes, let us start one at a time. We need to first move the workloads from the first worker node to the other nodes. The <code>kubectl drain</code> Command lets you safely terminate all the PODs from the node and reschedules them on the other nodes. It also <strong>cordons</strong> the node and marks it unschedulable that way, no new PODs are scheduled on it. Then upgrade the kubeadm and Kubelet packages on the worker nodes, as we did on the master node, then using the kubeadm tool upgrade command update the node configuration for the new kubelet version.Then restart the kubelet service. The node should now be up with the new software version. </p>
-<pre><code class="language-bash">$ kubectl drain node-1$ apt-get upgrade -y kubeadm=1.12.0-00$ apt-get upgrade -y kubelet=1.12.0$ kubeadm upgrade node config --kubelet-version v1.12.0 $ systemctl restart kubelet 
-</code></pre>
-<p>However, when we drained the node, we actually marked it unschedulable. So we need to unmark  it by running the command <code>kubectl uncordon  node-1</code>. The node is now schedulable </p>
-<p><img alt="Diagram" src="images/image104.png" /></p>
-<p><img alt="Diagram" src="images/image181.png" /></p>
-<p>But remember that it is not necessary that the PODs come right back to this node. It is only marked as scheduled , but only when the PODs are deleted from other nodes or when new PODs are scheduled ,they really come back to this node. Well It will soon come when we take down the second node to perform the same steps to upgrade it. And finally, the third node. We now have all nodes upgraded.References</p>
-<h3 id="backup-and-restore-methods">Backup and Restore Methods</h3>
-<p>Let's start by looking at what you should consider backing up in a kubernetes cluster. So far in this course, we have deployed a number of different applications on our kubernetes cluster using deployments, PODs and service definition files. </p>
-<p>We know that the ETCD cluster is where all cluster related information is stored, and if your applications are configured with persistent storage, then that is another candidate for backups. With respect to resources that we created in the cluster. At times we use the imperative way of creating an object by executing a command such as well creating a namespace or a secret or config map or at times for exposing applications </p>
-<p><img alt="Diagram" src="images/image33.png" /></p>
-<p><img alt="Diagram" src="images/image160.png" /></p>
-<p>and at times, we used the declarative approach by first creating a definition file and then running the <code>kubectl apply</code> command on that file.  This is the preferred approach if you want to save your configuration, because now you have all the objects required for a single application in the form of object definition files in a single folder. This can easily be reused at a later time or shared with others.  Of course, you must have a copy of these files saved at all times. A good practice is to store these in source-code repositories. That way it can be maintained by a team. </p>
-<p>The source code repository should be configured with the right backup solutions with managed or public source code repositories like GitHub you don't have to worry about this. With that even when you lose your entire cluster, you can redeploy your application on the cluster by simply applying these configuration files on them. While the declarative approach is the preferred approach, it is not necessary that all of your team members stick to those standards. <strong>What if someone created an object the imperative way without documenting that information anywhere?</strong> So a better approach to backing up resource configuration is to query the kubeAPI server, query the Kubeapi server using the kubectl or by accessing the API server directly and save all resource configurations for all objects created on the cluster as a copy.  </p>
-<p>For example, one of the commands that can be used in a backup script is to get all PODs and deployments and services in all namespace using the Kubectl utilities get all command and extract the output in a yamll format, then save that file.</p>
-<pre><code class="language-bash">$ kubectl get all --all-namespaces -o yaml &gt; all-deploy-services.yaml (only for few resource groups)
-</code></pre>
-<p>And that's just for a few resource group, there are many other resource groups that must be considered.</p>
-<p>Of course, you don't have to develop that solution yourself. There are tools like  ARK, now called VELERO by HabtIO, that can do this for you. It can help in taking backups of your kubernetes cluster using the kubernetes API.</p>
-<p><img alt="Diagram" src="images/image401.png" /></p>
-<p>Let us now move on to ETCD. The ETCD cluster stores information about the state of our cluster, so information about the cluster itself, the nodes and every other resource created within the cluster are stored here.  So instead of backing up resources as before, you may choose to back up the ETCD server itself. </p>
-<p>As we have seen, the ETCD cluster is hosted on the master nodes while configuring ETCD we specified a location where all the data would be stored <strong>“The data directory”</strong> that is the directory that can be configured to be backed up by your backup tool. </p>
-<p><img alt="Diagram" src="images/image232.png" /></p>
-<p>ETCD also comes with a built in snapshot solution, you can take a snapshot of the ETCD database by using the ETCD control utilities ,snapshot, save command, give the snapshot a name, snapshot.db</p>
-<pre><code class="language-bash">$ ETCDCTL_API=3 etcdctl snapshot save snapshot.db
-</code></pre>
-<p><img alt="Diagram" src="images/image3.png" /></p>
-<p>A snapshot file is created by the name in the current directory. If you want it to be created in another location, specify the full path.</p>
-<p>You can view the status of the backup using the Snapshot Status Command. </p>
-<pre><code class="language-bash">$  ETCDCTL_API=3 etcdctl snapshot status snapshot.db
-</code></pre>
-<p>To restore the cluster from this back up at a later point in time, First stop the kubeAPI server service, as the restore process will require you to restart the ETCD cluster and the kubeAPI server depends on it.</p>
-<pre><code class="language-text">$ service kube-apiserver stop
-</code></pre>
-<p><img alt="Diagram" src="images/image289.png" /></p>
-<p><img alt="Diagram" src="images/image244.png" /></p>
-<p><img alt="Diagram" src="images/image355.png" /></p>
-<p>Then run the <code>etcdctl snapshot restore</code> command with the path set to the path of the backup file,which is the snapshot.db  file. When ETCD restores from a backup, it initializes a new cluster configuration and  configures the members of ETCD as new members to a new cluster. This is to prevent a new member from accidentally joining an existing cluster. On running this command a “new data directory” is created. In this example at location <code>/var/lib/etcd-from-backup.</code>We then configure the etcd configuration file to use the new data directory.Then reload the service daemon and restart active service.</p>
-<pre><code class="language-bash">$ systemctl daemon-reload$ service etcd restart Finally, start the kubeAPI server service, your cluster should now be back in the original state.$ service kube-apiserver start 
-</code></pre>
-<p>A quick note before I let you go, with all the ETCD commands, remember to specify the cert files for authentication, </p>
-<ul>
-<li>
-<p>Specify the end point to the ETCD cluster and</p>
-</li>
-<li>
-<p>The CA cert,</p>
-</li>
-<li>
-<p>The ETCD server certificate and</p>
-</li>
-<li>
-<p>The key.</p>
-</li>
-</ul>
-<p><img alt="Diagram" src="images/image396.png" /></p>
-<p>So we have seen two options, a backup using a ETCD and a backup by querying the kubeAPI  server Now, both of these have their pros and cons. Well, if you're using a managed environment, then at times you may not even have access to the ETCD cluster. In that case, backup by acquiring the kubeAPI server is probably the better way.</p>
-<h4 id="practice-test-solution">Practice Test Solution</h4>
-<p><strong>To check etcd version</strong> Look at the ETCD Logs using the command <code>kubectl logs etcd-controlplane -n kube-system</code> or check the image used by the ETCD pod: <code>kubectl describe pod etcd-controlplane -n kube-system</code></p>
-<p><strong>At what address can you reach the ETCD cluster from the controlplane node? Check the ETCD Service configuration in the ETCD POD</strong><code>kubectl describe pod etcd-controlplane -n kube-system</code> <code>--listen-client-urls=https://127.0.0.1:2379,https://10.8.30.3:2379</code></p>
-<p><strong>Where is etcd server certificate file located ?</strong></p>
-<p><strong>Where is the ETCD CA Certificate file located? Note this path down as you will need to use it later.</strong></p>
-<pre><code class="language-bash">root@controlplane:~# ETCDCTL_API=3 etcdctl --endpoints=https://[127.0.0.1]:2379 \
---cacert=/etc/kubernetes/pki/etcd/ca.crt \
---cert=/etc/kubernetes/pki/etcd/server.crt \
---key=/etc/kubernetes/pki/etcd/server.key \
-snapshot save /opt/snapshot-pre-boot.db
-</code></pre>
-<p><strong>First Restore the snapshot:</strong></p>
-<p><strong>root@controlplane:~#</strong> <code>ETCDCTL_API=3 etcdctl  --data-dir /var/lib/etcd-from-backup \``snapshot restore /opt/snapshot-pre-boot.db</code> </p>
-<pre><code class="language-text">2022-03-25 09:19:27.175043 I | mvcc: restore compact to 25522022-03-25 09:19:27.266709 I | etcdserver/membership: added member 8e9e05c52164694d [http://localhost:2380] to cluster cdf818194e3a8c32
-root@controlplane:~# 
-</code></pre>
-<p><strong>Note: In this case, we are restoring the snapshot to a different directory but in the same server where we took the backup (the controlplane node) As a result, the only required option for the restore command is the --data-dir.</strong> <strong>Next, update the /etc/kubernetes/manifests/etcd.yaml:</strong></p>
-<p><strong>We have now restored the etcd snapshot to a new path on the controlplane - /var/lib/etcd-from-backup, so, the only change to be made in the YAML file, is to change the hostPath for the volume called etcd-data from old directory (/var/lib/etcd) to the new directory (/var/lib/etcd-from-backup).</strong></p>
-<pre><code class="language-yaml"> volumes:
-  - hostPath:
-      path: /var/lib/etcd-from-backup
-      type: DirectoryOrCreate
-    name: etcd-data
-</code></pre>
-<p><strong>With this change, /var/lib/etcd on the container points to /var/lib/etcd-from-backup on the controlplane (which is what we want)</strong></p>
-<p><strong>When this file is updated, the ETCD pod is automatically re-created as this is a static pod placed under the /etc/kubernetes/manifests directory.</strong></p>
-<p><strong>Note 1: As the ETCD pod has changed it will automatically restart, and also kube-controller-manager and kube-scheduler. Wait 1-2 to mins for this pods to restart. You can run a watch "docker ps | grep etcd" command to see when the ETCD pod is restarted.</strong></p>
-<p><strong>Note 2: If the etcd pod is not getting Ready 1/1, then restart it by kubectl delete pod -n kube-system etcd-controlplane and wait 1 minute.</strong></p>
-<p><strong>Note 3: This is the simplest way to make sure that ETCD uses the restored data after the ETCD pod is recreated. You don't have to change anything else.</strong></p>
-<p><strong>If you do change --data-dir to /var/lib/etcd-from-backup in the YAML file, make sure that the volumeMounts for etcd-data is updated as well, with the mountPath pointing to /var/lib/etcd-from-backup (THIS COMPLETE STEP IS OPTIONAL AND NEED NOT BE DONE FOR COMPLETING THE RESTORE)</strong></p>
-<h3 id="working-with-etcdctletcdctl-is-a-command-line-client-for-etcd">Working with ETCDCTLetcdctl is a command line client for etcd.</h3>
-<p>In all our Kubernetes Hands-on labs, the ETCD key-value database is deployed as a static pod on the master. The version used is v3. To make use of etcdctl for tasks such as back up and restore, make sure that you set the ETCDCTL_API to 3.  </p>
-<p>You can do this by exporting the variable ETCDCTL_API prior to using the etcdctl client. This can be done as follows:</p>
-<p>export ETCDCTL_API=3</p>
-<p>On the Master Node:</p>
-<p><img alt="Diagram" src="images/image253.png" /></p>
-<p>To see all the options for a specific sub-command, make use of the -h or –help flag.</p>
-<p>For example, if you want to take a snapshot of etcd, use:</p>
-<pre><code class="language-bash">etcdctl snapshot save -h and keep a note of the mandatory global options.
-</code></pre>
-<p>Since our ETCD database is TLS-Enabled, the following options are mandatory:</p>
-<p>–cacert            verify certificates of TLS-enabled secure servers using this CA bundle</p>
-<p>–cert                identify secure client using this TLS certificate file</p>
-<p>–endpoints=[127.0.0.1:2379] This is the default as ETCD is running on master node and exposed on localhost 2379.</p>
-<p>–key              identify secure client using this TLS key file</p>
-<p>For a detailed explanation on how to make use of the etcdctl command line tool and work with the -h flags, check out the solution video for the Backup and Restore Lab.</p>
 <hr />
-<h3 id="step-by-step-kubeadm-cluster-upgrade-playbook">Step-by-Step Kubeadm Cluster Upgrade Playbook</h3>
-<p>In CKA exams, upgrading a cluster across minor versions (e.g., v1.30.x to v1.31.x) must be done step-by-step: first the control plane, then worker nodes one by one. You cannot skip minor versions (e.g. 1.29 -&gt; 1.31 is not supported directly; upgrade 1.29 -&gt; 1.30 -&gt; 1.31).</p>
-<h4 id="phase-1-upgrade-the-control-plane-node">Phase 1: Upgrade the Control Plane Node</h4>
+<h2 id="1-node-maintenance-os-upgrades">1. Node Maintenance &amp; OS Upgrades</h2>
+<h3 id="node-failure-pod-eviction-timeout">Node Failure &amp; Pod Eviction Timeout</h3>
+<p>When a node becomes unreachable or shuts down:
+- <strong>Pod Eviction Timeout (<code>default: 5m</code>):</strong> Configured on <code>kube-controller-manager</code> via <code>--pod-eviction-timeout=5m0s</code>.
+- If the node recovers within 5 minutes, pods resume without recreation.
+- If down for &gt; 5 minutes, the node is marked <code>NotReady</code>, and its pods are terminated and rescheduled on healthy nodes (if managed by a ReplicaSet/Deployment). Bare pods are not recreated.</p>
+<p><img alt="Node Failure Impact" src="images/image429.png" />
+<img alt="Pod Re-creation on Alternate Node" src="images/image298.png" /></p>
+<h3 id="drain-cordon-and-uncordon">Drain, Cordon, and Uncordon</h3>
+<p>To safely take a node offline for maintenance (kernel patching, hardware upgrade):</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Command</th>
+<th style="text-align: left;">Action</th>
+<th style="text-align: left;">Impact on Existing Pods</th>
+<th style="text-align: left;">Impact on New Pods</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>kubectl cordon &lt;node&gt;</code></td>
+<td style="text-align: left;">Marks node unschedulable</td>
+<td style="text-align: left;"><strong>No change</strong> (keeps running)</td>
+<td style="text-align: left;">Blocks new pods</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>kubectl drain &lt;node&gt;</code></td>
+<td style="text-align: left;">Cordons + evicts pods</td>
+<td style="text-align: left;">Evicts graceful termination</td>
+<td style="text-align: left;">Blocks new pods</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>kubectl uncordon &lt;node&gt;</code></td>
+<td style="text-align: left;">Marks node schedulable</td>
+<td style="text-align: left;">No auto fallback of old pods</td>
+<td style="text-align: left;">Allows new pods</td>
+</tr>
+</tbody>
+</table>
+<h4 id="drain-commands">Drain Commands:</h4>
+<pre><code class="language-bash"># 1. Drain node (safely evicts workloads to other nodes)
+kubectl drain node01 --ignore-daemonsets
+
+# 2. If node hosts pods with local emptyDir storage, force eviction:
+kubectl drain node01 --ignore-daemonsets --delete-emptydir-data --force
+
+# 3. Perform maintenance / reboot node...
+
+# 4. Return node to scheduling pool:
+kubectl uncordon node01
+</code></pre>
+<p><img alt="Drain Node Workflow" src="images/image100.png" />
+<img alt="Uncordon Node" src="images/image36.png" /></p>
+<hr />
+<h2 id="2-kubernetes-software-versions-skew-policy">2. Kubernetes Software Versions &amp; Skew Policy</h2>
+<h3 id="version-anatomy">Version Anatomy</h3>
+<p>Kubernetes adheres to Semantic Versioning (<code>vMAJOR.MINOR.PATCH</code>, e.g., <code>v1.31.2</code>):
+- <strong>MAJOR (<code>1</code>):</strong> Core API changes.
+- <strong>MINOR (<code>31</code>):</strong> Feature additions, API enhancements (released ~3 times per year).
+- <strong>PATCH (<code>2</code>):</strong> Bug fixes and security patches.</p>
+<p><img alt="Kubernetes Version Breakdown" src="images/image279.png" />
+<img alt="Release Lifecycle" src="images/image210.png" /></p>
+<h3 id="component-version-skew-rules">Component Version Skew Rules</h3>
+<p><code>kube-apiserver</code> is the primary hub of the control plane. No component can be at a higher minor version than the API server:</p>
+<p><img alt="Component Version Skew" src="images/image117.png" />
+<img alt="Version Permissibility" src="images/image299.png" /></p>
+<ul>
+<li><strong><code>kube-apiserver</code>:</strong> Version <strong>X</strong></li>
+<li><strong><code>kube-scheduler</code> &amp; <code>kube-controller-manager</code>:</strong> Permitted at <strong>X</strong> or <strong>X - 1</strong></li>
+<li><strong><code>kubelet</code> &amp; <code>kube-proxy</code>:</strong> Permitted at <strong>X</strong>, <strong>X - 1</strong>, or <strong>X - 2</strong></li>
+<li><strong><code>kubectl</code>:</strong> Permitted at <strong>X + 1</strong>, <strong>X</strong>, or <strong>X - 1</strong></li>
+</ul>
+<h3 id="support-lifecycle">Support Lifecycle</h3>
+<ul>
+<li>Kubernetes officially maintains the <strong>three most recent minor versions</strong> (e.g., 1.31, 1.30, 1.29).</li>
+<li><strong>Never skip minor versions during an upgrade</strong> (e.g., to go from <code>1.29</code> to <code>1.31</code>, upgrade <code>1.29</code> ➔ <code>1.30</code> ➔ <code>1.31</code>).</li>
+</ul>
+<hr />
+<h2 id="3-step-by-step-kubeadm-cluster-upgrade-playbook">3. Step-by-Step Kubeadm Cluster Upgrade Playbook</h2>
+<h3 id="upgrade-strategy">Upgrade Strategy</h3>
+<ol>
+<li>Upgrade the primary Control Plane node.</li>
+<li>Upgrade secondary Control Plane nodes (in HA clusters).</li>
+<li>Upgrade Worker nodes sequentially (one-by-one) to maintain application availability.</li>
+</ol>
+<p><img alt="Upgrade Control Plane First" src="images/image6.png" />
+<img alt="Upgrade Node Steps" src="images/image11.png" /></p>
+<hr />
+<h3 id="phase-1-upgrade-the-control-plane-node">Phase 1: Upgrade the Control Plane Node</h3>
 <ol>
 <li>
 <p><strong>Drain the Control Plane node:</strong>
@@ -227,23 +138,22 @@ root@controlplane:~#
    kubectl drain controlplane --ignore-daemonsets</code></p>
 </li>
 <li>
-<p><strong>Upgrade <code>kubeadm</code> tool:</strong>
+<p><strong>Upgrade the <code>kubeadm</code> binary:</strong>
    ```bash
    sudo apt-mark unhold kubeadm
    sudo apt-get update &amp;&amp; sudo apt-get install -y kubeadm=1.31.0-1.1
    sudo apt-mark hold kubeadm</p>
 </li>
 </ol>
-<p># Verify version
-   kubeadm version
+<p>kubeadm version
    ```</p>
 <ol start="3">
 <li><strong>Plan and apply the upgrade:</strong>
    ```bash
-   # Check upgrade plan
+   # View upgrade plan and verify component compatibility:
    sudo kubeadm upgrade plan</li>
 </ol>
-<p># Apply the upgrade (downloads new control plane static pod images)
+<p># Apply control plane upgrade (upgrades static pod manifests):
    sudo kubeadm upgrade apply v1.31.0 -y
    ```</p>
 <ol start="4">
@@ -253,8 +163,7 @@ root@controlplane:~#
    sudo apt-get install -y kubelet=1.31.0-1.1 kubectl=1.31.0-1.1
    sudo apt-mark hold kubelet kubectl</li>
 </ol>
-<p># Reload systemd and restart kubelet
-   sudo systemctl daemon-reload
+<p>sudo systemctl daemon-reload
    sudo systemctl restart kubelet
    ```</p>
 <ol start="5">
@@ -263,7 +172,10 @@ root@controlplane:~#
    kubectl uncordon controlplane</code></li>
 </ol>
 <hr />
-<h4 id="phase-2-upgrade-worker-nodes-one-by-one">Phase 2: Upgrade Worker Nodes (One by One)</h4>
+<h3 id="phase-2-upgrade-worker-nodes-one-by-one">Phase 2: Upgrade Worker Nodes (One by One)</h3>
+<p><img alt="Worker Node Upgrade" src="images/image258.png" />
+<img alt="Worker Node Complete" src="images/image104.png" />
+<img alt="Cluster Nodes Upgraded" src="images/image181.png" /></p>
 <ol>
 <li>
 <p><strong>Drain the Worker node from the Control Plane:</strong>
@@ -271,7 +183,7 @@ root@controlplane:~#
    kubectl drain node01 --ignore-daemonsets --delete-emptydir-data --force</code></p>
 </li>
 <li>
-<p><strong>SSH into the Worker node:</strong>
+<p><strong>Log into the Worker node:</strong>
    <code>bash
    ssh node01</code></p>
 </li>
@@ -283,7 +195,7 @@ root@controlplane:~#
    sudo apt-mark hold kubeadm</code></p>
 </li>
 <li>
-<p><strong>Upgrade Worker node configuration:</strong>
+<p><strong>Upgrade local node configuration:</strong>
    <code>bash
    sudo kubeadm upgrade node</code></p>
 </li>
@@ -295,8 +207,7 @@ root@controlplane:~#
    sudo apt-mark hold kubelet kubectl</p>
 </li>
 </ol>
-<p># Reload systemd and restart kubelet
-   sudo systemctl daemon-reload
+<p>sudo systemctl daemon-reload
    sudo systemctl restart kubelet
    ```</p>
 <ol start="6">
@@ -307,38 +218,125 @@ root@controlplane:~#
    kubectl uncordon node01</code></p>
 </li>
 <li>
-<p><strong>Verify cluster status:</strong>
+<p><strong>Verify node status:</strong>
    <code>bash
    kubectl get nodes -o wide</code></p>
 </li>
 </ol>
 <hr />
-<h3 id="kubeadm-certificate-expiry-renewal">Kubeadm Certificate Expiry &amp; Renewal</h3>
-<p>By default, certificates generated by <code>kubeadm</code> expire after 1 year. The cluster administrator must monitor and renew them before expiration.</p>
-<h4 id="check-expiration-status">Check Expiration Status</h4>
+<h2 id="4-kubeadm-certificate-management-renewal">4. Kubeadm Certificate Management &amp; Renewal</h2>
+<p>Kubeadm-generated TLS certificates expire after <strong>1 year</strong> by default.</p>
+<h3 id="check-expiration">Check Expiration</h3>
 <pre><code class="language-bash">kubeadm certs check-expiration
 </code></pre>
-<p><em>Output will display expiration dates, residual time, and authority for <code>apiserver</code>, <code>apiserver-kubelet-client</code>, <code>front-proxy-client</code>, <code>etcd-server</code>, etc.</em></p>
-<h4 id="manual-renewal">Manual Renewal</h4>
-<pre><code class="language-bash"># Renew all certificates at once
+<p><em>Displays expiration date, remaining days, and authority for apiserver, etcd, front-proxy, etc.</em></p>
+<h3 id="renew-certificates">Renew Certificates</h3>
+<pre><code class="language-bash"># Renew all certificates simultaneously:
 sudo kubeadm certs renew all
 
-# Or renew specific certificate
+# Or renew specific component:
 sudo kubeadm certs renew apiserver
 </code></pre>
-<h4 id="post-renewal-steps">Post-Renewal Steps</h4>
-<p>After renewing certificates, static pods must reload their TLS certificates. The simplest way is to restart them:</p>
-<pre><code class="language-bash"># In kubeadm clusters, killing the static pod containers or touching manifests triggers a reload
+<h3 id="post-renewal-verification">Post-Renewal Verification</h3>
+<pre><code class="language-bash"># Restart kubelet to reload static pod certificates:
 sudo systemctl restart kubelet
 
-# Update admin kubeconfig file for local root user:
+# Refresh admin kubeconfig credentials for root user:
 sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
 sudo chown $(id -u):$(id -g) $HOME/.kube/config
 </code></pre>
 <hr />
-<h3 id="references">References</h3>
+<h2 id="5-etcd-backup-and-snapshot-restore">5. ETCD Backup and Snapshot Restore</h2>
+<h3 id="backup-strategies-declarative-vs-etcd-snapshot">Backup Strategies: Declarative vs. etcd Snapshot</h3>
+<ol>
+<li>
+<p><strong>Resource Manifest Backup (Declarative):</strong>
+   - Store all YAML configs in Git (Infrastructure as Code).
+   - Alternatively, query the API server using CLI / tools like Velero:
+     <code>bash
+     kubectl get all --all-namespaces -o yaml &gt; cluster-backup.yaml</code>
+   <img alt="Resource Backup" src="images/image33.png" />
+   <img alt="GitOps Manifests" src="images/image160.png" />
+   <img alt="Velero Tool" src="images/image401.png" /></p>
+</li>
+<li>
+<p><strong>Database Snapshot (State Store):</strong>
+   - Direct backup of <code>/var/lib/etcd</code> or online snapshot using <code>etcdctl</code>.
+   <img alt="etcd Data Directory" src="images/image232.png" /></p>
+</li>
+</ol>
+<hr />
+<h3 id="creating-an-etcd-snapshot">Creating an ETCD Snapshot</h3>
+<p><img alt="etcd Snapshot" src="images/image3.png" /></p>
+<blockquote>
+<p>[!TIP]
+<strong>Locating ETCD Certificates &amp; Endpoints on the Control Plane:</strong>
+If you don't know the exact certificate paths or listen URLs during the exam, inspect the static pod manifest or pod description:
+```bash</p>
+<h1 id="option-1-inspect-the-manifest-directly">Option 1: Inspect the manifest directly</h1>
+<p>cat /etc/kubernetes/manifests/etcd.yaml | grep -E "cert|key|listen-client-urls"</p>
+<h1 id="option-2-describe-the-running-etcd-pod">Option 2: Describe the running etcd pod</h1>
+<p>kubectl describe pod etcd-controlplane -n kube-system
+<code>``
+Typical locations:
+- CA Cert:</code>--cacert=/etc/kubernetes/pki/etcd/ca.crt<code>- Server Cert:</code>--cert=/etc/kubernetes/pki/etcd/server.crt<code>- Server Key:</code>--key=/etc/kubernetes/pki/etcd/server.key<code>- Endpoints:</code>https://127.0.0.1:2379<code>(peer port:</code>2380`)</p>
+</blockquote>
+<p>Always use <code>ETCDCTL_API=3</code> and supply TLS certificates:</p>
+<pre><code class="language-bash">ETCDCTL_API=3 etcdctl \
+  --endpoints=https://127.0.0.1:2379 \
+  --cacert=/etc/kubernetes/pki/etcd/ca.crt \
+  --cert=/etc/kubernetes/pki/etcd/server.crt \
+  --key=/etc/kubernetes/pki/etcd/server.key \
+  snapshot save /opt/snapshot-pre-boot.db
+</code></pre>
+<p>Verify snapshot health and size:</p>
+<pre><code class="language-bash">ETCDCTL_API=3 etcdctl snapshot status /opt/snapshot-pre-boot.db --write-out=table
+</code></pre>
+<hr />
+<h3 id="restoring-an-etcd-snapshot-static-pod-architecture">Restoring an ETCD Snapshot (Static Pod Architecture)</h3>
+<p><img alt="Restore Architecture" src="images/image289.png" />
+<img alt="Restore Process" src="images/image244.png" />
+<img alt="Static Pod Reload" src="images/image355.png" /></p>
+<ol>
+<li>
+<p><strong>Restore snapshot to a NEW host directory:</strong>
+   <code>bash
+   ETCDCTL_API=3 etcdctl snapshot restore /opt/snapshot-pre-boot.db \
+     --data-dir=/var/lib/etcd-from-backup</code></p>
+</li>
+<li>
+<p><strong>Update the Static Pod manifest (<code>/etc/kubernetes/manifests/etcd.yaml</code>):</strong>
+   - Update the <code>hostPath</code> for <code>etcd-data</code> volume from <code>/var/lib/etcd</code> to the new path <code>/var/lib/etcd-from-backup</code>:
+     ```yaml
+     volumes:</p>
 <ul>
-<li><a href="https://kubernetes.io/docs/tasks/administer-cluster/kubeadm/kubeadm-upgrade/">Kubernetes Documentation: Upgrading kubeadm clusters</a></li>
-<li><a href="https://kubernetes.io/docs/tasks/administer-cluster/kubeadm/kubeadm-certs/">Kubernetes Documentation: Certificate Management with kubeadm</a></li>
-</ul></main></body>
+<li>hostPath:
+     path: /var/lib/etcd-from-backup
+     type: DirectoryOrCreate
+   name: etcd-data
+ ```</li>
+</ul>
+</li>
+<li>
+<p><strong>Verify Static Pod Recreation:</strong>
+   - Kubelet detects manifest edits automatically and recreates the etcd container.
+   ```bash
+   # Watch etcd container reload:
+   sudo crictl ps | grep etcd</p>
+</li>
+</ol>
+<p># Verify cluster API responds:
+   kubectl get pods -n kube-system
+   ```</p>
+<hr />
+<h3 id="tls-authentication-flags-for-etcdctl">TLS Authentication Flags for etcdctl</h3>
+<p><img alt="TLS Flags" src="images/image253.png" />
+<img alt="etcd Config" src="images/image396.png" /></p>
+<pre><code class="language-bash">export ETCDCTL_API=3
+# Essential flags:
+# --endpoints=https://127.0.0.1:2379   -&gt; etcd listen address
+# --cacert=/etc/kubernetes/pki/etcd/ca.crt
+# --cert=/etc/kubernetes/pki/etcd/server.crt
+# --key=/etc/kubernetes/pki/etcd/server.key
+</code></pre></main></body>
 </html>

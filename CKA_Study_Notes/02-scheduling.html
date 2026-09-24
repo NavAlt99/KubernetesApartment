@@ -18,35 +18,118 @@
   </style>
 </head>
 <body><main class="markdown-page"><h1 id="02-scheduling">02. Scheduling</h1>
-<h2 id="scheduler">SCHEDULER</h2>
-<h3 id="manual-scheduling">Manual Scheduling</h3>
-<p><strong>So if there is no scheduler to monitor and schedule nodes what happens?</strong></p>
+<h2 id="table-of-contents">📑 Table of Contents</h2>
 <ul>
-<li>The pods continue to be in a pending state.</li>
+<li><a href="#1-kubernetes-scheduling-overview">1. Kubernetes Scheduling Overview</a></li>
+<li><a href="#2-manual-scheduling">2. Manual Scheduling</a></li>
+<li><a href="#21-setting-nodename-at-creation">2.1 Setting <code>nodeName</code> at Creation</a></li>
+<li><a href="#22-scheduling-existing-unassigned-pods-binding-api">2.2 Scheduling Existing Unassigned Pods (Binding API)</a></li>
+<li><a href="#3-labels-selectors-and-annotations">3. Labels, Selectors, and Annotations</a></li>
+<li><a href="#31-labels-and-selectors-concepts">3.1 Labels and Selectors Concepts</a></li>
+<li><a href="#32-attaching-labels-to-pods">3.2 Attaching Labels to Pods</a></li>
+<li><a href="#33-object-interconnection-via-selectors-replicasets--services">3.3 Object Interconnection via Selectors (ReplicaSets &amp; Services)</a></li>
+<li><a href="#34-annotations-vs-labels">3.4 Annotations vs. Labels</a></li>
+<li><a href="#35-practical-filtering-commands">3.5 Practical Filtering Commands</a></li>
+<li><a href="#4-taints-and-tolerations">4. Taints and Tolerations</a></li>
+<li><a href="#41-core-concepts--analogy">4.1 Core Concepts &amp; Analogy</a></li>
+<li><a href="#42-taint-effects-noschedule-prefernoschedule-noexecute">4.2 Taint Effects: <code>NoSchedule</code>, <code>PreferNoSchedule</code>, <code>NoExecute</code></a></li>
+<li><a href="#43-configuring-taints-on-nodes">4.3 Configuring Taints on Nodes</a></li>
+<li><a href="#44-configuring-tolerations-on-pods">4.4 Configuring Tolerations on Pods</a></li>
+<li><a href="#45-noexecute-deep-dive--pod-eviction">4.5 <code>NoExecute</code> Deep-Dive &amp; Pod Eviction</a></li>
+<li><a href="#46-control-plane-master-node-taints">4.6 Control Plane (Master) Node Taints</a></li>
+<li><a href="#47-essential-commands-for-taints">4.7 Essential Commands for Taints</a></li>
+<li><a href="#5-node-selectors">5. Node Selectors</a></li>
+<li><a href="#51-purpose--limitations">5.1 Purpose &amp; Limitations</a></li>
+<li><a href="#52-labeling-nodes">5.2 Labeling Nodes</a></li>
+<li><a href="#53-assigning-pods-with-nodeselector">5.3 Assigning Pods with <code>nodeSelector</code></a></li>
+<li><a href="#6-node-affinity">6. Node Affinity</a></li>
+<li><a href="#61-why-node-affinity">6.1 Why Node Affinity?</a></li>
+<li><a href="#62-node-affinity-types--pod-lifecycle">6.2 Node Affinity Types &amp; Pod Lifecycle</a></li>
+<li><a href="#63-operators-in-notin-exists-doesnotexist-gt-lt">6.3 Operators (<code>In</code>, <code>NotIn</code>, <code>Exists</code>, <code>DoesNotExist</code>, <code>Gt</code>, <code>Lt</code>)</a></li>
+<li><a href="#64-pod-manifest-examples">6.4 Pod Manifest Examples</a></li>
+<li><a href="#7-taints--tolerations-vs-node-affinity">7. Taints &amp; Tolerations vs. Node Affinity</a></li>
+<li><a href="#71-key-differences">7.1 Key Differences</a></li>
+<li><a href="#72-combining-both-for-full-node-isolation">7.2 Combining Both for Full Node Isolation</a></li>
+<li><a href="#8-resource-requests-limits-and-editing-pods">8. Resource Requests, Limits, and Editing Pods</a></li>
+<li><a href="#81-scheduling-evaluation--pending-state">8.1 Scheduling Evaluation &amp; Pending State</a></li>
+<li><a href="#82-defining-resource-requests--limits">8.2 Defining Resource Requests &amp; Limits</a></li>
+<li><a href="#83-understanding-resource-units-cpu--memory">8.3 Understanding Resource Units (CPU &amp; Memory)</a></li>
+<li><a href="#84-exceeding-limits-cpu-throttling-vs-memory-oomkilled">8.4 Exceeding Limits: CPU Throttling vs. Memory OOMKilled</a></li>
+<li><a href="#85-default-resource-allocation-via-limitrange">8.5 Default Resource Allocation via LimitRange</a></li>
+<li><a href="#86-editing-running-pods-and-deployments">8.6 Editing Running Pods and Deployments</a></li>
+<li><a href="#9-daemonsets">9. DaemonSets</a></li>
+<li><a href="#91-purpose-and-key-use-cases">9.1 Purpose and Key Use Cases</a></li>
+<li><a href="#92-daemonset-manifest--selectors">9.2 DaemonSet Manifest &amp; Selectors</a></li>
+<li><a href="#93-how-daemonsets-schedule-pods">9.3 How DaemonSets Schedule Pods</a></li>
+<li><a href="#94-practical-commands">9.4 Practical Commands</a></li>
+<li><a href="#10-static-pods">10. Static Pods</a></li>
+<li><a href="#101-concept--kubelet-independence">10.1 Concept &amp; Kubelet Independence</a></li>
+<li><a href="#102-configuring-static-pod-manifest-path">10.2 Configuring Static Pod Manifest Path</a></li>
+<li><a href="#103-mirror-pods-in-kube-apiserver">10.3 Mirror Pods in kube-apiserver</a></li>
+<li><a href="#104-deploying-control-plane-components-with-static-pods">10.4 Deploying Control Plane Components with Static Pods</a></li>
+<li><a href="#105-static-pods-vs-daemonsets">10.5 Static Pods vs. DaemonSets</a></li>
+<li><a href="#106-diagnostic-and-inspection-commands">10.6 Diagnostic and Inspection Commands</a></li>
+<li><a href="#11-multiple-schedulers">11. Multiple Schedulers</a></li>
+<li><a href="#111-custom-schedulers-overview">11.1 Custom Schedulers Overview</a></li>
+<li><a href="#112-deploying-an-additional-scheduler">11.2 Deploying an Additional Scheduler</a></li>
+<li><a href="#113-high-availability--leader-election">11.3 High Availability &amp; Leader Election</a></li>
+<li><a href="#114-assigning-pods-to-a-custom-scheduler-schedulername">11.4 Assigning Pods to a Custom Scheduler (<code>schedulerName</code>)</a></li>
+<li><a href="#115-verifying-scheduling-events-and-logs">11.5 Verifying Scheduling Events and Logs</a></li>
+<li><a href="#116-modern-scheduler-configuration-profiles">11.6 Modern Scheduler Configuration Profiles</a></li>
+<li><a href="#12-topology-spread-constraints">12. Topology Spread Constraints</a></li>
+<li><a href="#121-failure-domains--even-distribution">12.1 Failure Domains &amp; Even Distribution</a></li>
+<li><a href="#122-core-parameters">12.2 Core Parameters</a></li>
+<li><a href="#123-manifest-example">12.3 Manifest Example</a></li>
+<li><a href="#13-priorityclass--pod-preemption">13. PriorityClass &amp; Pod Preemption</a></li>
+<li><a href="#131-preemption-mechanism">13.1 Preemption Mechanism</a></li>
+<li><a href="#132-defining-a-priorityclass">13.2 Defining a PriorityClass</a></li>
+<li><a href="#133-assigning-priorityclass-to-pods">13.3 Assigning PriorityClass to Pods</a></li>
+<li><a href="#134-non-preempting-priorities--system-classes">13.4 Non-Preempting Priorities &amp; System Classes</a></li>
+<li><a href="#14-pod-disruption-budgets-pdb">14. Pod Disruption Budgets (PDB)</a></li>
+<li><a href="#141-voluntary-vs-involuntary-disruptions">14.1 Voluntary vs. Involuntary Disruptions</a></li>
+<li><a href="#142-pdb-manifest-specifications">14.2 PDB Manifest Specifications</a></li>
+<li><a href="#143-inspection-and-diagnostic-commands">14.3 Inspection and Diagnostic Commands</a></li>
+<li><a href="#15-limitrange-namespace-constraints">15. LimitRange (Namespace Constraints)</a></li>
+<li><a href="#151-namespace-level-resource-governance">15.1 Namespace-Level Resource Governance</a></li>
+<li><a href="#152-comprehensive-limitrange-manifest">15.2 Comprehensive LimitRange Manifest</a></li>
+<li><a href="#153-limitrange-vs-resourcequota">15.3 LimitRange vs. ResourceQuota</a></li>
 </ul>
-<p><strong>So what can you do about it ?</strong> <strong>-</strong> You can manually assign pods to nodes yourself. Well without a scheduler,the easiest way to schedule a pod is to simply set the “nodeName” field to the name of the node in your pod specification file while creating the POD.  The pod then gets assigned to the specified node. You can only specify the node name at creation time. </p>
+<hr />
+<h2 id="1-kubernetes-scheduling-overview">1. Kubernetes Scheduling Overview</h2>
+<p>The <strong>Kubernetes Scheduler</strong> (<code>kube-scheduler</code>) is responsible for assigning unscheduled Pods to suitable worker nodes in the cluster.
+- <strong>Filtering (Predicates)</strong>: Filters out nodes that do not meet Pod requirements (resource capacity, taints/tolerations, node selectors).
+- <strong>Scoring (Priorities)</strong>: Ranks remaining eligible nodes and selects the node with the highest score.
+- <strong>Binding</strong>: Creates a <code>Binding</code> object that updates <code>spec.nodeName</code> on the Pod.</p>
+<p>If no scheduler is running or no nodes meet the requirements, Pods remain stuck in the <strong><code>Pending</code></strong> state.</p>
+<hr />
+<h2 id="2-manual-scheduling">2. Manual Scheduling</h2>
+<h3 id="21-setting-nodename-at-creation">2.1 Setting <code>nodeName</code> at Creation</h3>
+<p>When no scheduler is active, or to bypass the scheduler entirely, set the <code>nodeName</code> field under <code>spec</code> in the Pod manifest. The Pod is directly assigned to the designated node upon creation.</p>
 <pre><code class="language-yaml">apiVersion: v1
 kind: Pod
 metadata:
- name: nginx
- labels:
   name: nginx
+  labels:
+    name: nginx
 spec:
- containers:
- - name: nginx
-   image: nginx
-   ports:
-   - containerPort: 8080
- nodeName: node02
+  nodeName: node02
+  containers:
+  - name: nginx
+    image: nginx
+    ports:
+    - containerPort: 8080
 </code></pre>
 <p><img alt="Diagram" src="images/image395.png" /></p>
-<p><strong>What if the pod is already created and you want to assign the pod to a node?</strong> </p>
-<ul>
-<li>Kubernetes won’t allow you to modify the nodeName property of a pod.</li>
-</ul>
+<blockquote>
+<p>[!NOTE]
+<code>nodeName</code> can <strong>only</strong> be assigned at Pod creation time. Kubernetes does not allow modifying <code>spec.nodeName</code> on an already-created Pod via <code>kubectl edit</code> or standard YAML updates.</p>
+</blockquote>
 <p><img alt="Diagram" src="images/image93.png" /></p>
-<p><strong>So another way to assign a node to an existing pod is to create a binding object</strong> and send a post request to the pod’s binding API, thus mimicking what the actual scheduler does. In the binding object you specify a target node with the name of the node. Then send a post request to the pods binding API with the data set to the binding object in a JSON format.So you must convert the YAML file into its equivalent JSON format.</p>
-<pre><code class="language-yaml">#pod-bind-defination.yamlapiVersion: v1
+<hr />
+<h3 id="22-scheduling-existing-unassigned-pods-binding-api">2.2 Scheduling Existing Unassigned Pods (Binding API)</h3>
+<p>If a Pod is already created without a node assignment (in <code>Pending</code> state), assign it manually by creating a <code>Binding</code> object and submitting an HTTP POST request to the Pod's binding sub-resource:</p>
+<h4 id="binding-object-definition-pod-bind-definitionyaml">Binding Object Definition (<code>pod-bind-definition.yaml</code>)</h4>
+<pre><code class="language-yaml">apiVersion: v1
 kind: Binding
 metadata:
   name: nginx
@@ -54,79 +137,106 @@ target:
   apiVersion: v1
   kind: Node
   name: node02
-#pod-definition.yaml
-apiVersion: v1
+</code></pre>
+<h4 id="executing-the-binding-api-call">Executing the Binding API Call</h4>
+<p>Convert the binding object into JSON and send a <code>POST</code> request to the target Pod's binding endpoint:</p>
+<pre><code class="language-bash">curl --header &quot;Content-Type: application/json&quot; \
+  --request POST \
+  --data '{&quot;apiVersion&quot;:&quot;v1&quot;,&quot;kind&quot;:&quot;Binding&quot;,&quot;metadata&quot;:{&quot;name&quot;:&quot;nginx&quot;},&quot;target&quot;:{&quot;apiVersion&quot;:&quot;v1&quot;,&quot;kind&quot;:&quot;Node&quot;,&quot;name&quot;:&quot;node02&quot;}}' \
+  http://127.0.0.1:8001/api/v1/namespaces/default/pods/nginx/binding
+</code></pre>
+<hr />
+<h2 id="3-labels-selectors-and-annotations">3. Labels, Selectors, and Annotations</h2>
+<h3 id="31-labels-and-selectors-concepts">3.1 Labels and Selectors Concepts</h3>
+<ul>
+<li><strong>Labels</strong>: Key-value pairs attached to Kubernetes objects (Pods, Services, Nodes) for identification, categorization, and filtering.</li>
+<li><strong>Selectors</strong>: Query expressions used by operators and controllers to filter and group objects matching specific label criteria.</li>
+</ul>
+<p><img alt="Diagram" src="images/image70.png" />
+<img alt="Diagram" src="images/image174.png" />
+<img alt="Diagram" src="images/image227.png" />
+<img alt="Diagram" src="images/image277.png" />
+<img alt="Diagram" src="images/image48.png" />
+<img alt="Diagram" src="images/image71.png" />
+<img alt="Diagram" src="images/image301.png" /></p>
+<p>In Kubernetes production environments, labels categorize resources by application name, environment, tier, or business unit:</p>
+<p><img alt="Diagram" src="images/image111.png" />
+<img alt="Diagram" src="images/image409.png" /></p>
+<hr />
+<h3 id="32-attaching-labels-to-pods">3.2 Attaching Labels to Pods</h3>
+<p>Labels are defined under <code>metadata.labels</code>:</p>
+<pre><code class="language-yaml">apiVersion: v1
 kind: Pod
 metadata:
- name: nginx
- labels:
-  name: nginx
-spec:
- containers:
- - name: nginx
-   image: nginx
-   ports:
-   - containerPort: 8080
-curl --header &quot;Content-Type:application/json&quot; -- request POST --data {&quot;apiVersion&quot;:&quot;v1&quot;,&quot;kind&quot;:&quot;Binding&quot;,&quot;metadata&quot;:{&quot;name&quot;:&quot;nginx&quot;},&quot;target&quot;:{&quot;apiVersion&quot;:&quot;v1&quot;,&quot;kind&quot;:&quot;Node&quot;,&quot;name&quot;:&quot;node02&quot;}}
-</code></pre>
-<h3 id="labels-and-selectors">Labels and Selectors</h3>
-<p><strong>What do we know about labels and selectors already ?</strong>Labels and selectors are a standard method to group things together. Say you have a set of different <strong>species</strong>, a user wants to be able to filter them based on different criteria such as based on their <strong>class</strong> or <strong>kind</strong>, if they are <strong>domestic</strong> or <strong>wild</strong>, or see by their color and not just group. You want to be able to filter them based on a criteria such as all green animals or with multiple criteria such as everything green, that is also a bird.</p>
-<p><img alt="Diagram" src="images/image70.png" /></p>
-<p><img alt="Diagram" src="images/image174.png" /></p>
-<p><img alt="Diagram" src="images/image227.png" /></p>
-<p><img alt="Diagram" src="images/image277.png" /></p>
-<p>Whatever that classification, maybe you need the ability to group things together and filter them based on your needs and the best way to do that is with <strong>labels</strong>. <strong>Labels</strong> or properties attached to each item.</p>
-<p><img alt="Diagram" src="images/image48.png" /></p>
-<p>So you add properties to each item for their class kind and color <strong>selectors</strong> help you filter these items.<strong>For example when you say class equals mammal we get a list of mammals and when you say color equals green we get the green mammals</strong> </p>
-<p>We see labels and selectors used everywhere such as the keywords you tag to YouTube videos or blogs that help users filter and find the right content. We see labels added to items in an online store that help you add different kinds of filters to view your products.</p>
-<p><img alt="Diagram" src="images/image71.png" /></p>
-<p><img alt="Diagram" src="images/image301.png" /></p>
-<p><strong>So how are labels and selectors used in Kubernetes?</strong>We have created a lot of different types of Objects in Kubernetes. Pods, Services, ReplicaSets and Deployments etc. For Kubernetes, all of these are different objects. Over time you may end up having hundreds or thousands of these objects in your cluster. Then you will need a way to <strong>filter and view</strong> different objects by different categories such as to group objects <strong>by their type</strong> </p>
-<p>or view objects <strong>by application</strong> </p>
-<p><img alt="Diagram" src="images/image111.png" /></p>
-<p>or <strong>by their functionality</strong></p>
-<p><img alt="Diagram" src="images/image409.png" /></p>
-<p>Whatever it may be. You can group and select objects using <strong>labels and selectors</strong> for each object attach labels as per your needs, like app, function etc. Then while selecting specify a condition to filter specific objects.</p>
-<p><img alt="Diagram" src="images/image374.png" /></p>
-<p><img alt="Diagram" src="images/image159.png" /></p>
-<p><strong>So how exactly do you specify labels in kubernetes?</strong> In a pod-definition file, under metadata, create a section called labels. Under that add the labels in a key value format like this. You can add as many labels as you like. Once the pod is created, to select the pod with the labels use the kubectl get pods command along with the selector option, and specify the condition like <code>app=App1.</code></p>
-<pre><code class="language-yaml">#pod-definition.yamlapiVersion: v1
- kind: Pod
- metadata:
   name: simple-webapp
   labels:
     app: App1
     function: Front-end
- spec:
+spec:
   containers:
   - name: simple-webapp
     image: simple-webapp
     ports:
     - containerPort: 8080
-$ kubectl get pods --selector app=App1
 </code></pre>
-<p>Kubernetes objects use labels and selectors internally to connect different objects together. For example, to create a replicaset consisting of 3 different pods, we first label the pod definition and use a selector in a replicaset to group the pods . In the replica-set definition file. You will see <strong>labels</strong> defined in two places.The labels defined under the template section are the labels configured on the pods. The labels you see at the top are the labels of the replicas set itself.</p>
-<p>We're not really concerned about the labels of the replica set for now, because we are trying to get the replica set to discover the pods. The labels on the replica set will be used if you were to configure some other object to discover the replica set. In order to connect the replica set to the pod we configure the selector field under the  replica set specification to match the labels defined on the pod, a single label will do if it matches correctly. However if you feel there could be other pods with the same label but with a different function then you could specify both the labels to ensure that the right pods are discovered by the replica set on creation.</p>
-<p>If the labels match the replica set is created successfully it works the same for other objects like a service when a <strong>service</strong> is created it uses the selector defined in the service definition file to match the labels set on the pods in the replica set definition file.</p>
+<p><img alt="Diagram" src="images/image374.png" />
+<img alt="Diagram" src="images/image159.png" /></p>
+<p>Query labeled pods using the <code>--selector</code> (or <code>-l</code>) flag:</p>
+<pre><code class="language-bash">kubectl get pods --selector app=App1
+</code></pre>
+<hr />
+<h3 id="33-object-interconnection-via-selectors-replicasets-services">3.3 Object Interconnection via Selectors (ReplicaSets &amp; Services)</h3>
+<p>Controllers use label selectors internally to track and route traffic to target Pods:</p>
+<h4 id="replicaset-pod-discovery">ReplicaSet Pod Discovery</h4>
+<ul>
+<li><code>metadata.labels</code>: Labels applied to the ReplicaSet object itself.</li>
+<li><code>spec.selector.matchLabels</code>: Must match <code>spec.template.metadata.labels</code> of the Pod template.</li>
+</ul>
 <p><img alt="Diagram" src="images/image372.png" /></p>
-<pre><code class="language-yaml">For services
- ```
-  apiVersion: v1
-  kind: Service
-  metadata:
-   name: my-service
-  spec:
-   selector:
-     app: App1
-   ports:
-   - protocol: TCP
-     port: 80
-     targetPort: 9376 
-   ```
+<h4 id="service-routing-to-backend-pods">Service Routing to Backend Pods</h4>
+<p>A Service uses <code>spec.selector</code> to dynamically select endpoints:</p>
+<pre><code class="language-yaml">apiVersion: v1
+kind: Service
+metadata:
+  name: my-service
+spec:
+  selector:
+    app: App1
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 9376
 </code></pre>
 <p><img alt="Diagram" src="images/image169.png" /></p>
-<p>Finally let’s look at annotations. While labels and selectors are used to group and select objects, annotations</p>
-<p>are used to record other details for informatory purposes. For example tool details like <strong>name, version build</strong> information etc or contact details, <strong>phone numbers, email-ids</strong> etc, that may be used for some kind of integration purpose.</p>
+<hr />
+<h3 id="34-annotations-vs-labels">3.4 Annotations vs. Labels</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Characteristic</th>
+<th style="text-align: left;">Labels</th>
+<th style="text-align: left;">Annotations</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>Purpose</strong></td>
+<td style="text-align: left;">Identifying, grouping, and selecting objects</td>
+<td style="text-align: left;">Recording non-identifying metadata</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Used by Selectors?</strong></td>
+<td style="text-align: left;">Yes (<code>matchLabels</code>, <code>--selector</code>)</td>
+<td style="text-align: left;">No</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Typical Data</strong></td>
+<td style="text-align: left;"><code>tier: frontend</code>, <code>env: prod</code>, <code>app: web</code></td>
+<td style="text-align: left;">Build timestamps, Git commit SHA, contact emails, tool configs</td>
+</tr>
+</tbody>
+</table>
+<h4 id="replicaset-with-annotations">ReplicaSet with Annotations</h4>
 <pre><code class="language-yaml">apiVersion: apps/v1
 kind: ReplicaSet
 metadata:
@@ -135,323 +245,380 @@ metadata:
     app: App1
     function: Front-end
   annotations:
-     buildversion: 1.34
+    buildversion: &quot;1.34&quot;
+    maintainer: &quot;devops-team@example.com&quot;
 spec:
- replicas: 3
- selector:
-   matchLabels:
-    app: App1
-template:
-  metadata:
-    labels:
+  replicas: 3
+  selector:
+    matchLabels:
       app: App1
-      function: Front-end
-  spec:
-    containers:
-    - name: simple-webapp
-      image: simple-webapp  
+  template:
+    metadata:
+      labels:
+        app: App1
+        function: Front-end
+    spec:
+      containers:
+      - name: simple-webapp
+        image: simple-webapp
 </code></pre>
 <p><img alt="Diagram" src="images/image134.png" /></p>
-<h4 id="practice-test-commands">Practice Test Commands</h4>
-<pre><code class="language-bash">$ kubectl get pods --selector env=dev
-$ kubectl get pods --selector bu=finance
-$ kubectl get all --selector env=prod
-$ kubectl get all --selector env=prod,bu=finance,tier=frontend
+<hr />
+<h3 id="35-practical-filtering-commands">3.5 Practical Filtering Commands</h3>
+<pre><code class="language-bash"># Filter Pods by single label
+kubectl get pods --selector env=dev
+kubectl get pods --selector bu=finance
+
+# Filter all resources in production environment
+kubectl get all --selector env=prod
+
+# Multiple label conditions (logical AND via comma-separated list)
+kubectl get all --selector env=prod,bu=finance,tier=frontend
 </code></pre>
-<h3 id="taints-and-tolerations">Taints and Tolerations</h3>
-<p>Will discuss about the pod to node relationship and how you can restrict what pods are placed on what nodes. <strong>Taints and Tolerations are used to set restrictions on what pods can be scheduled on a node.</strong> </p>
+<hr />
+<h2 id="4-taints-and-tolerations">4. Taints and Tolerations</h2>
+<h3 id="41-core-concepts-analogy">4.1 Core Concepts &amp; Analogy</h3>
 <ul>
-<li>Only pods which are tolerant to the particular taint on a node will get scheduled on that node.</li>
+<li><strong>Taints</strong> are applied to <strong>Nodes</strong> to repel a set of Pods.</li>
+<li><strong>Tolerations</strong> are applied to <strong>Pods</strong> to allow (but not force) them to schedule on nodes with matching taints.</li>
+<li>Analogy: A node is sprayed with insect repellent (taint). Only insects immune to the repellent (pods with tolerations) can land on it.</li>
 </ul>
-<p>So we will try to understand what they are using an analogy of a “bug approaching a person” </p>
-<p>To prevent the bug from landing on the person we spray the person with a repellent spray or <strong>a taint</strong> as we will call it. The bug is intolerant to the smell so on approaching the person the taint applied on the person throws the bug off, however there could be other bugs that are tolerant to the smell and so the taint doesn't really affect them. So they end up landing on the person. So there are two things that decide if a bug can land on a person. </p>
-<ul>
-<li>
-<p><em>First the taint on the person.</em>*</p>
-</li>
-<li>
-<p><em>And second the bugs toleration level to that particular taint.</em>*</p>
-</li>
-</ul>
-<p><img alt="Diagram" src="images/image129.png" /></p>
-<p><img alt="Diagram" src="images/image45.png" /></p>
-<p>Getting back to <strong>Kubernetes</strong>, the person is a node and the bugs are pods. Now taints and toleration have nothing to do with security or intrusion on the Cluster. Taints and toleration are used to set restrictions on what pods can be scheduled on a node.Let us start with a simple cluster with three worker nodes the nodes are named <strong>one two</strong> and <strong>three</strong>. We also have a set of PODs to be deployed on the nodes Let's call them A B C and D. → When the pods are created kubernetes  scheduler tries to place these pods on the available worker nodes. As of now there are no restrictions or limitations and as such the scheduler places the pods across all of the nodes to balance them out equally.  Now let us assume that we have dedicated resources on node1 for a particular use case or application so we would like only those <strong>pods</strong> that belong/matching to this application to be placed on node1. First we prevent all pods from being placed on the node by placing a taint on the node.Let's call it <strong>blue</strong> By default Pods have no tolerations which means unless specified otherwise none of the pods can tolerate any taint. So in this case none of the Pods can be placed on node1 as none of them can tolerate the taint blue. → This solves half of our requirement that no unwanted PODs are going to be placed on this node. The other half is to enable certain PODs to be placed on this node. For this we must specify which PODs are tolerant to this particular <strong>taint(blue).</strong> In our case we would like to allow only POD D to be placed on this node so we add a toleration to <strong>POD D.</strong>  <strong>POD D</strong> is now tolerant to <strong>blue</strong> so when the scheduler tries to place this POD on Node1 iit goes through. Node1 can now only accept PODs  that can tolerate the taint Blue. So with all the Taints and toleration in place this is how the PODs would be scheduled. </p>
-<ul>
-<li>
-<p>The scheduler tries to place POD A on node1 but due to the taint it is thrown off and it goes to node2</p>
-</li>
-<li>
-<p>The scheduler then tries to place POD B on node1 but again due to the taint it is thrown off and is placed on Node 3 which happens to be the next free node.</p>
-</li>
-<li>
-<p>The scheduler then tries to place POD C to the Node One it is thrown off again and ends up on Node2.  Finally the scheduler tries to place POD D on Node1 since the POD is tolerant to Node1 it goes through</p>
-</li>
-</ul>
-<p><img alt="Diagram" src="images/image303.png" /></p>
-<p><strong><em>So remember Taints are set on nodes and toleration are set on pods.</em></strong>  </p>
-<p><strong>So How we do this ?</strong>  Use the kubectl taint nodes command to taint a node, specify the name of the node to taint followed by the taint  itself which is a key value pair. <code>Adding Taint to Nodes</code> </p>
-<pre><code class="language-bash">$ kubectl taint nodes &lt;node-name&gt; key=value:taint-effect
-Example
-$ kubectl taint nodes node1 app=blue
-</code></pre>
-<p>The taint effect defines what would happen to the pods If they do not tolerate the taint. There are three taint effects </p>
-<ul>
-<li>
-<p><em>Noschedule</em>* which means the PODs will not be scheduled on the node which is what we have been discussing.<code>Example``$ kubectl taint nodes node1 app=blue:NoSchedule</code></p>
-</li>
-<li>
-<p><em>PreferNoSchedule</em>* which means the system will try to avoid placing a pod on the node but that is not guaranteed.</p>
-</li>
-<li>
-<p><em>NoExecute</em>*: Which means that new PODs  will not be scheduled on the node and existing PODs on the node if any will be evicted if they do not tolerate the taint. These PODs may have been scheduled on the node prior to the creation of taint. <code>kubectl taint node node1 app=blue:NoExecute</code></p>
-</li>
-</ul>
+<p><img alt="Diagram" src="images/image129.png" />
+<img alt="Diagram" src="images/image45.png" />
+<img alt="Diagram" src="images/image303.png" /></p>
+<blockquote>
+<p>[!IMPORTANT]
+<strong>Taints and Tolerations do NOT guarantee Pod placement!</strong>
+A toleration merely permits a Pod to schedule on a tainted node. If untainted nodes are also available, the scheduler may place the tolerating Pod on an untainted node. Full dedication requires pairing with <strong>Node Affinity</strong>.</p>
+</blockquote>
+<hr />
+<h3 id="42-taint-effects-noschedule-prefernoschedule-noexecute">4.2 Taint Effects: <code>NoSchedule</code>, <code>PreferNoSchedule</code>, <code>NoExecute</code></h3>
 <p><img alt="Diagram" src="images/image179.png" /></p>
-<h4 id="adding-tolerations-to-pod">Adding Tolerations to POD</h4>
-<p>Tolerations are added to PODs, to add a toleration to a pod First pull up the pod definition file, in the spec section of the pod definition file add a section called tolerations move the same values used to while creating the taint under this section. The key is app operator is equal value is blue and the effect is NoSchedule And remember all of these values need to be encoded in double codes. <code>apiVersion: v1</code></p>
-<pre><code class="language-yaml">kind: Pod
-metadata:
- name: myapp-pod
-spec:
- containers:
- - name: nginx-container
-   image: nginx
- tolerations:
- - key: &quot;app&quot;
-   operator: &quot;Equal&quot;
-   value: &quot;blue&quot;
-   effect: &quot;NoSchedule&quot; 
+<ol>
+<li><strong><code>NoSchedule</code></strong>: New pods without matching tolerations will <strong>not</strong> be scheduled on this node. Existing running pods remain untouched.</li>
+<li><strong><code>PreferNoSchedule</code></strong>: Soft constraint. The scheduler tries to avoid scheduling intolerant pods on this node, but will place them here if no alternatives exist.</li>
+<li><strong><code>NoExecute</code></strong>: Hard constraint affecting both new and running pods. New intolerant pods are rejected, and existing running intolerant pods are immediately <strong>evicted</strong> (terminated).</li>
+</ol>
+<hr />
+<h3 id="43-configuring-taints-on-nodes">4.3 Configuring Taints on Nodes</h3>
+<pre><code class="language-bash"># Syntax
+kubectl taint nodes &lt;node-name&gt; &lt;key&gt;=&lt;value&gt;:&lt;taint-effect&gt;
+
+# Examples
+kubectl taint nodes node1 app=blue:NoSchedule
+kubectl taint nodes node1 app=blue:PreferNoSchedule
+kubectl taint nodes node1 app=blue:NoExecute
 </code></pre>
-<p>When the pods are now created or updated with the new toleration they are either not scheduled on nodes</p>
-<p>or evicted from the existing nodes depending on the effect set </p>
-<p>Let us try to understand the <strong>NoExecute</strong> taint effect in a bit more depth. </p>
-<p>In this example we have three nodes running some workload. We do not have any taints or toleration at this point so they are scheduled this way.  </p>
-<p><img alt="Diagram" src="images/image24.png" /></p>
-<p>We then decided to dedicate Node One for a special application and as such we Tainted the node with the</p>
-<p>application name and add a toleration to the POD that belongs to the application which happens to be </p>
-<p><strong>POD D</strong> in this case.  While Tainting the node we set the taint effect to NoExecute and as such once Taint on the Node takes effect it evokes <strong>POD C</strong> from the nodem which simply means that the POD is killed.</p>
-<p>The POD D continues to run on the node as it has a toleration to the the taint <strong>Blue</strong> </p>
-<p><img alt="Diagram" src="images/image309.png" /></p>
-<p><img alt="Diagram" src="images/image141.png" /></p>
-<p>Going  back to our original scenario where we have taints and tolerations configured, remember Taints and toleration are only meant to restrict nodes from accepting certain PODs.  In this case Node One can only accept <strong>POD D</strong> but it does not guarantee that POD D will always be placed on Node1. Since there are no Taints or restrictions applied on the other two nodes POD D may very well be placed on any of the other two nodes so remember taints and toleration does not tell the POD to go to a particular node. Instead it tells the node to only accept PODs with certain toleration. </p>
-<p>If your requirement is to restrict a POD to certain nodes it is achieved through another concept called <strong>Asknode</strong> affinity.  Which will be discussed in the next lecture.Finally, while we're on this topic let us also take a look at an interesting fact. So far we have only been referring to the worker nodes, but we also have master nodes in the cluster which is technically just another node that has all the capabilities of hosting a POD. Plus it runs all the management software. Now I'm not sure if you noticed the scheduler does not schedule any POD on the master node.<strong>Why is that ?</strong> When the kubernetes cluster is first set up a taint is set on the master node automatically that prevents any PODs from being scheduled on this node. You can see this as well as modify his behavior if required. However, a best practice is to not deploy application workloads on a master server. </p>
-<p>To see this taint run a # <code>kubectl describe node kubemaser | grep Taint</code> and look for the taint section You will CA taint set to not schedule any PODs on the master node.</p>
-<p><strong>Do any taints exist on node01 node?</strong> </p>
-<pre><code class="language-bash"># kubectl describe node node01 | grep Taint
-Taints:         &lt;none&gt;
-</code></pre>
-<p>Create a taint on node01 with key of spray, value of mortein and effect of NoSchedule </p>
-<pre><code class="language-yaml"># kubectl taint nodes node01 spray=mortein:NoSchedule
-apiVersion: v1
-kind: Pod
-metadata:
-     name: mosquito
-     label:
-        app: my-app
-        tier: front-end
-spec:
-     containers:
-     - name: nginx 
- image: nginx 
-</code></pre>
-<p>To remove taint from a node. </p>
-<pre><code class="language-bash"># kubectl taint nodes controlplane node-role.kubernetes.io/master:NoSchedule-
-node/controlplane untainted
-</code></pre>
-<h3 id="node-selectors">Node Selectors</h3>
-<p>You have a three node cluster of which two are smaller nodes with lower hardware resources and one of</p>
-<p>them is a larger node configured with higher resources, you have different kinds of workloads running</p>
-<p>in your cluster. You would like to dedicate the data processing workloads that require higher horsepower to the larger node as that is the only node that will not run out of resources in case the job demands extra resources.</p>
-<p>However, in the current default setup, any pods can go to any nodes. </p>
-<p><img alt="Diagram" src="images/image191.png" /></p>
-<p><img alt="Diagram" src="images/image345.png" /></p>
-<p>So <strong>Pod C</strong> in this case may very well end up on nodes two or three which is not desired. To solve this we can set a limitation on the pods so that they only run on particular nodes. </p>
-<p><strong>There are two ways to do this.</strong></p>
-<ul>
-<li>The first is using NodeSelectors which is the simple and easier method.</li>
-</ul>
-<p>For this we look at the pod definition file we created earlier. This file has a simple definition to create a pod with a data processing image.To limit this pod to run on the larger node We add a new property called <code>nodeSelector</code> to the spec section and specify the size as large. But wait a minute !! <strong>Where did the size large come from and how does Kubernetes know which is the large node?</strong> The key value pair of size and large are in fact labels assigned to the nodes. The scheduler uses these labels to match and identify the right node to place the pods on. Labels and selectors are a topic we have seen many times throughout this Kubernetes course such as with Services, ReplicaSets and Deployments. To use labels in a known selector like this you must have first labelled your nodes prior to creating this pod. So  let us go back and see how we can label the nodes. To label a node use below the command </p>
-<pre><code class="language-bash">Syntax$ kubectl label nodes &lt;node-name&gt; &lt;label-key&gt;=&lt;label-value&gt;
-Example$ kubectl label nodes node-1 size=Large
-</code></pre>
-<p>Now that we have labeled the node we can get back to creating the pod this time with the node selector</p>
-<p>set to a size of large.</p>
+<hr />
+<h3 id="44-configuring-tolerations-on-pods">4.4 Configuring Tolerations on Pods</h3>
+<p>Tolerations are configured under <code>spec.tolerations</code> inside the Pod manifest:</p>
 <pre><code class="language-yaml">apiVersion: v1
 kind: Pod
 metadata:
- name: myapp-pod
+  name: myapp-pod
 spec:
- containers:
- - name: data-processor
-   image: data-processor
- nodeSelector:
-   size: Large
-$ kubectl create -f pod-definition.yml
+  containers:
+  - name: nginx-container
+    image: nginx
+  tolerations:
+  - key: &quot;app&quot;
+    operator: &quot;Equal&quot;
+    value: &quot;blue&quot;
+    effect: &quot;NoSchedule&quot;
 </code></pre>
-<p>When the pod is now created it is placed on Node01 as desired. nodeSelector served our purpose but it has <strong>limitations</strong>. We used a single label and selector to achieve our goal here. But what if our requirement is much more complex. For example:We would like to say something like place the pod on a large or medium node or something like place the pod on any nodes that are not small. You <strong>cannot</strong> achieve this using NodeSelectors for this node affinity and anti affinity features were introduced and we will look at that next.</p>
-<h3 id="node-affinity">Node Affinity</h3>
+<blockquote>
+<p>[!TIP]
+If <code>operator: "Exists"</code> is specified, the <code>value</code> field must be omitted. An <code>Exists</code> operator matches any value for the specified key.</p>
+</blockquote>
+<hr />
+<h3 id="45-noexecute-deep-dive-pod-eviction">4.5 <code>NoExecute</code> Deep-Dive &amp; Pod Eviction</h3>
+<p>When a node running multiple Pods receives a <code>NoExecute</code> taint:
+- Pods with matching tolerations remain running.
+- Pods without matching tolerations are evicted immediately.</p>
+<p><img alt="Diagram" src="images/image24.png" />
+<img alt="Diagram" src="images/image309.png" />
+<img alt="Diagram" src="images/image141.png" /></p>
+<h4 id="optional-tolerationseconds">Optional <code>tolerationSeconds</code></h4>
+<p>Pods can specify <code>tolerationSeconds</code> under a <code>NoExecute</code> toleration to delay eviction upon node disruption:</p>
+<pre><code class="language-yaml">tolerations:
+- key: &quot;node.kubernetes.io/unreachable&quot;
+  operator: &quot;Exists&quot;
+  effect: &quot;NoExecute&quot;
+  tolerationSeconds: 300
+</code></pre>
+<hr />
+<h3 id="46-control-plane-master-node-taints">4.6 Control Plane (Master) Node Taints</h3>
+<p>By default, Kubernetes prevents user workloads from running on control plane nodes by applying a taint during cluster initialization:
+- Older versions: <code>node-role.kubernetes.io/master:NoSchedule</code>
+- Newer versions: <code>node-role.kubernetes.io/control-plane:NoSchedule</code></p>
+<h4 id="inspecting-control-plane-taints">Inspecting Control Plane Taints</h4>
+<pre><code class="language-bash">kubectl describe node controlplane | grep -i taints
+</code></pre>
+<hr />
+<h3 id="47-essential-commands-for-taints">4.7 Essential Commands for Taints</h3>
+<pre><code class="language-bash"># Check taints on worker nodes
+kubectl describe node node01 | grep -i taints
+
+# Apply a taint to node01
+kubectl taint nodes node01 spray=mortein:NoSchedule
+
+# Remove a taint (append a minus sign '-' to the taint)
+kubectl taint nodes controlplane node-role.kubernetes.io/master:NoSchedule-
+kubectl taint nodes controlplane node-role.kubernetes.io/control-plane:NoSchedule-
+kubectl taint nodes node01 spray=mortein:NoSchedule-
+</code></pre>
+<h4 id="example-workload-lacking-toleration">Example Workload Lacking Toleration</h4>
+<pre><code class="language-yaml">apiVersion: v1
+kind: Pod
+metadata:
+  name: mosquito
+  labels:
+    app: my-app
+    tier: front-end
+spec:
+  containers:
+  - name: nginx
+    image: nginx
+</code></pre>
+<hr />
+<h2 id="5-node-selectors">5. Node Selectors</h2>
+<h3 id="51-purpose-limitations">5.1 Purpose &amp; Limitations</h3>
+<p>In clusters with heterogeneous hardware (e.g., general-purpose vs. high-memory compute nodes), workloads requiring specific resources must be targeted to designated nodes. Without restrictions, the default scheduler may place heavy compute jobs on small nodes.</p>
+<p><img alt="Diagram" src="images/image191.png" />
+<img alt="Diagram" src="images/image345.png" /></p>
+<hr />
+<h3 id="52-labeling-nodes">5.2 Labeling Nodes</h3>
+<p>Before using <code>nodeSelector</code>, assign descriptive labels to target worker nodes:</p>
+<pre><code class="language-bash"># Syntax
+kubectl label nodes &lt;node-name&gt; &lt;label-key&gt;=&lt;label-value&gt;
+
+# Example: Label node01 as Large
+kubectl label nodes node01 size=Large
+
+# Verify applied labels
+kubectl get nodes --show-labels
+</code></pre>
+<hr />
+<h3 id="53-assigning-pods-with-nodeselector">5.3 Assigning Pods with <code>nodeSelector</code></h3>
+<p>Reference the exact node label key-value pair under <code>spec.nodeSelector</code>:</p>
+<pre><code class="language-yaml">apiVersion: v1
+kind: Pod
+metadata:
+  name: myapp-pod
+spec:
+  containers:
+  - name: data-processor
+    image: data-processor
+  nodeSelector:
+    size: Large
+</code></pre>
+<pre><code class="language-bash">kubectl create -f pod-definition.yaml
+</code></pre>
+<blockquote>
+<p>[!WARNING]
+<strong>Limitations of <code>nodeSelector</code></strong>:
+<code>nodeSelector</code> only supports exact equality matching (<code>size: Large</code>). It cannot perform advanced logic such as <strong>OR</strong> (<code>Large OR Medium</code>), <strong>NOT</strong> (<code>NOT Small</code>), or existence checks. For advanced rules, use <strong>Node Affinity</strong>.</p>
+</blockquote>
+<hr />
+<h2 id="6-node-affinity">6. Node Affinity</h2>
+<h3 id="61-why-node-affinity">6.1 Why Node Affinity?</h3>
+<p>Node Affinity extends <code>nodeSelector</code> with expressive placement logic, providing operators such as <code>In</code>, <code>NotIn</code>, <code>Exists</code>, <code>DoesNotExist</code>, <code>Gt</code>, and <code>Lt</code>.</p>
 <p><img alt="Diagram" src="images/image366.png" /></p>
-<p>The primary purpose of node affinity feature is to ensure that pods are hosted on particular nodes. In this case to ensure the large data processing pod ends up on node01. In the previous lecture we did this easily using Node Selectors, we discussed that you cannot provide advanced expressions like <strong>or/not</strong> with node selectors, the node affinity feature provides us with advanced capabilities to limit pod placement on specific nodes. With great power comes great complexity.So the simple node selector specification will now look like this with node affinity. although both does exactly the same thing, “place the pod on the large node”.</p>
-<pre><code class="language-yaml">Node Selector ---
-apiVersion: v1
+<hr />
+<h3 id="62-node-affinity-types-pod-lifecycle">6.2 Node Affinity Types &amp; Pod Lifecycle</h3>
+<p>Node affinity defines scheduler behavior across two distinct lifecycle phases:
+1. <strong>DuringScheduling</strong>: When the Pod is first created and unassigned.
+2. <strong>DuringExecution</strong>: When the Pod is already running on a node.</p>
+<p><img alt="Diagram" src="images/image229.png" /></p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Affinity Type</th>
+<th style="text-align: left;">DuringScheduling</th>
+<th style="text-align: left;">DuringExecution</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong><code>requiredDuringSchedulingIgnoredDuringExecution</code></strong></td>
+<td style="text-align: left;"><strong>Hard</strong></td>
+<td style="text-align: left;">Ignored</td>
+<td style="text-align: left;">Pod <strong>must</strong> be scheduled on a matching node; stays <code>Pending</code> if no match exists. If node labels change later, running pod remains running.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong><code>preferredDuringSchedulingIgnoredDuringExecution</code></strong></td>
+<td style="text-align: left;"><strong>Soft</strong></td>
+<td style="text-align: left;">Ignored</td>
+<td style="text-align: left;">Scheduler attempts to find a matching node; falls back to other available nodes if no match is found. Running pods remain unaffected.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong><code>requiredDuringSchedulingRequiredDuringExecution</code></strong> <em>(Planned)</em></td>
+<td style="text-align: left;"><strong>Hard</strong></td>
+<td style="text-align: left;"><strong>Hard</strong></td>
+<td style="text-align: left;">Pod must be scheduled on matching node. If node labels change later, pod is evicted immediately.</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h3 id="63-operators-in-notin-exists-doesnotexist-gt-lt">6.3 Operators (<code>In</code>, <code>NotIn</code>, <code>Exists</code>, <code>DoesNotExist</code>, <code>Gt</code>, <code>Lt</code>)</h3>
+<ul>
+<li><strong><code>In</code></strong>: Node label value must match one of the entries in <code>values</code>.</li>
+<li><strong><code>NotIn</code></strong>: Node label value must not match any entry in <code>values</code>.</li>
+<li><strong><code>Exists</code></strong>: Node label key must exist on the node (omit <code>values</code>).</li>
+<li><strong><code>DoesNotExist</code></strong>: Node label key must not exist on the node (omit <code>values</code>).</li>
+<li><strong><code>Gt</code> / <code>Lt</code></strong>: Numerical greater-than / less-than comparison against integer label values.</li>
+</ul>
+<hr />
+<h3 id="64-pod-manifest-examples">6.4 Pod Manifest Examples</h3>
+<h4 id="hard-affinity-with-in-operator-large-or-medium">Hard Affinity with <code>In</code> Operator (Large OR Medium)</h4>
+<pre><code class="language-yaml">apiVersion: v1
 kind: Pod
 metadata:
- name: myapp-pod
+  name: myapp-pod
 spec:
- containers:
- - name: data-processor
-   image: data-processor
- nodeSelector:
-  size: Large
-
-
-Node Affinity
----
-apiVersion: v1
-kind: Pod
-metadata:
- name: myapp-pod
-spec:
- containers:
- - name: data-processor
-   image: data-processor
- affinity:
-   nodeAffinity:
-     requiredDuringSchedulingIgnoredDuringExecution:
+  containers:
+  - name: data-processor
+    image: data-processor
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
         nodeSelectorTerms:
         - matchExpressions:
           - key: size
             operator: In
-            values: 
+            values:
+            - Large
+            - Medium
 </code></pre>
-<ul>
-<li><code>- Large</code>Let us look at it a bit closer, under spec you have <code>affinity</code> and then <code>nodeAffinity</code> under that, and then you have a property that looks like a sentence called <strong>required during scheduling ignored during execution</strong>(<code>requiredDuringSchedulingIgnoredDuringExecution)</code> no description needed for that and then you have the node selector terms that is an <strong>array</strong> and that is where you will specify the key and value pairs.The key value pairs are in the form <strong>key</strong>, <code>operator</code> <strong>and value</strong> where the operator is <code>In</code>, the <code>In</code> operator ensures that the pod will be placed on a node whose label size has any value in the list of values specified here in this case it is just one called <strong>large</strong>. If you think your POD could be placed on a large or a medium node you could simply add the value to the list of values like this</li>
-</ul>
+<h4 id="hard-affinity-with-notin-operator-exclude-small-nodes">Hard Affinity with <code>NotIn</code> Operator (Exclude Small Nodes)</h4>
 <pre><code class="language-yaml">apiVersion: v1
 kind: Pod
 metadata:
- name: myapp-pod
+  name: myapp-pod
 spec:
- containers:
- - name: data-processor
-   image: data-processor
- affinity:
-   nodeAffinity:
-     requiredDuringSchedulingIgnoredDuringExecution:
+  containers:
+  - name: data-processor
+    image: data-processor
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
         nodeSelectorTerms:
         - matchExpressions:
           - key: size
-            operator: In 
-            values: 
-            - Large
-            - Medium
-or         
-           operator: NotIn 
- values: 
-       - Small
+            operator: NotIn
+            values:
+            - Small
 </code></pre>
-<p>you could use the <code>NotIn</code> operator to say something like size not in small where node affinity will match the node with a size not set to small. </p>
-<p>We know that we have only set the label size to large and medium nodes; the smaller nodes don't even have the labels set. So we don't really have to even check the value of the label as long as we are sure we don't set a label size to the smaller nodes using the <code>Exists</code> operator, will give us the same result.</p>
+<h4 id="hard-affinity-with-exists-operator-verify-label-key-presence">Hard Affinity with <code>Exists</code> Operator (Verify Label Key Presence)</h4>
 <pre><code class="language-yaml">apiVersion: v1
 kind: Pod
 metadata:
- name: myapp-pod
+  name: myapp-pod
 spec:
- containers:
- - name: data-processor
-   image: data-processor
- affinity:
-   nodeAffinity:
-     requiredDuringSchedulingIgnoredDuringExecution:
+  containers:
+  - name: data-processor
+    image: data-processor
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
         nodeSelectorTerms:
         - matchExpressions:
           - key: size
             operator: Exists
 </code></pre>
-<p>The “<code>Exists``”</code> operator will simply check if the label size exists on the nodes and you don't need the values section for that as it does not compare the values.</p>
-<p>There are a number of other operators as well. Check the documentation for specific details.Now we understand all of this and we're comfortable with creating a pod with specific affinity rules, when the pods are created. These rules are considered and the pods are placed onto the right nodes.</p>
-<p><strong>But what if node affinity could not match a node with a given expression ?</strong> </p>
-<p>In this case what if there are no nodes with a label called size, say we had the labels and the pods are scheduled. <strong>What if someone changes the label on the node at a future point in time</strong>? <strong>Will the pod continue to stay on the Node ?</strong>All of this is answered by the long sentence like property under node affinity, which happens to be the type of node affinity, the type of node affinity defines the behavior of the scheduler with respect to node affinity and the stages in the lifecycle of the pod. </p>
-<p>There are currently two types of node affinity available, </p>
-<p><code>requiredDuringSchedulingIgnoredDuringExecution</code> and  <code>preferredDuringSchedulingIgnoredDuringExecution</code> </p>
-<p><img alt="Diagram" src="images/image229.png" /></p>
-<p>and there are two are additional types of node affinity “<strong>planned</strong>” We will now break this down to understand further. We will start by looking at the two available affinity types. There are two states in the lifecycle of a pod when considering node affinity </p>
-<ul>
-<li>
-<p><em>during scheduling</em>*</p>
-</li>
-<li>
-<p><em>during execution</em>*</p>
-</li>
-</ul>
-<p><strong>During scheduling</strong> is the state where a pod does not exist and is created for the first time. We have no doubt that when a pod is first created the affinity rules specified are considered to place the pods on the right node. </p>
-<p><strong>Now what if the nodes with matching labels are not available?</strong> </p>
-<p>For example we forgot to label the node as large. That is where the <strong>type of node affinity</strong> used comes into play. </p>
-<ul>
-<li>
-<p>If you select the required type which is the first one the scheduler will mandate that the pod be placed on a node with a given affinity rules, if it cannot find one the pod will not be scheduled.This type will be used in cases where the placement of the pod is crucial. If a matching node does not exist the pod will not be scheduled.</p>
-</li>
-<li>
-<p>But let's say the pod placement is less important than running the workload itself. In that case you could set it to <strong>preferred</strong> and in cases where a matching node is not found. The scheduler will simply ignore node affinity rules and place the POD on any available node. This is a way of telling the scheduler  “<em>hey try your best to place the pod on a matching node but if you really cannot find one just place it anywhere</em>”.</p>
-</li>
-</ul>
-<p>The second part of the property or the other state is during execution. During execution is the state where a POD has been running and a change is made in the environment that affects node affinity such as a change in the label of a node.</p>
-<p>For example say an administrator removed the label we said earlier called “size” equals large from the node. <strong>Now what would happen to the pods that are running on the Node?</strong><strong>→</strong> As you can see the two types of node affinity available today have this value set to ignored which means pods will continue to run and any changes in node affinity will not impact them once they are scheduled.</p>
-<p>The two new types expected in the future only have a difference in the during execution phase a new option called <code>requiredDuringExecution</code> is introduced which will evict any pods that are running on nodes that do not meet affinity rules. In the earlier example, a pod running on the large node will be evicted or terminated if the label large is removed from the node. </p>
-<h4 id="test-solutions">Test Solutions</h4>
-<p>Run the command <code>'kubectl describe node node01</code>' and count the number of labels under <strong>Labels Section</strong>.</p>
-<pre><code class="language-yaml">kubectl label nodes node01 color=Blue
-apiVersion: apps/v1kind: Deploymentmetadata:    name: blue    labels:app: nginxspec:  replicas: 3  selector:     matchLabels: app: nginx  template:    metadata:      labels:  app:nginx    spec:      containers:- name: nginx  image: nginx
-</code></pre>
-<h3 id="taints-and-tolerations-vs-node-affinity">Taints and Tolerations vs Node Affinity</h3>
-<p><img alt="Diagram" src="images/image321.png" /></p>
-<p>Now that we have learned about Taints and toleration and node affinity, let us tie together the two concepts through a fun exercise.</p>
-<p>We have three nodes and three PODs, each in three colors, blue, red and green. The ultimate aim is to place the blue POD in the blue node, the red POD in the red node and likewise for Green. We are sharing the same kubernetes cluster with other teams.So there are other PODs in the cluster as well as other nodes. We do not want any other pod to be placed on our node. Neither do we want our pods to be placed on their nodes.</p>
-<p>Let us first try to solve this problem using Taints and Toleration. We apply a taint to the nodes, marking them with their colors <strong>blue, red and green</strong> and we then set a tolerance on the PODs to tolerate the respective colors.When the PODs are now created, the nodes ensure they only accept the PODs with the right toleration. So the green POD ends up on the green node and the blue POD ends up on the blue node. However, Taints and toleration does not guarantee that the PODs will only prefer these nodes. So the red node ends up on one of the other nodes that do not have a taint or toleration set. This is not desired. </p>
-<p>Let us try to solve the same problem with node affinity. With node affinity, we first labeled the nodes with their respective colors blue, red and green. We then set node selectors on the POD to tie the POD to the nodes.</p>
-<p>As such, the pods end up on the right node. However, that does not guarantee that other PODs are not placed on these nodes. In this case, there is a chance that one of the other PODs may end up on our node. This is not something we desired. As such a combination of Taints and toleration and nodeAffinity rules can be used together to completely dedicate nodes for specific PODs. </p>
-<p>We first used Taints and tolerations to prevent other PODs from being placed on our nodes, and then we used node affinity to prevent our PODs from being placed on their nodes.</p>
-<h3 id="resource-limits">Resource Limits</h3>
-<p>Let's look at a three node Kubernetes cluster. Each node has a set of <strong>CPU, memory and disk</strong> resources available, every POD consumes a set of resources, in this case, two CPUs, one memory and some disk space.</p>
-<p><img alt="Diagram" src="images/image56.png" /></p>
-<p>Whenever a pod is placed on a node, it consumes resources available to that node. As we have discussed before, it is the <strong>Kubernetes scheduler</strong> that decides which node a POD goes to. The scheduler takes into consideration the amount of resources required by a POD and those available on the nodes. </p>
-<p><img alt="Diagram" src="images/image315.png" /></p>
-<p>In this case, the scheduler schedules a new POD on node two. If the node has no sufficient resources, the scheduler avoids placing the POD on that node, instead places the POD on one in which sufficient resources are available. If there is no sufficient resources available on any of the nodes, kubernetes hold back scheduling the POD, you will see the POD in a <strong>pending state.</strong></p>
-<p><img alt="Diagram" src="images/image283.png" /></p>
-<p><img alt="Diagram" src="images/image370.png" /></p>
-<p>If you look at the events, you will see the reason, <strong>insufficient CPU.</strong></p>
-<p>Let us now focus on the resource requirements for each POD. </p>
-<p>What are these blocks and what are their values? </p>
-<p><img alt="Diagram" src="images/image2.png" /></p>
-<p>By default kubernetes assumes that a POD or a container within a POD <strong>requires 0.5 CPU and 256 mebibytes of memory.</strong> This is known as the <strong>resource request</strong> for a container, the minimum amount of CPU or memory requested by the container. When the scheduler tries to place the POD on a node, it uses these numbers to identify a node which has a sufficient amount of resources available. </p>
-<p>Now, if you know that your application will need more than this, you can modify these values by specifying them in your POD or  deployment definition files. </p>
-<pre><code class="language-yaml">pod-definition.yaml
-apiVersion: v1
+<h4 id="soft-affinity-preferredduringschedulingignoredduringexecution">Soft Affinity (<code>preferredDuringSchedulingIgnoredDuringExecution</code>)</h4>
+<pre><code class="language-yaml">apiVersion: v1
 kind: Pod
 metadata:
-  name: simple-webapp-color
-  labels:
-    name: simple-webapp-color
+  name: myapp-pod
 spec:
- containers:
- - name: simple-webapp-color
-   image: simple-webapp-color
-   ports:
-     - containerPort:  8080
-   resources:
-     requests:
-       memory: &quot;1Gi&quot;
-       cpu: &quot;1&quot;
+  containers:
+  - name: data-processor
+    image: data-processor
+  affinity:
+    nodeAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 1
+        preference:
+          matchExpressions:
+          - key: size
+            operator: In
+            values:
+            - Large
 </code></pre>
-<p><img alt="Diagram" src="images/image358.png" /></p>
-<p>In the simple pod definition file, add a section called <code>resources</code> <code>under spec</code>, under which add requests and specify the new values for memory and CPU usage. In this case, It set it to 1GB of memory and one count of CPU.</p>
-<p><strong>So what does one count of C.P.U really mean?</strong> It doesn't have to be in the increment of .5 you can specify any value as low as 0.1, 0.1 C.P.U can also be expressed as one hundred M where M stands for milli. You can go as low as one M, but not lower than that.One count of CPU is equivalent to one CPU, i.e CPU in AWS or 1 core in GCP or 1 core in Azure or 1 Hyperthread.</p>
-<p>You could request a higher number of CPU's for the container, provided your nodes are sufficiently funded.</p>
-<p><img alt="Diagram" src="images/image272.png" /></p>
-<p>Similarly with memory, you could specify 256Mi  or specify the same value in memory(MEM) like this </p>
-<p><img alt="Diagram" src="images/image225.png" /></p>
-<p>Let's now look at a container running on a node. </p>
-<p>In the docker world a docker container has no limit to the resources it can consume on a node. Say a container starts with one vCPU on a node It can go up and consume as much resource as it requires, suffocating the native processes on the node or other containers of resources. However, you can set a limit for the resource usage on these PODs. By default, kubernetes sets a limit of one vCPU to containers. So if you do not specify explicitly, a container will be limited to consume only one vCPU from the node.The same goes with memory.By default, kubernetes sets a limit of 512Mi on containers. If you don't like the default limit, you can change them by adding a limits section under the resources section In your POD definition file. Specify new limits for the memory and CPU like this.</p>
+<h4 id="practical-deployment-with-node-affinity">Practical Deployment with Node Affinity</h4>
+<pre><code class="language-bash"># Label node01 with color=Blue
+kubectl label nodes node01 color=Blue
+</code></pre>
+<pre><code class="language-yaml">apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: blue
+  labels:
+    app: nginx
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: color
+                operator: In
+                values:
+                - Blue
+      containers:
+      - name: nginx
+        image: nginx
+</code></pre>
+<hr />
+<h2 id="7-taints-tolerations-vs-node-affinity">7. Taints &amp; Tolerations vs. Node Affinity</h2>
+<h3 id="71-key-differences">7.1 Key Differences</h3>
+<p><img alt="Diagram" src="images/image321.png" /></p>
+<ul>
+<li><strong>Taints &amp; Tolerations</strong>: Set on nodes to keep unwanted pods out. They <strong>do not guarantee</strong> that tolerating pods won't land on other untainted nodes.</li>
+<li><strong>Node Affinity</strong>: Set on pods to attract them to specific nodes. It <strong>does not prevent</strong> other untargeted pods from landing on those same nodes.</li>
+</ul>
+<hr />
+<h3 id="72-combining-both-for-full-node-isolation">7.2 Combining Both for Full Node Isolation</h3>
+<p>To achieve 100% dedicated node isolation (e.g., dedicating <code>NodeBlue</code> exclusively to <code>PodBlue</code>):
+1. <strong>Apply a Taint to the Node</strong>: Repels all other workloads that do not tolerate <code>color=blue</code>.
+2. <strong>Apply a Toleration to the Pod</strong>: Enables <code>PodBlue</code> to schedule on <code>NodeBlue</code>.
+3. <strong>Apply a Node Label &amp; Node Affinity to the Pod</strong>: Directs <code>PodBlue</code> specifically to <code>NodeBlue</code>, preventing it from scheduling on untainted nodes.</p>
+<pre><code class="language-mermaid">flowchart LR
+    A[&quot;Taint on Node&lt;br/&gt;(Repels Other Pods)&quot;] --&gt; C[&quot;Dedicated Node Isolation&quot;]
+    B[&quot;Node Affinity on Pod&lt;br/&gt;(Pulls Pod to Target Node)&quot;] --&gt; C
+</code></pre>
+<hr />
+<h2 id="8-resource-requests-limits-and-editing-pods">8. Resource Requests, Limits, and Editing Pods</h2>
+<h3 id="81-scheduling-evaluation-pending-state">8.1 Scheduling Evaluation &amp; Pending State</h3>
+<p>The scheduler evaluates the sum of container <code>requests</code> against the <strong>allocatable</strong> capacity of worker nodes:</p>
+<p><img alt="Diagram" src="images/image56.png" />
+<img alt="Diagram" src="images/image315.png" /></p>
+<p>If no single node possesses sufficient CPU or memory capacity to satisfy the requested amount, the Pod is held in a <strong><code>Pending</code></strong> state:</p>
+<p><img alt="Diagram" src="images/image283.png" />
+<img alt="Diagram" src="images/image370.png" /></p>
+<p>Inspect events to determine the scheduling failure cause:</p>
+<pre><code class="language-bash">kubectl describe pod &lt;pod-name&gt;
+# Event Reason: FailedScheduling: 0/3 nodes are available: 3 Insufficient cpu.
+</code></pre>
+<hr />
+<h3 id="82-defining-resource-requests-limits">8.2 Defining Resource Requests &amp; Limits</h3>
+<p><img alt="Diagram" src="images/image2.png" />
+<img alt="Diagram" src="images/image358.png" /></p>
+<ul>
+<li><strong>Requests</strong>: Minimum compute resources guaranteed to the container. Used by <code>kube-scheduler</code> during node selection.</li>
+<li><strong>Limits</strong>: Maximum ceiling of compute resources the container can consume. Enforced by the container runtime via cgroups.</li>
+</ul>
 <pre><code class="language-yaml">apiVersion: v1
 kind: Pod
 metadata:
@@ -459,27 +626,44 @@ metadata:
   labels:
     name: simple-webapp-color
 spec:
- containers:
- - name: simple-webapp-color
-   image: simple-webapp-color
-   ports:
-    - containerPort:  8080
-   resources:
-     requests:
-      memory: &quot;1Gi&quot;
-      cpu: &quot;1&quot;
-     limits:
-       memory: &quot;2Gi&quot;
-       cpu: &quot;2&quot;
+  containers:
+  - name: simple-webapp-color
+    image: simple-webapp-color
+    ports:
+    - containerPort: 8080
+    resources:
+      requests:
+        cpu: &quot;1&quot;
+        memory: &quot;1Gi&quot;
+      limits:
+        cpu: &quot;2&quot;
+        memory: &quot;2Gi&quot;
 </code></pre>
-<p>When the pod is created, kubernetes sets new limits for the container. Remember that the limits and requests are set for each container within the pod. <strong>So what happens when a pod tries to exceed resources beyond its specified limit?</strong></p>
-<p>In case of CPU, kubernetes throttles the CPU so that it does not go beyond the specified limit. A container cannot use more CPU resources than its limit. However, this is not the case with the memory.A container can use more memory resources than its limit. So if a pod tries to consume more memory than its limit constantly, the POD will be terminated.</p>
-<h4 id="additional-notes-on-default-resource-requirements">Additional Notes on default resource requirements</h4>
-<p>As said in the previous lecture, – “When a pod is created the containers are assigned a default CPU request of .5 and memory of 256Mi”. For the POD to pick up those defaults you must have first set those as default values for request and limit by creating a LimitRange in that namespace.</p>
+<hr />
+<h3 id="83-understanding-resource-units-cpu-memory">8.3 Understanding Resource Units (CPU &amp; Memory)</h3>
+<h4 id="cpu-units">CPU Units</h4>
+<p><img alt="Diagram" src="images/image272.png" />
+- <code>1</code> CPU = 1 vCPU (AWS) = 1 Core (GCP/Azure) = 1 Hyperthread.
+- Minimum granularity: <code>1m</code> (one millicore = <code>0.001</code> CPU).
+- <code>500m</code> = <code>0.5</code> CPU.</p>
+<h4 id="memory-units">Memory Units</h4>
+<p><img alt="Diagram" src="images/image225.png" />
+- <strong>Binary representation (powers of 1024)</strong>: <code>Ki</code>, <code>Mi</code>, <code>Gi</code>, <code>Ti</code> (e.g., <code>256Mi</code> = $256 \times 1024^2$ bytes).
+- <strong>Decimal representation (powers of 1000)</strong>: <code>K</code>, <code>M</code>, <code>G</code>, <code>T</code> (e.g., <code>256M</code> = $256 \times 1000^2$ bytes).</p>
+<hr />
+<h3 id="84-exceeding-limits-cpu-throttling-vs-memory-oomkilled">8.4 Exceeding Limits: CPU Throttling vs. Memory OOMKilled</h3>
+<ul>
+<li><strong>CPU (Compressible)</strong>: When a container reaches its CPU limit, the kernel throttles execution cycles. The application slows down, but the Pod <strong>is not terminated</strong>.</li>
+<li><strong>Memory (Incompressible)</strong>: When a container exceeds its memory limit, the Linux Out-Of-Memory (OOM) killer terminates the offending process. The Pod fails with status <strong><code>OOMKilled</code></strong> (Exit Code <strong>137</strong>).</li>
+</ul>
+<hr />
+<h3 id="85-default-resource-allocation-via-limitrange">8.5 Default Resource Allocation via LimitRange</h3>
+<p>To enforce baseline requests and limits across Pods that do not explicitly define them, configure a <code>LimitRange</code> in the target namespace:</p>
 <pre><code class="language-yaml">apiVersion: v1
 kind: LimitRange
 metadata:
   name: mem-limit-range
+  namespace: default
 spec:
   limits:
   - default:
@@ -487,246 +671,307 @@ spec:
     defaultRequest:
       memory: 256Mi
     type: Container
+---
 apiVersion: v1
 kind: LimitRange
 metadata:
   name: cpu-limit-range
+  namespace: default
 spec:
   limits:
   - default:
-      cpu: 1
+      cpu: &quot;1&quot;
     defaultRequest:
-      cpu: 0.5
+      cpu: &quot;500m&quot;
     type: Container
 </code></pre>
-<p>References </p>
-<h4 id="note-on-editing-pods-and-deployments">Note on editing PODs and Deployments</h4>
-<p><strong>Edit a POD</strong></p>
-<p>Remember, you CANNOT edit specifications of an existing POD other than the below.</p>
-<ul>
-<li>
-<p>spec.containers[*].image</p>
-</li>
-<li>
-<p>spec.initContainers[*].image</p>
-</li>
-<li>
-<p>spec.activeDeadlineSeconds</p>
-</li>
-<li>
-<p>spec.tolerations</p>
-</li>
-</ul>
-<p>For example you cannot edit the environment variables, service accounts, resource limits (all of which we will discuss later) of a running pod. But if you really want to, you have 2 options:</p>
+<hr />
+<h3 id="86-editing-running-pods-and-deployments">8.6 Editing Running Pods and Deployments</h3>
+<h4 id="editing-a-running-pod">Editing a Running Pod</h4>
+<p>Only the following fields are mutable on an active running Pod:
+1. <code>spec.containers[*].image</code>
+2. <code>spec.initContainers[*].image</code>
+3. <code>spec.activeDeadlineSeconds</code>
+4. <code>spec.tolerations</code></p>
+<p>Modifying any other field (e.g., environment variables, resource limits, ports) triggers an API validation error:</p>
+<p><img alt="Diagram" src="images/image155.png" />
+<img alt="Diagram" src="images/image46.png" /></p>
+<h4 id="workarounds-for-immutable-pod-fields">Workarounds for Immutable Pod Fields</h4>
 <ol>
-<li>Run the <code>kubectl edit pod &lt;pod name&gt;</code> command.  This will open the pod specification in an editor (vi editor). Then edit the required properties. When you try to save it, you will be denied. This is because you are attempting to edit a field on the pod that is not editable.</li>
+<li>
+<p><strong>Using Temporary File from <code>kubectl edit</code></strong>:
+   <code>bash
+   kubectl edit pod webapp
+   # When saving fails, Kubernetes saves edits to /tmp/kubectl-edit-xxxx.yaml
+   kubectl delete pod webapp
+   kubectl create -f /tmp/kubectl-edit-xxxx.yaml</code></p>
+</li>
+<li>
+<p><strong>Export, Modify, and Recreate</strong>:
+   <code>bash
+   kubectl get pod webapp -o yaml &gt; my-new-pod.yaml
+   vi my-new-pod.yaml
+   kubectl replace --force -f my-new-pod.yaml
+   # Or explicitly:
+   # kubectl delete pod webapp
+   # kubectl create -f my-new-pod.yaml</code></p>
+</li>
 </ol>
-<p><img alt="Diagram" src="images/image155.png" /></p>
-<p><img alt="Diagram" src="images/image46.png" /></p>
-<p>A copy of the file with your changes is saved in a temporary location as shown above.</p>
-<p>You can then delete the existing pod by running the command:</p>
-<pre><code class="language-bash">kubectl delete pod webapp
+<h4 id="editing-deployments">Editing Deployments</h4>
+<p>All fields in <code>spec.template</code> can be edited freely. Kubernetes automatically performs a rolling restart of underlying replica pods:</p>
+<pre><code class="language-bash">kubectl edit deployment my-deployment
 </code></pre>
-<p>Then create a new pod with your changes using the temporary file</p>
-<pre><code class="language-bash">kubectl create -f /tmp/kubectl-edit-ccvrq.yaml
-</code></pre>
-<ol start="2">
-<li>The second option is to extract the pod definition in YAML format to a file using the command</li>
-</ol>
-<pre><code class="language-bash">kubectl get pod webapp -o yaml &gt; my-new-pod.yaml
-</code></pre>
-<p>Then make the changes to the exported file using an editor (vi editor). Save the changes</p>
-<pre><code class="language-text">vi my-new-pod.yaml
-</code></pre>
-<p>Then delete the existing pod</p>
-<pre><code class="language-bash">kubectl delete pod webapp
-</code></pre>
-<p>Then create a new pod with the edited file</p>
-<pre><code class="language-bash">kubectl create -f my-new-pod.yaml
-</code></pre>
-<h4 id="edit-deployments">Edit Deployments</h4>
-<p>With Deployments you can easily edit any field/property of the POD template. Since the pod template is a child of the deployment specification,  with every change the deployment will automatically delete and create a new pod with the new changes. So if you are asked to edit a property of a POD part of a deployment you may do that simply by running the command</p>
-<pre><code class="language-bash">kubectl edit deployment my-deploymentNote: The status OOMKilled indicates that it is failing because the pod ran out of memory. Identify the memory limit set on the POD.
-</code></pre>
-<h3 id="demon-sets">Demon sets</h3>
-<p>So far, we have deployed various PODs on different nodes in our cluster, with the help of ReplicaSets</p>
-<p>and deployments, we made sure multiple copies of our applications are made available across various</p>
-<p>different worker nodes. </p>
-<p>DemonSets are like ReplicaSets, as in it helps you deploy multiple instances of pods, <strong>but it runs one copy of your pod on each node in your cluster.</strong> Whenever a new node is added to the cluster, a replica of the pod is automatically added to that node. And when a node is removed, the pod is automatically removed. <strong>The demon set ensures that one copy of the pod is always present in all nodes in the cluster.</strong> </p>
+<hr />
+<h2 id="9-daemonsets">9. DaemonSets</h2>
+<h3 id="91-purpose-and-key-use-cases">9.1 Purpose and Key Use Cases</h3>
+<p>A <strong>DaemonSet</strong> ensures that an exact single copy of a specified Pod runs on <strong>all (or selected) worker nodes</strong> in the cluster.
+- When new nodes join the cluster, DaemonSet pods are automatically provisioned on them.
+- When nodes are removed, DaemonSet pods are automatically garbage collected.</p>
 <p><img alt="Diagram" src="images/image297.png" /></p>
-<p>So what are some <strong>use cases</strong> of demon sets?  Say you would like to deploy a monitoring agent or log collector on each of your nodes in the cluster so you can monitor your cluster better. A demon set is perfect for that, as it can deploy your monitoring agent in the form of a pod in all the nodes in your cluster. Then you don't have to worry about adding or removing monitoring agents from these nodes when there are changes in your cluster, as the demon set will take care of that for you. </p>
-<p>Earlier while discussing the architecture, we learned that one of the worker node components that is required on every node in the cluster is a “Kube proxy” That is one good use case of demon sets. The Kube proxy component can be deployed as a demon set in the cluster. Another use case is for networking, Networking solutions like weavenet require an agent to be deployed on each node in the cluster. We will discuss networking concepts in much more detail later during this course. → Creating a demon set is similar to the replicaSet creation process. It has nested part specification under the template section and selectors to link the demon set to the PODs →  A demon set definition file has a similar structure. For DaemonSets, we start with apiVersion: <code>apps/v1</code>, Kind as <strong>DaemonSets</strong> instead of <strong>ReplicaSet</strong>, <strong>metadata</strong> and <strong>spec</strong>.</p>
+<h4 id="common-use-cases">Common Use Cases:</h4>
+<ol>
+<li><strong>Cluster Monitoring Agents</strong>: Prometheus Node Exporter, Datadog agent, New Relic.</li>
+<li><strong>Log Collectors</strong>: Fluentd, Logstash, Vector, Fluentbit.</li>
+<li><strong>Cluster Networking</strong>: <code>kube-proxy</code>, CNI plugins (Weave Net, Flannel, Calico).</li>
+</ol>
+<hr />
+<h3 id="92-daemonset-manifest-selectors">9.2 DaemonSet Manifest &amp; Selectors</h3>
 <pre><code class="language-yaml">apiVersion: apps/v1
 kind: DaemonSet
 metadata:
   name: monitoring-daemon
   labels:
-    app: nginx
+    app: monitoring-agent
 spec:
   selector:
     matchLabels:
       app: monitoring-agent
   template:
     metadata:
-     labels:
-       app: monitoring-agent
+      labels:
+        app: monitoring-agent
     spec:
       containers:
       - name: monitoring-agent
         image: monitoring-agent
-$ kubectl create -f daemon-set-definition.yaml
 </code></pre>
-<p>Under spec you have a selector and a POD specification template. Ensure the labels in The Selecter matches the ones in the pod template once ready, create the demonset using the kubectl  create command.</p>
-<p>To view the created  DemonSet run to <code>kubectl</code> <code>get demonset</code> command and of course, to view more details use kubectl, describe demons that command.</p>
-<pre><code class="language-bash">$ kubectl get deamonsets  $ kubectl describe daemonsets monitoring-daemon
-</code></pre>
-<p><strong>So how does it work?</strong><strong>How does it schedule pods on each node and how does it ensure that every node has a pod?</strong> <strong>If you were asked to schedule a POD on each node in the cluster, how would you do it?</strong></p>
-<p>In one of the previous lectures in this section, we discussed that we could set the <code>nodeName</code> property on the pod to bypass the scheduler and get the POD placed on a node directly. So that's one approach.On each POD, set the nodeName, property and its specification before it is created.And when they are created, they automatically land on the respective nodes.  </p>
-<p>So that's how it used to be until kubernetes version v1.12, but from version v1.12 onwards, the demonSet uses the default scheduler and node affinity rules that we learned in one of the previous lectures to schedule PODs on nodes.</p>
-<h4 id="practice-test">Practice Test</h4>
-<pre><code class="language-bash">kubectl get daemonsets --all-namespaces 
+<hr />
+<h3 id="93-how-daemonsets-schedule-pods">9.3 How DaemonSets Schedule Pods</h3>
+<ul>
+<li><strong>Pre-Kubernetes v1.12</strong>: The DaemonSet controller directly configured <code>spec.nodeName</code> on pod creation, bypassing the scheduler entirely.</li>
+<li><strong>Kubernetes v1.12+</strong>: DaemonSet pods are scheduled by the <strong>default scheduler</strong> using automatically injected <code>NodeAffinity</code> rules and default tolerations.</li>
+</ul>
+<hr />
+<h3 id="94-practical-commands">9.4 Practical Commands</h3>
+<pre><code class="language-bash"># List all DaemonSets across namespaces
+kubectl get daemonsets --all-namespaces
+
+# Inspect DaemonSet details
 kubectl describe daemonsets kube-flannel-ds -n kube-system
-kubectl describe daemonsets kube-flannel-ds -n kube-system
-kubectl create deployment elasticsearch --image=k8s.gcr.io/fluentd-elasticsearch:1.20 -n kube-system --dry-run=client -o yaml &gt; fluentd.yaml
+
+# Fast generation via Deployment dry-run:
+kubectl create deployment elasticsearch --image=k8s.gcr.io/fluentd-elasticsearch:1.20 \
+  -n kube-system --dry-run=client -o yaml &gt; fluentd.yaml
+
+# Modify fluentd.yaml:
+# 1. Change 'kind: Deployment' to 'kind: DaemonSet'
+# 2. Remove 'replicas', 'strategy', and 'status' fields
+kubectl create -f fluentd.yaml
 </code></pre>
-<p>Next, remove the replicas, strategy and status fields from the YAML file using a text editor. Also, change the kind from Deployment to DaemonSet.</p>
-<pre><code class="language-bash">Finally, create the Daemonset by running kubectl create -f fluentd.yaml
-</code></pre>
-<h3 id="static-pods">Static Pods</h3>
+<hr />
+<h2 id="10-static-pods">10. Static Pods</h2>
+<h3 id="101-concept-kubelet-independence">10.1 Concept &amp; Kubelet Independence</h3>
+<p><strong>Static Pods</strong> are managed directly by the <code>kubelet</code> daemon on an individual node without involvement from the control plane (<code>kube-apiserver</code>, <code>kube-scheduler</code>, or <code>controller-manager</code>).</p>
 <p><img alt="Diagram" src="images/image39.png" /></p>
-<p>In this course we talked about the Architecture and how the kubelet functions as one of the many control plane components in Kubernetes. The kubelet relies on the kube-apiserver for instructions on what PODs to load on its node, which was based on a decision made by the kube-scheduler which was stored in the ETCD datastore. </p>
-<p><strong>What if there was no kube-apiserver, and kube-scheduler and no controllers and no ETCD cluster.</strong></p>
-<p><strong>What if there was no master at all.</strong></p>
-<p><strong>What if there were no other nodes?</strong></p>
-<p><strong>What if you're all alone in the sea by yourself. Not part of any cluster.</strong></p>
-<p><strong>Is there anything that the kubelet can do as the captain on the ship?</strong> </p>
-<p><strong>Can it operate as an independent node?</strong></p>
-<p><strong>If so, who would provide the instructions required to create PODs?</strong></p>
-<p>Well, the kubelet can manage a node independently. On the host, we have the kubelet installed and of course we have Docker as well to run containers. There is no Kubernetes cluster. So there are no Kube API servers or anything like that. The one thing that the kubelet knows to do is create PODs but we don’t have an API server here to provide POD details. By now we know that to create a POD you need the details of the POD in a POD definition file.  But how do you provide a pod definition file to the kubelet without a kube-api server? </p>
-<p>You can configure the kubelet to read the pod definition files from a directory on the server designated</p>
-<p>to store information about pods. Place the POD definition files in this directory, the Kubelet periodically checks this directory for files, reads these files and creates pods on the host.</p>
-<p>Not only does it create the pod it can ensure that the pod stays alive. If the application crashes, the kubelet attempts to restart it. If you make a change to any of the files within this directory, the kubelet recreates the pod for those changes to take effect.If you remove a file from this directory the POD is deleted automatically.</p>
-<p>So these PODs that are created by the kubelet on its own without the intervention from the API server </p>
-<p>or rest of the kubernetes cluster components are known as Static PODs. </p>
-<p>Remember you can only create PODs this way, you cannot create ReplicaSets or deployments or services by placing a definition file in the designated directory.They are all concepts part of the whole Kubernetes architecture, that requires other cluster control plane components like the replication and deployment controllers etc. The kubelet works at a POD level and can only understand PODs. Which is why it is able to create static pods this way.</p>
-<p>So what is that designated folder  and how do you configure it?</p>
-<p>It could be any directory on the host. And the location of that directory is passed in to the kubelet as an option while running the service.</p>
+<ul>
+<li>Kubelet periodically scans a designated host directory for manifest files.</li>
+<li>Kubelet creates, monitors, and restarts the static Pods directly on the host container runtime.</li>
+<li>If a manifest is updated, kubelet restarts the Pod. If removed, kubelet deletes the Pod.</li>
+<li><strong>Limitation</strong>: Kubelet can only manage individual Pods statically—it cannot create ReplicaSets, Deployments, or Services.</li>
+</ul>
+<hr />
+<h3 id="102-configuring-static-pod-manifest-path">10.2 Configuring Static Pod Manifest Path</h3>
+<p>The static pod directory is configured using one of two methods:</p>
+<h4 id="method-1-kubelet-service-command-line-flag">Method 1: Kubelet Service Command-Line Flag</h4>
+<p>Set <code>--pod-manifest-path</code> in <code>/etc/systemd/system/kubelet.service.d/10-kubeadm.conf</code>:</p>
+<pre><code class="language-text">--pod-manifest-path=/etc/kubernetes/manifests
+</code></pre>
 <p><img alt="Diagram" src="images/image421.png" /></p>
-<p>The option is <code>--pod-manifest-path</code> and here it is set to <code>/etc/Kubernetes/manifests</code>. There is also another way to configure this, instead of specifying the option directly in the <code>kubelet.service</code> file, you could provide a path to another config file using the config option, and define the directory path as <code>staticPodPath</code> in that file. </p>
+<h4 id="method-2-kubelet-yaml-configuration-file-kubeadm-standard">Method 2: Kubelet YAML Configuration File (kubeadm standard)</h4>
+<p>Set <code>--config=/var/lib/kubelet/config.yaml</code> in the service file, and define <code>staticPodPath</code> in <code>config.yaml</code>:</p>
+<pre><code class="language-yaml">staticPodPath: /etc/kubernetes/manifests
+</code></pre>
 <p><img alt="Diagram" src="images/image29.png" /></p>
-<p>Clusters set up by the kubeadm tool use this approach. If you are inspecting an existing cluster, you should inspect this option of the kubelet to identify the path to the directory. You will then know where to place the definition file for your static pods.</p>
-<p>So keep this in mind when you go through the labs. You should know to view and configure this option irrespective of the method used to set up the cluster, first check the option <code>--pod-manifest-path</code> in the kubelet service file if it's not there then look for the <code>--config</code> option and identify the file used as the config file and then within the config file(eg: <code>kubeconfig.yaml</code>) look for these static pod path option. Either of these should give you the right path.</p>
-<p>Once the static PODs are created you can view them by running the <code>docker ps</code> command. So why not the kubectl command as we have been doing so far, remember we don’t have the rest of the Kubernetes cluster. Kubectl utility works with the kube-apiserver. Since we don’t have an API server now, there is no kubectl utility. which is why we're using the docker command.</p>
-<p><strong>So then how does it work when the node is part of a cluster?</strong> </p>
+<hr />
+<h3 id="103-mirror-pods-in-kube-apiserver">10.3 Mirror Pods in kube-apiserver</h3>
 <p><img alt="Diagram" src="images/image120.png" /></p>
-<p><strong>When there is an API server requesting the Kubelet to create pods. Can the kubelet create both kinds of PODs at the same time?</strong> Well, the way the kubelet works is it can take in requests for creating PODs from different inputs.  1. The first is through the POD definition files from the static pods folder,as we just saw.  2. The second, is through an HTTP API endpoint. And that is how the kube-apiserver provides input to the kubelet. </p>
-<p>The kubelet can create both kinds of PODs – the static pods and the ones from the api server - at the same time.</p>
-<p><strong>Well, in that case is the API server aware of the static pods created by the kubelet?</strong>Yes it is. If you run the kubectl get pods command on the master node, the static pods will be listed as any other pod. </p>
+<p>When a node with static pods belongs to a Kubernetes cluster:
+- Kubelet registers a read-only <strong>Mirror Pod</strong> in <code>kube-apiserver</code>.
+- Mirror pods appear in <code>kubectl get pods</code>, with the host node name appended to the pod name (e.g., <code>kube-apiserver-controlplane</code>).
+- You <strong>cannot</strong> edit or delete a static pod via <code>kubectl</code>. Modifying or deleting requires direct filesystem access to the node's static manifest folder.</p>
 <p><img alt="Diagram" src="images/image88.png" /></p>
-<p>Well how is that happening? <strong>When the kubelet creates a static pod, if it is part of a cluster, it also creates a mirror object in the kubeapi server.</strong>What you see from the kube-apiserver is just a read only mirror of the pod. You can view details about the pod but you cannot edit or delete it like the usual PODs. You can only delete them by modifying the files from the nodes manifest folder.<em>Note that the name of the POD is automatically appended with the node name, In this case node01.</em> </p>
-<p><strong>So then why would you want to use Static PODs?</strong>Since static pods are not dependent on the Kubernetes control plane, you can use static pods to deploy the control plane components itself as pods on a node. Start by installing a kubelet on all the master nodes Then create pod definition files that use Docker images of the various control plane components such as the api server, controller, etcd etc.Place the definition files in the designated manifests folder. And kubelet takes care of deploying the control plane components themselves as PODs on the cluster. This way you don't have to download the binaries, configure services or worry about the services crashing.</p>
+<hr />
+<h3 id="104-deploying-control-plane-components-with-static-pods">10.4 Deploying Control Plane Components with Static Pods</h3>
+<p>The <code>kubeadm</code> initialization tool leverages Static Pods to bootstrap the core Kubernetes control plane:
+- Manifests placed in <code>/etc/kubernetes/manifests/</code>:
+  - <code>kube-apiserver.yaml</code>
+  - <code>kube-controller-manager.yaml</code>
+  - <code>kube-scheduler.yaml</code>
+  - <code>etcd.yaml</code>
+- Kubelet runs and restarts these core components without requiring an existing operational cluster.</p>
 <p><img alt="Diagram" src="images/image380.png" /></p>
-<p>If any of these services were to crash since it's a static pod it will automatically be restarted by the kubelet. Neat and simple. <strong>That’s how the</strong> <strong>kubeadmin</strong> <strong>tool set’s up a Kubernetes cluster.</strong></p>
-<p>Which is why when you list the pods in the kube-system namespace, you see the control plane components as PODs in a cluster setup by the kubeadmin tool.We will explore that setup in the upcoming practice test. </p>
-<p>Before I let you go, one question that I get often is about the difference between Static PODs and DaemonSets.  </p>
-<p>DaemonSets as we saw earlier are used to ensure one instance of an application is available on all nodes in the cluster. It is handled by a daemonset controller through the kube-api server. Whereas static pods, as we saw in this lecture, are created directly by the kubelet without any interference from the kube-api server or rest of the Kubernetes control plane components. Static pods can be used to deploy the Kubernetes control plane components itself. Both static pods and pods created by daemonsets are ignored by the kube-scheduler. The kube-scheduler has no effect on these pods. </p>
-<p>PRACTICE TEST - STATIC PODS </p>
-<pre><code class="language-bash">kubectl get pods  --all-namespaces 
+<hr />
+<h3 id="105-static-pods-vs-daemonsets">10.5 Static Pods vs. DaemonSets</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Feature</th>
+<th style="text-align: left;">Static Pods</th>
+<th style="text-align: left;">DaemonSets</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>Created / Managed By</strong></td>
+<td style="text-align: left;">Kubelet directly</td>
+<td style="text-align: left;">DaemonSet Controller (Control Plane)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>API Server Requirement</strong></td>
+<td style="text-align: left;">Not required (operates standalone)</td>
+<td style="text-align: left;">Mandatory</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Creation Method</strong></td>
+<td style="text-align: left;">Placing YAML in manifest directory</td>
+<td style="text-align: left;">Applying YAML through <code>kubectl</code> / API</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Scope</strong></td>
+<td style="text-align: left;">Single node</td>
+<td style="text-align: left;">Multi-node across cluster</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Kube-Scheduler Impact</strong></td>
+<td style="text-align: left;">Completely ignored</td>
+<td style="text-align: left;">Scheduled via default scheduler</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Primary Use Case</strong></td>
+<td style="text-align: left;">Bootstrapping control plane (<code>apiserver</code>, <code>etcd</code>)</td>
+<td style="text-align: left;">Monitoring, log collection, CNI networking</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h3 id="106-diagnostic-and-inspection-commands">10.6 Diagnostic and Inspection Commands</h3>
+<pre><code class="language-bash"># List all pods including mirror pods
+kubectl get pods --all-namespaces
+
+# Identify the static pod manifest path on a node
+ps -ef | grep kubelet | grep -i config
+# Inspect the resulting config file:
+grep -i staticpod /var/lib/kubelet/config.yaml
+
+# View running containers on a standalone node (without kubectl/API server)
+crictl ps
+# Or if Docker is the runtime:
+docker ps
 </code></pre>
-<p>To identify static pods look for POD names appended by node name, like controlplane or node-01 etc… </p>
-<pre><code class="language-text">/etc/kubernetes/manifests/kube-apiserver.yaml -- location where path to folder of static manifests are located 
-</code></pre>
-<h3 id="multiple-schedulers">Multiple Schedulers</h3>
-<p>In this lecture we'll look at the different ways of manually scheduling a POD on a node. </p>
-<p>We will also look at how to view scheduler related events. We have seen how the default-scheduler works in a kubernetes environment in the previous lectures. It has an algorithm that distributes pods across nodes evenly as well as takes into consideration the various conditions we specify through taints &amp; tolerations and node affinity etc. </p>
-<p><strong>But what if none of these satisfies your needs?</strong> </p>
-<p>Say you have a specific application that requires its components to be placed on nodes after performing some additional checks. So you decide to have your own scheduling algorithm to place pods on nodes, so that you can add your own custom conditions and checks in it. Kubernetes is highly extensible You can write your own kubernetes scheduler program, package it and deploy it as the default scheduler or as an additional scheduler in the kubernetes cluster. That way all of the other applications can go through the default scheduler, however one specific application can use your custom scheduler. Your kubernetes cluster can have multiple schedulers at the same time. </p>
-<p>When creating a POD or a Deployment you can instruct kubernetes to have the POD scheduled by a specific scheduler. Earlier we saw how to deploy the kube-scheduler. We download the kube-scheduler binary and run it as a service with a set of options. One of the options is the scheduler name. If not specified It assumes the name of default scheduler. This kube-scheduler is the default scheduler.</p>
+<hr />
+<h2 id="11-multiple-schedulers">11. Multiple Schedulers</h2>
+<h3 id="111-custom-schedulers-overview">11.1 Custom Schedulers Overview</h3>
+<p>Kubernetes is extensible: you can run multiple schedulers concurrently alongside the <code>default-scheduler</code>. Applications choose which scheduler places their Pods using the <code>schedulerName</code> property.</p>
 <p><img alt="Diagram" src="images/image415.png" /></p>
-<p>To deploy an additional scheduler, You can use the same kube-scheduler binary or use one that you might have built for yourself, which makes more sense.  </p>
+<hr />
+<h3 id="112-deploying-an-additional-scheduler">11.2 Deploying an Additional Scheduler</h3>
+<p>An additional scheduler can run as a binary service or as a Pod inside the <code>kube-system</code> namespace.</p>
 <p><img alt="Diagram" src="images/image349.png" /></p>
-<p>In this case we are going to use the same binary to deploy the additional scheduler. This time we set the scheduler name to a custom name.  This is important to differentiate the two schedulers and this is the name that we will be specifying in the pod definition file later on.  Let’s take a look at how it works with the kubeadm tool. The kubeadm tool deploys the scheduler as a POD, you can find the definition file it uses under the manifests folder (Removed all the other details from the file so we can focus on the key parts. )</p>
-<pre><code class="language-bash">$ kubectl create -f my-custom-scheduler.yaml
+<h4 id="custom-scheduler-pod-manifest-my-custom-scheduleryaml">Custom Scheduler Pod Manifest (<code>my-custom-scheduler.yaml</code>)</h4>
+<pre><code class="language-yaml">apiVersion: v1
+kind: Pod
+metadata:
+  name: my-custom-scheduler
+  namespace: kube-system
+spec:
+  containers:
+  - name: kube-scheduler
+    image: registry.k8s.io/kube-scheduler:v1.30.0
+    command:
+    - kube-scheduler
+    - --address=0.0.0.0
+    - --leader-elect=false
+    - --scheduler-name=my-custom-scheduler
 </code></pre>
-<p>To list the scheduler pods </p>
-<pre><code class="language-bash">$ kubectl get pods -n kube-system
+<pre><code class="language-bash">kubectl create -f my-custom-scheduler.yaml
+kubectl get pods -n kube-system
 </code></pre>
-<p>The command section has the command and associated options to start the scheduler.  We can create a custom scheduler by making a copy of the same file, and by changing the name of the scheduler. We can set the name of the pod to <strong>my-custom-scheduler</strong> and we add a new option to the scheduler command to set a custom name for the scheduler.  Finally an important option to look here is the --<code>leader-elect</code> option. The --<code>leader-elect</code> option is used when you have multiple copies of the scheduler running on different master nodes, in a High Availability setup where you have multiple master nodes with the kube-scheduler process running on both of them.</p>
-<p>If multiple copies of the same scheduler are running on different nodes only one can be active at a time.</p>
-<p>That’s where the <code>leader-elect</code> option helps in choosing a leader who will lead scheduling activities. We will discuss more about HA setup in another section, but for now I wanted to point out that, to get multiple schedulers working you must either set the <code>leader-elect</code> option to false, in case where you don’t have multiple masters.  In case you do have multiple masters, you can pass in an additional parameter to set a lock object name. This is to differentiate the new custom scheduler from the default during the leader election process. Once done, create the pod using the <code>kubectl create command</code>. Run the get pods command in the kube-system namespace and look for the new custom scheduler. </p>
-<p>Make sure it's in a running state. The next step is to configure a new POD or a deployment to use the new scheduler. In the Pod specification file. add a new field called <code>schedulerName</code> and specify the name of the new scheduler.</p>
-<h3 id="use-the-custom-scheduler">Use the Custom Scheduler</h3>
-<pre><code class="language-yaml">Create a pod definition file and add new section called schedulerName and specify the name of the new schedulerapiVersion: v1
+<hr />
+<h3 id="113-high-availability-leader-election">11.3 High Availability &amp; Leader Election</h3>
+<p>When running multiple replicas of a scheduler across master nodes:
+- Set <code>--leader-elect=true</code> to elect an active leader while other replicas remain on standby.
+- When running a secondary custom scheduler alongside the default scheduler, set <code>--leader-elect=false</code> or configure a distinct <code>--lock-object-name</code> to prevent interfering with the default scheduler's leader election.</p>
+<hr />
+<h3 id="114-assigning-pods-to-a-custom-scheduler-schedulername">11.4 Assigning Pods to a Custom Scheduler (<code>schedulerName</code>)</h3>
+<p>Designate the custom scheduler in <code>spec.schedulerName</code>:</p>
+<pre><code class="language-yaml">apiVersion: v1
 kind: Pod
 metadata:
   name: nginx
 spec:
-  containers:
-  - image: nginx
-    name: nginx
   schedulerName: my-custom-scheduler
-$ kubectl get events
+  containers:
+  - name: nginx
+    image: nginx
 </code></pre>
 <p><img alt="Diagram" src="images/image184.png" /></p>
-<pre><code class="language-bash">To create a pod definition$ kubectl create -f pod-definition.yaml
-To list pods$ kubectl get pods
+<pre><code class="language-bash">kubectl create -f pod-definition.yaml
+kubectl get pods
 </code></pre>
-<p>This way when the pod is created, the right scheduler picks it up to schedule. Create the pod using the kubectl create command. If the scheduler was not configured correctly, then the pod will continue to remain in a Pending state. If everything is good, then the pod will be in a Running state. </p>
-<p>So how do you know which scheduler picked it up? View the events using the kubectl get events command. This lists all the events in the current namespace.Look for the Scheduled events. As you can see the source of the event is the custom scheduler we created.<code>To view events``$ kubectl get events</code></p>
+<hr />
+<h3 id="115-verifying-scheduling-events-and-logs">11.5 Verifying Scheduling Events and Logs</h3>
+<h4 id="check-scheduling-events">Check Scheduling Events</h4>
+<pre><code class="language-bash">kubectl get events
+</code></pre>
 <p><img alt="Diagram" src="images/image95.png" /></p>
-<p>And the message says successfully assigned default/nginx image. </p>
-<p>To view the logs of the scheduler,</p>
-<pre><code class="language-bash">To view scheduler logs
-$ kubectl logs my-custom-scheduler -n kube-system
+<p>The event output confirms scheduling was handled by <code>my-custom-scheduler</code>:</p>
+<pre><code class="language-text">default    Normal    Scheduled    pod/nginx    Successfully assigned default/nginx to node01 by my-custom-scheduler
+</code></pre>
+<h4 id="inspect-scheduler-logs">Inspect Scheduler Logs</h4>
+<pre><code class="language-bash">kubectl logs my-custom-scheduler -n kube-system
 </code></pre>
 <p><img alt="Diagram" src="images/image419.png" /></p>
-<p>View the logs of the pod using the kubectl logs command. Specify the name of the scheduler the correct namespace.</p>
-<pre><code class="language-yaml">We have already created the ServiceAccount and ClusterRoleBinding that our custom scheduler will make use of.Checkout the following kubernetes objects:
-ServiceAccount: my-scheduler (kube-system namespace)
-ClusterRoleBinding: my-scheduler-as-kube-scheduler
-ClusterRoleBinding: my-scheduler-as-volume-scheduler
-
-ConfigMap
-root@controlplane ~ ➜  cat my-scheduler-config.yaml
-apiVersion: kubescheduler.config.k8s.io/v1beta2
+<hr />
+<h3 id="116-modern-scheduler-configuration-profiles">11.6 Modern Scheduler Configuration Profiles</h3>
+<p>In Kubernetes v1.22+, custom schedulers are configured using <code>KubeSchedulerConfiguration</code> profiles:</p>
+<pre><code class="language-yaml">apiVersion: kubescheduler.config.k8s.io/v1
 kind: KubeSchedulerConfiguration
 profiles:
   - schedulerName: my-scheduler
 leaderElection:
   leaderElect: false
 </code></pre>
-<h4 id="configuring-kubernetes-scheduler">Configuring Kubernetes Scheduler</h4>
+<p>Required RBAC bindings typically include:
+- <code>ServiceAccount</code>: <code>my-scheduler</code> in <code>kube-system</code>
+- <code>ClusterRoleBinding</code>: <code>my-scheduler-as-kube-scheduler</code>
+- <code>ClusterRoleBinding</code>: <code>my-scheduler-as-volume-scheduler</code></p>
+<hr />
+<h2 id="12-topology-spread-constraints">12. Topology Spread Constraints</h2>
+<h3 id="121-failure-domains-even-distribution">12.1 Failure Domains &amp; Even Distribution</h3>
+<p><strong>Topology Spread Constraints</strong> control how Pods are distributed across failure domains (regions, zones, racks, or nodes) to ensure high availability and prevent single-point failures.</p>
+<hr />
+<h3 id="122-core-parameters">12.2 Core Parameters</h3>
 <ul>
-<li>
-<p>We have seen different ways of configuring the scheduler.</p>
-</li>
-<li>
-<p>We saw how to setup scheduler manually and how kubeadm tool does it.</p>
-</li>
-<li>
-<p>We saw how to create additional schedulers and have PODs pick the new scheduler.</p>
-</li>
-<li>
-<p>We also looked at some of the options such as these scheduler name and pod name used while configuring the scheduler.</p>
-</li>
-<li>
-<p>Additional resources</p>
-</li>
+<li><strong><code>maxSkew</code></strong>: Maximum permissible difference in the number of matching Pods between any two topology domains. Must be $&gt; 0$.</li>
+<li><strong><code>topologyKey</code></strong>: Node label key representing the topology domain (e.g., <code>topology.kubernetes.io/zone</code>, <code>kubernetes.io/hostname</code>).</li>
+<li><strong><code>whenUnsatisfiable</code></strong>:</li>
+<li><code>DoNotSchedule</code> (Hard): Prevents scheduling if the skew constraint cannot be satisfied.</li>
+<li><code>ScheduleAnyway</code> (Soft): Schedules the Pod while prioritizing nodes that minimize skew.</li>
+<li><strong><code>labelSelector</code></strong>: Identifies which Pods count toward the domain calculation.</li>
+<li><strong><code>matchLabelKeys</code></strong> (Kubernetes 1.27+): Dynamic Pod label keys used during rolling upgrades to calculate skew across revisions.</li>
 </ul>
 <hr />
-<h3 id="topology-spread-constraints">Topology Spread Constraints</h3>
-<p>Topology Spread Constraints control how Pods are distributed across failure domains such as regions, zones, nodes, and other user-defined topology domains. This achieves high availability and efficient resource utilization.</p>
-<h4 id="core-fields">Core Fields</h4>
-<ul>
-<li><strong><code>maxSkew</code></strong>: The degree to which Pods may be unevenly distributed. Must be greater than zero.</li>
-<li><strong><code>topologyKey</code></strong>: The key of node labels (e.g., <code>topology.kubernetes.io/zone</code>, <code>kubernetes.io/hostname</code>).</li>
-<li><strong><code>whenUnsatisfiable</code></strong>:</li>
-<li><code>DoNotSchedule</code> (hard constraint): The scheduler will not schedule the Pod if it violates the skew.</li>
-<li><code>ScheduleAnyway</code> (soft constraint): The scheduler prioritizes nodes that minimize the skew but still schedules the Pod.</li>
-<li><strong><code>labelSelector</code></strong>: Identifies matching Pods to count across topology domains.</li>
-<li><strong><code>matchLabelKeys</code></strong> (Kubernetes 1.27+): List of Pod label keys to select the values dynamically from current pod (useful for rolling updates).</li>
-</ul>
-<h4 id="topology-spread-manifest">Topology Spread Manifest</h4>
+<h3 id="123-manifest-example">12.3 Manifest Example</h3>
 <pre><code class="language-yaml">apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -759,9 +1004,11 @@ spec:
             memory: 128Mi
 </code></pre>
 <hr />
-<h3 id="priorityclass-pod-preemption">PriorityClass &amp; Pod Preemption</h3>
-<p>If a cluster runs out of compute resources, higher-priority Pods can preempt (evict) lower-priority Pods to free up capacity.</p>
-<h4 id="defining-a-priorityclass">Defining a PriorityClass</h4>
+<h2 id="13-priorityclass-pod-preemption">13. PriorityClass &amp; Pod Preemption</h2>
+<h3 id="131-preemption-mechanism">13.1 Preemption Mechanism</h3>
+<p>When cluster compute resources are exhausted, high-priority Pods can <strong>preempt</strong> (evict) lower-priority Pods to claim required scheduling capacity.</p>
+<hr />
+<h3 id="132-defining-a-priorityclass">13.2 Defining a PriorityClass</h3>
 <pre><code class="language-yaml">apiVersion: scheduling.k8s.io/v1
 kind: PriorityClass
 metadata:
@@ -769,9 +1016,10 @@ metadata:
 value: 1000000
 globalDefault: false
 description: &quot;Mission-critical tier service priority class&quot;
-preemptionPolicy: PreemptLowerPriority # Or 'Never' for non-preempting priority
+preemptionPolicy: PreemptLowerPriority # Or 'Never' for non-preempting queue jumping
 </code></pre>
-<h4 id="assigning-priorityclass-to-a-pod">Assigning PriorityClass to a Pod</h4>
+<hr />
+<h3 id="133-assigning-priorityclass-to-pods">13.3 Assigning PriorityClass to Pods</h3>
 <pre><code class="language-yaml">apiVersion: v1
 kind: Pod
 metadata:
@@ -782,56 +1030,66 @@ spec:
   - name: api
     image: nginx:alpine
 </code></pre>
-<h4 id="key-rules">Key Rules:</h4>
+<hr />
+<h3 id="134-non-preempting-priorities-system-classes">13.4 Non-Preempting Priorities &amp; System Classes</h3>
 <ul>
-<li>Higher <code>value</code> indicates higher priority.</li>
-<li>Built-in system priority classes: <code>system-cluster-critical</code> and <code>system-node-critical</code> (reserved values in billions).</li>
-<li><code>preemptionPolicy: Never</code> allows Pods to jump the scheduling queue without evicting running lower-priority Pods.</li>
+<li><strong><code>preemptionPolicy: Never</code></strong>: Pod advances to the head of the scheduling queue without evicting running lower-priority Pods.</li>
+<li><strong>Built-in System Priorities</strong>:</li>
+<li><code>system-node-critical</code> (<code>value: 2000001000</code>): Used for node-essential daemons (<code>kube-proxy</code>).</li>
+<li><code>system-cluster-critical</code> (<code>value: 2000000000</code>): Used for cluster control plane addons (<code>CoreDNS</code>).</li>
 </ul>
 <hr />
-<h3 id="pod-disruption-budgets-pdb">Pod Disruption Budgets (PDB)</h3>
-<p>A Pod Disruption Budget limits the number of Pods of a replicated application that can be simultaneously down from voluntary disruptions (e.g., <code>kubectl drain</code>, node maintenance, automated cluster autoscaler).</p>
-<h4 id="pdb-specifications">PDB Specifications</h4>
-<p>You can define either <code>minAvailable</code> or <code>maxUnavailable</code> (as an absolute integer or a percentage):</p>
+<h2 id="14-pod-disruption-budgets-pdb">14. Pod Disruption Budgets (PDB)</h2>
+<h3 id="141-voluntary-vs-involuntary-disruptions">14.1 Voluntary vs. Involuntary Disruptions</h3>
+<ul>
+<li><strong>Involuntary Disruptions</strong>: Hardware faults, kernel panics, power failures. (Cannot be prevented by PDB).</li>
+<li><strong>Voluntary Disruptions</strong>: Actions initiated by cluster admins or automated tooling (<code>kubectl drain</code>, node scale-down via Cluster Autoscaler, software upgrades).</li>
+</ul>
+<p>A <strong>PodDisruptionBudget (PDB)</strong> ensures a minimum quorum of healthy replicas remain operational during voluntary disruptions.</p>
+<hr />
+<h3 id="142-pdb-manifest-specifications">14.2 PDB Manifest Specifications</h3>
+<p>Define either <code>minAvailable</code> or <code>maxUnavailable</code> (as an absolute integer or a percentage):</p>
+<h4 id="using-minavailable">Using <code>minAvailable</code></h4>
 <pre><code class="language-yaml">apiVersion: policy/v1
 kind: PodDisruptionBudget
 metadata:
   name: web-pdb
   namespace: default
 spec:
-  minAvailable: 2 # At least 2 pods must stay running during drain
+  minAvailable: 2
   selector:
     matchLabels:
       app: web
 </code></pre>
-<p>Alternatively using <code>maxUnavailable</code>:</p>
+<h4 id="using-maxunavailable">Using <code>maxUnavailable</code></h4>
 <pre><code class="language-yaml">apiVersion: policy/v1
 kind: PodDisruptionBudget
 metadata:
   name: payments-pdb
   namespace: default
 spec:
-  maxUnavailable: &quot;25%&quot; # No more than 25% of replicas may be disrupted
+  maxUnavailable: &quot;25%&quot;
   selector:
     matchLabels:
       app: payments
 </code></pre>
-<h4 id="useful-commands">Useful Commands:</h4>
+<hr />
+<h3 id="143-inspection-and-diagnostic-commands">14.3 Inspection and Diagnostic Commands</h3>
 <pre><code class="language-bash"># List all active Pod Disruption Budgets
 kubectl get pdb -A
 
-# Inspect budget status (allowed disruptions, current healthy, desired healthy)
+# Inspect disruption budget status
 kubectl describe pdb web-pdb
 </code></pre>
 <hr />
-<h3 id="limitrange-container-pod-resource-constraints">LimitRange (Container &amp; Pod Resource Constraints)</h3>
-<p>While a <code>ResourceQuota</code> controls the total resource consumption of an entire namespace, a <strong><code>LimitRange</code></strong> sets boundaries and defaults on individual containers, pods, and PVCs within that namespace.</p>
-<h4 id="core-capabilities">Core Capabilities</h4>
-<ol>
-<li><strong>Default Requests &amp; Limits:</strong> Automatically injected into pods that omit compute specifications by the <code>LimitRanger</code> admission controller.</li>
-<li><strong>Min &amp; Max Bounds:</strong> Sets strict lower and upper bounds on container CPU and memory.</li>
-<li><strong>Burst Ratio (<code>maxLimitRequestRatio</code>):</strong> Caps <code>limit / request</code> ratio to prevent extreme overcommit.</li>
-</ol>
+<h2 id="15-limitrange-namespace-constraints">15. LimitRange (Namespace Constraints)</h2>
+<h3 id="151-namespace-level-resource-governance">15.1 Namespace-Level Resource Governance</h3>
+<p>While <code>ResourceQuota</code> limits the aggregate consumption of an entire namespace, a <strong><code>LimitRange</code></strong> enforces constraints on individual Pods, containers, and PVCs within the namespace:
+1. <strong>Default Requests &amp; Limits</strong>: Injected automatically into containers that omit resource declarations.
+2. <strong>Min &amp; Max Bounds</strong>: Sets lower and upper compute limits per container or pod.
+3. <strong>Max Limit-to-Request Ratio</strong>: Prevents extreme overcommit ratios.</p>
+<hr />
+<h3 id="152-comprehensive-limitrange-manifest">15.2 Comprehensive LimitRange Manifest</h3>
 <pre><code class="language-yaml">apiVersion: v1
 kind: LimitRange
 metadata:
@@ -840,10 +1098,10 @@ metadata:
 spec:
   limits:
   - type: Container
-    default: # Default limit
+    default:
       cpu: 500m
       memory: 512Mi
-    defaultRequest: # Default request
+    defaultRequest:
       cpu: 100m
       memory: 128Mi
     max:
@@ -855,5 +1113,38 @@ spec:
     maxLimitRequestRatio:
       cpu: 4
       memory: 4
-</code></pre></main></body>
+</code></pre>
+<hr />
+<h3 id="153-limitrange-vs-resourcequota">15.3 LimitRange vs. ResourceQuota</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Feature</th>
+<th style="text-align: left;"><code>LimitRange</code></th>
+<th style="text-align: left;"><code>ResourceQuota</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>Enforcement Scope</strong></td>
+<td style="text-align: left;">Per Container / Per Pod / Per PVC</td>
+<td style="text-align: left;">Entire Namespace (Aggregated)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Default Injection</strong></td>
+<td style="text-align: left;">Yes (injects default requests/limits)</td>
+<td style="text-align: left;">No</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Primary Goal</strong></td>
+<td style="text-align: left;">Prevent individual runaway pods &amp; set floors</td>
+<td style="text-align: left;">Cap aggregate compute &amp; storage spend</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Admission Controller</strong></td>
+<td style="text-align: left;"><code>LimitRanger</code></td>
+<td style="text-align: left;"><code>ResourceQuota</code></td>
+</tr>
+</tbody>
+</table></main></body>
 </html>

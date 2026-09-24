@@ -1,73 +1,199 @@
-# scripts/enriched_topics_31_41.py
+#!/usr/bin/env python3
 """
-Enriched technical discussions and perspectives for Topics 31-41.
-Incorporates deep CKA Study Notes, Linux OS/Kernel concepts, bulleted points,
-and production-grade YAML manifests.
+scripts/enrich_workloads_and_rbac.py
+
+Enriches RBAC (Topics 21-27) and Workload Controllers (Topics 32-41)
+with a clear Beginner -> Intermediate -> Advanced pedagogical structure:
+- Beginner: What is it, what problem does it solve, and why does it exist?
+- Intermediate: How it works, primary attributes, specifications, and architecture.
+- Advanced: Controller reconciliation loops, kernel/OS integration, edge cases, and failure modes.
 """
 
-ENRICHED_31_41 = {
-    31: {
-        "tech_disc": """**Garbage Collection** in Kubernetes is the automated background system responsible for detecting and deleting orphaned objects whose controlling parent resource no longer exists, ensuring cluster state remains clean and leak-free.
+import re
 
-### What is Garbage Collection & Why Does It Exist? (Beginner)
-In Kubernetes, higher-level controllers manage lower-level objects. For example, when you deploy an application, a `Deployment` creates a `ReplicaSet`, and that `ReplicaSet` creates multiple `Pods`.
-What happens when you delete the `Deployment`? Without garbage collection, the underlying ReplicaSet and Pods would continue running forever as 'zombies' — consuming physical memory and CPU on worker nodes without any parent managing them.
-Kubernetes solves this through automated ownership tracking: child resources maintain a cryptographic link back to their parent. When the parent is deleted, the Garbage Collector automatically traces the tree and deletes all child resources.
+# ==============================================================================
+# TOPIC 21: PersistentVolumeClaim (PVC)
+# ==============================================================================
+T21_TECH = """A **PersistentVolumeClaim (PVC)** is a user's formal request for storage in a specific namespace. It allows developers to consume storage abstractly without needing to understand the underlying physical storage infrastructure (SAN, cloud disks, NFS).
 
-### Object Ownership & The Dependency Graph (Intermediate)
-Kubernetes models the entire cluster's resources as a Directed Acyclic Graph (DAG) of ownership.
-Child objects declare their parent controller via the `metadata.ownerReferences` field:
-- **`apiVersion` & `kind`:** The API group and type of the owner (e.g., `apps/v1`, `ReplicaSet`).
-- **`name`:** The string name of the owning object.
-- **`uid`:** The unique UUID of the owner instance. This prevents accidental adoption if a parent is deleted and a new one with the exact same name is created.
-- **`controller: true`:** Identifies which owner actively manages this child (an object can have multiple owners, but only one managing controller).
-- **`blockOwnerDeletion: true`:** Ensures the parent cannot be fully removed from the cluster until this child has been safely deleted.
+### What is a PVC & Why Does It Exist? (Beginner)
+In traditional enterprise IT, when a software developer needed storage for a database, they had to open a ticket with the storage team specifying LUN numbers, IOPS, RAID arrays, and SAN WWNs.
+Kubernetes separates storage responsibilities into two distinct roles:
+1. **The Cluster Administrator:** Provisions and configures physical storage pools (PersistentVolumes or StorageClasses).
+2. **The Application Developer:** Simply requests what their application needs using a **PersistentVolumeClaim** ("I need 20 GiB of ReadWriteOnce storage").
 
-### Deletion Propagation & The Garbage Collector Controller (Advanced)
-When deleting an object (`kubectl delete deployment <name>`), Kubernetes supports three distinct **Deletion Propagation Policies** governed by finalizers:
-1. **`Background` (Default in most APIs):**
-   - The API server deletes the parent object immediately.
-   - The Garbage Collector controller running in `kube-controller-manager` discovers the orphaned children in the background and deletes them asynchronously.
-2. **`Foreground` (`--cascade=foreground`):**
-   - The parent object enters a `Terminating` state and receives the `foregroundDeletion` finalizer.
-   - The parent remains visible in the cluster until every child object marked with `blockOwnerDeletion: true` is completely deleted.
-   - Once all children are gone, the Garbage Collector removes the finalizer, and the parent is purged.
-3. **`Orphan` (`--cascade=orphan`):**
-   - The parent object is deleted, but the Garbage Collector explicitly strips the `ownerReferences` from all child objects.
-   - The child Pods continue running independently as standalone, unmanaged workloads.
+The developer doesn't need to know whether the storage is an AWS EBS volume, a NetApp filer, or a local SSD. The cluster automatically finds a matching PersistentVolume and binds it to the claim.
+
+### 1-to-1 Binding Mechanics (Intermediate)
+The control plane's persistent volume controller continuously watches for unbound PVCs and attempts to pair them with suitable PVs:
+- **Matching Criteria:**
+  1. `storageClassName`: Must match the PV's StorageClass.
+  2. `accessModes`: The PV must support the claim's required access mode (`ReadWriteOnce`, `ReadWriteMany`, `ReadOnlyMany`).
+  3. `capacity`: The PV capacity must be **greater than or equal to** the requested size in the PVC.
+- **Strict 1-to-1 Exclusivity:** Even if a PV has 100Gi and a PVC requests only 10Gi, once bound, that PV is completely dedicated to that single claim. No other PVC can attach to the remaining 90Gi.
+- **PVC Phase Transitions:**
+  - `Pending`: No matching PV currently exists, or waiting for a consumer pod to be scheduled.
+  - `Bound`: Successfully paired with a volume.
+  - `Lost`: The bound PV was deleted or permanently disconnected.
+
+### Workload Consumption & Mount Mechanics (Advanced)
+From the container's perspective, storage must appear as a standard local folder. The kubelet bridges the cluster storage abstraction to the container using Linux mount namespace mechanics:
+- Pods mount storage by referencing the PVC name under `spec.volumes[*].persistentVolumeClaim.claimName`.
+- When the pod is scheduled on a worker node, the kubelet instructs the CSI driver to attach and format the disk, then uses a Linux **bind mount** to inject the volume directory directly into the container's mount namespace (`mnt`) at the declared `mountPath`.
+- **In-Use Protection:** Kubernetes applies the `kubernetes.io/pvc-protection` finalizer. If an operator attempts to delete an active PVC currently mounted by a running Pod, the deletion is deferred until the Pod terminates, preventing sudden filesystem corruption.
 
 ```yaml
-# pod-with-owner-reference.yaml
-# WHY THIS YAML: The ownerReference field is the Garbage Collector's dependency graph.
-# 'ownerReferences.apiVersion/kind/name/uid': links this Pod to a specific ReplicaSet.
-#   The uid is unique per object instance -- not just per name -- preventing stale refs.
-# 'controller: true': marks this as the controlling owner (only one allowed per object).
-# 'blockOwnerDeletion: true': Pod must be deleted before the owning ReplicaSet finalizes.
-# When a Deployment is deleted, GC traces: Deployment -> ReplicaSet -> Pods, deleting each.
-# Without ownerReferences, orphaned Pods keep running indefinitely after parent deletion.
+# pvc-workload-claim.yaml
+# WHY THIS YAML: Shows the full PVC consumption lifecycle in one manifest.
+# PVC 'accessModes: ReadWriteOnce': binds only to PVs supporting single-node mounting.
+# PVC 'resources.requests.storage: 20Gi': minimum capacity required for binding.
+# Pod 'persistentVolumeClaim.claimName: database-storage': Pod references PVC by name;
+#   kubelet instructs the CSI driver to mount the volume at mountPath.
+# The PVC remains bound even if the Pod is deleted -- data persists across Pod restarts.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: database-storage
+  namespace: data-tier
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 20Gi
+  storageClassName: standard
+---
 apiVersion: v1
 kind: Pod
 metadata:
-  name: managed-worker-pod
-  ownerReferences:
-  - apiVersion: apps/v1
-    kind: ReplicaSet
-    name: frontend-rs-v1
-    uid: d4b3c2a1-0000-1111-2222-333344445555
-    controller: true
-    blockOwnerDeletion: true
+  name: database-server
+  namespace: data-tier
 spec:
   containers:
-  - name: worker
+  - name: postgres
     image: registry.k8s.io/pause:3.9
-```""",
-        "tech_persp": """Cascading deletion control is essential when replacing parent controllers:
-- **CLI Propagation Options:** `kubectl delete deployment <name> --cascade=orphan` deletes the Deployment object while leaving the underlying Pods running without disruption.
-- **Dangling Resources:** If an operator manually edits a Pod and deletes its `ownerReferences`, higher-level workload rollouts and autoscalers lose track of the Pod, causing silent replica drift and orphaned resource consumption."""
-    },
+    volumeMounts:
+    - name: data
+      mountPath: /var/lib/postgresql/data
+  volumes:
+  - name: data
+    persistentVolumeClaim:
+      claimName: database-storage
+```"""
 
-    32: {
-        "tech_disc": """A **ReplicaSet** is a core Kubernetes workload controller whose single responsibility is to maintain a stable, declared population of identical Pod replicas running at all times.
+# ==============================================================================
+# TOPIC 22: StorageClass
+# ==============================================================================
+T22_TECH = """A **StorageClass** provides dynamic, on-demand storage provisioning for Kubernetes clusters, completely eliminating the need for cluster administrators to manually pre-provision static PersistentVolumes.
+
+### What is a StorageClass & Why Does It Exist? (Beginner)
+In early Kubernetes environments, storage provisioning was purely manual (static provisioning):
+- If a developer needed a 20Gi PVC, an administrator had to first manually log into AWS, create an EBS volume, write a 30-line `PersistentVolume` YAML manifest, and submit it to the cluster before the developer's claim could bind.
+- If 100 microservices needed databases, administrators had to pre-create hundreds of disks ahead of time, guessing sizes and wasting money on idle volumes.
+
+A **StorageClass** automates this by acting as a dynamic disk factory:
+- The administrator creates a single StorageClass definition (e.g., `fast-ssd`).
+- When a developer submits a PVC requesting `storageClassName: fast-ssd`, Kubernetes automatically communicates with the cloud provider (AWS, GCP, Azure, or SAN) to manufacture the physical disk in real time.
+- As soon as the cloud disk is created, Kubernetes creates the PV and binds it to the PVC automatically — zero administrator tickets required.
+
+### Key Architectural Parameters (Intermediate)
+- **`provisioner`:** The CSI plugin driver responsible for communicating with cloud or storage APIs (e.g., `ebs.csi.aws.com`, `pd.csi.storage.gke.io`).
+- **`volumeBindingMode`:**
+  - `Immediate` (Default): The PV is provisioned dynamically as soon as the PVC is submitted. (Warning: risks provisioning storage in an Availability Zone where no compute capacity exists).
+  - `WaitForFirstConsumer`: Delays volume creation and binding until a Pod using the claim is scheduled. Guarantees that the storage volume is provisioned in the exact same Availability Zone / topology domain as the scheduled worker node.
+- **`allowVolumeExpansion`:** Enables online filesystem expansion without restarting workloads (`true`).
+- **`reclaimPolicy`:** Sets whether dynamically provisioned volumes are `Delete` (cloud disk deleted with PVC) or `Retain` (cloud disk preserved).
+- **`parameters`:** Vendor-specific configurations passed to the storage engine (e.g., IOPS, disk type `gp3`, disk encryption keys).
+
+### Dynamic Provisioning Lifecycle & CSI Controllers (Advanced)
+1. **The Claim Watch:** The CSI `external-provisioner` sidecar watches the API server for newly submitted PVCs referencing its StorageClass.
+2. **Topology Discovery:** When `volumeBindingMode: WaitForFirstConsumer` is active, the scheduler selects a node first, passing the node's zone labels (`topology.kubernetes.io/zone=us-east-1a`) to the provisioner.
+3. **RPC Volume Creation:** The provisioner issues a gRPC `CreateVolume` call to the cloud vendor's API, requesting an encrypted volume in that specific zone.
+4. **Automatic Object Construction:** Upon receiving the cloud disk ID, the provisioner constructs a corresponding `PersistentVolume` object in etcd with matching capacity and access modes, instantly transitioning the developer's PVC to `Bound`.
+
+```yaml
+# dynamic-storage-class.yaml
+# WHY THIS YAML: This StorageClass drives the dynamic provisioning workflow.
+# 'provisioner: ebs.csi.aws.com': the CSI plugin receiving CreateVolume gRPC calls
+#   when a PVC referencing this class is created -- calls the AWS EBS API.
+# 'volumeBindingMode: WaitForFirstConsumer': provisioning DELAYED until a Pod is scheduled.
+#   Ensures the EBS volume is created in the same AZ as the node -- avoids AZ failures.
+# 'allowVolumeExpansion: true': operators can increase PVC size post-creation; no migration.
+# 'reclaimPolicy: Delete': PVC deletion automatically destroys the EBS volume.
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: fast-nvme-sc
+provisioner: ebs.csi.aws.com
+volumeBindingMode: WaitForFirstConsumer
+allowVolumeExpansion: true
+reclaimPolicy: Delete
+parameters:
+  type: gp3
+  iops: "3000"
+  throughput: "125"
+  encrypted: "true"
+```"""
+
+# ==============================================================================
+# TOPIC 23: Role
+# ==============================================================================
+T23_TECH = """A **Role** is a namespaced Role-Based Access Control (RBAC) resource that defines a discrete set of additive permissions within a single Kubernetes namespace.
+
+### What is an RBAC Role & Why Does It Exist? (Beginner)
+Without access controls, anyone with access to the cluster could run `kubectl delete pods --all` and destroy production.
+In Kubernetes, **access is denied by default**. A **Role** is how administrators declare what actions are permitted within a specific project or environment.
+Think of a Role as an unassigned job description:
+- It defines what tasks are allowed (e.g., "can view pods and read logs, but cannot delete anything").
+- Crucially, a Role grants permissions to *nobody* by itself. It is purely a policy definition waiting to be bound to a person or service account using a `RoleBinding`.
+
+### Anatomy of RBAC Policy Rules (Intermediate)
+A Role contains an array of `rules`. Every rule evaluates three dimensions:
+1. **`apiGroups`:** Which API group contains the resource.
+   - Core resources (`pods`, `services`, `configmaps`, `secrets`) belong to the empty group `""`.
+   - Workload controllers (`deployments`, `statefulsets`) belong to `"apps"`.
+   - Batch workloads (`jobs`, `cronjobs`) belong to `"batch"`.
+2. **`resources`:** The specific target objects (`pods`, `services`, `deployments`).
+   - Subresources are targeted using slashes (e.g., `pods/log`, `pods/exec`, `pods/status`).
+   - `resourceNames` (optional): Restricts the rule to specific named objects (e.g., only the Secret named `db-credentials`).
+3. **`verbs`:** The allowed operations:
+   - Read operations: `get` (single object), `list` (collection), `watch` (stream changes).
+   - Write operations: `create`, `update` (replace), `patch` (partial update), `delete`, `deletecollection`.
+
+### Namespace Scope & Security Boundaries (Advanced)
+- **Strict Namespace Scoping:** A `Role` exists inside a single namespace and can *never* grant access to resources in other namespaces or cluster-scoped objects (like Nodes or PVs).
+- **Additive Security Model:** Rules can only grant permissions; there is no "deny" verb in Kubernetes RBAC. If multiple roles apply to a user, their permissions are combined (union).
+- **Privilege Escalation Prevention:** Kubernetes enforces that a user cannot create or update a Role containing permissions that the user does not already possess themselves, preventing developers from granting themselves superuser access.
+
+```yaml
+# namespaced-developer-role.yaml
+# WHY THIS YAML: A Role defines the permission boundary within a single Namespace.
+# 'namespace: development': Role ONLY applies to this namespace -- cannot grant cross-namespace access.
+# 'resources: ["pods", "pods/log"]': access to Pod objects AND their log subresource.
+#   Without 'pods/log', kubectl logs is denied even with pod get permissions.
+# 'verbs: ["get", "list", "watch"]': read-only access -- satisfies least-privilege.
+# This Role has ZERO effect until a RoleBinding attaches it to a subject.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: pod-operator
+  namespace: development
+rules:
+- apiGroups: [""]
+  resources: ["pods", "pods/log"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: [""]
+  resources: ["pods/exec"]
+  verbs: ["create"]
+- apiGroups: ["apps"]
+  resources: ["deployments"]
+  verbs: ["get", "list", "patch"]
+```"""
+
+# ==============================================================================
+# TOPIC 32: ReplicaSet
+# ==============================================================================
+T32_TECH = """A **ReplicaSet** is a core Kubernetes workload controller whose single responsibility is to maintain a stable, declared population of identical Pod replicas running at all times.
 
 ### What is a ReplicaSet & Why Does It Exist? (Beginner)
 If you deploy a single standalone Pod directly (`kubectl run my-app`), and that Pod's process crashes or its worker node suffers a hardware failure, **the Pod is dead forever**. Kubernetes will not restart or reschedule a bare Pod.
@@ -130,14 +256,12 @@ spec:
       containers:
       - name: api
         image: registry.k8s.io/pause:3.9
-```""",
-        "tech_persp": """ReplicaSets are rarely deployed directly in production; instead, they are managed via higher-level Deployments:
-- **Label Selector Overlap Hazards:** If two different ReplicaSets define overlapping label selectors, they will enter a violent reconciliation loop, continuously creating and terminating each other's Pods in an infinite fight for target count.
-- **CKA Deployment Rollback Internals:** Every Deployment revision creates a new underlying ReplicaSet. Rolling back a Deployment (`kubectl rollout undo`) simply scales the target historical ReplicaSet back up and the current ReplicaSet down to 0."""
-    },
+```"""
 
-    33: {
-        "tech_disc": """A **Deployment** is the standard, production-grade workload primitive in Kubernetes for stateless applications. It provides declarative updates, zero-downtime rolling releases, automated rollbacks, and replica scaling.
+# ==============================================================================
+# TOPIC 33: Deployment
+# ==============================================================================
+T33_TECH = """A **Deployment** is the standard, production-grade workload primitive in Kubernetes for stateless applications. It provides declarative updates, zero-downtime rolling releases, automated rollbacks, and replica scaling.
 
 ### What is a Deployment & Why Does It Exist? (Beginner)
 A ReplicaSet is great at keeping 5 copies of an application running. But what happens when you release version 2.0 of your software?
@@ -213,14 +337,12 @@ spec:
             port: 80
           initialDelaySeconds: 5
           periodSeconds: 5
-```""",
-        "tech_persp": """Deployments require proper readiness probes to safely execute rolling updates:
-- **The Broken Image Trap:** If a new container image is pushed with a fatal startup bug and no `readinessProbe` is configured, Kubernetes considers the container "Ready" as soon as the process starts, immediately terminating all healthy old replicas and causing a complete outage!
-- **`maxUnavailable: 0` Requirement:** For critical services, pairing `maxUnavailable: 0` with thorough readiness probes guarantees that an unhealthy rollout stalls automatically without killing a single active serving pod."""
-    },
+```"""
 
-    34: {
-        "tech_disc": """A **StatefulSet** is the specialized workload controller in Kubernetes designed to manage stateful applications — such as databases, distributed consensus systems, and message brokers (Kafka, MongoDB, Cassandra, PostgreSQL, ZooKeeper) — that require unique identities and persistent storage per replica.
+# ==============================================================================
+# TOPIC 34: StatefulSet
+# ==============================================================================
+T34_TECH = """A **StatefulSet** is the specialized workload controller in Kubernetes designed to manage stateful applications — such as databases, distributed consensus systems, and message brokers (Kafka, MongoDB, Cassandra, PostgreSQL, ZooKeeper) — that require unique identities and persistent storage per replica.
 
 ### What is a StatefulSet & Why Does It Exist? (Beginner)
 Standard Deployments treat Pods as **completely interchangeable and fungible** (like cattle):
@@ -289,14 +411,12 @@ spec:
       resources:
         requests:
           storage: 10Gi
-```""",
-        "tech_persp": """StatefulSets protect against split-brain scenarios:
-- **Volume Retention on Scale-Down:** When a StatefulSet is scaled down (e.g., from 3 to 2), the associated PVC (`data-db-cluster-2`) is **not deleted**. This prevents catastrophic accidental data loss.
-- **At-Most-One-Pod Guarantee:** In network partitions, Kubernetes will never create a replacement stateful pod until the previous pod is confirmed terminated. Deleting a partitioned stateful pod with `--force --grace-period=0` can cause dual writes and data corruption if the old node is still alive!"""
-    },
+```"""
 
-    35: {
-        "tech_disc": """A **DaemonSet** is a workload controller that guarantees that all (or a selected subset of) worker nodes in the cluster run exactly one copy of a specific Pod.
+# ==============================================================================
+# TOPIC 35: DaemonSet
+# ==============================================================================
+T35_TECH = """A **DaemonSet** is a workload controller that guarantees that all (or a selected subset of) worker nodes in the cluster run exactly one copy of a specific Pod.
 
 ### What is a DaemonSet & Why Does It Exist? (Beginner)
 A standard Deployment places pods wherever there is available CPU and RAM. If you have 10 nodes and a Deployment with 3 replicas, Kubernetes might place 2 pods on Node 1, 1 pod on Node 2, and leave the other 8 nodes empty.
@@ -358,14 +478,12 @@ spec:
           requests:
             cpu: 50m
             memory: 64Mi
-```""",
-        "tech_persp": """DaemonSets require strict resource sizing:
-- **Node Sizing Footprint:** Because DaemonSets run on every node, their resource requests multiply linearly across the entire cluster. 10 DaemonSets requesting 200m CPU each will consume 2 full CPU cores on every single node before any application workload is scheduled.
-- **Rolling Update Strategy:** Configured via `updateStrategy.type: RollingUpdate` (with optional `maxUnavailable`) or `OnDelete` (updates only when the old pod is manually killed)."""
-    },
+```"""
 
-    36: {
-        "tech_disc": """A **Job** is a workload controller in Kubernetes that creates one or more Pods and tracks them to successful completion (process exit code 0), stopping when the required number of tasks finish.
+# ==============================================================================
+# TOPIC 36: Job
+# ==============================================================================
+T36_TECH = """A **Job** is a workload controller in Kubernetes that creates one or more Pods and tracks them to successful completion (process exit code 0), stopping when the required number of tasks finish.
 
 ### What is a Job & Why Does It Exist? (Beginner)
 Controllers like Deployments, ReplicaSets, and DaemonSets are designed for **long-running continuous services** (web servers, APIs, caching daemons):
@@ -416,14 +534,12 @@ spec:
       containers:
       - name: worker
         image: registry.k8s.io/pause:3.9
-```""",
-        "tech_persp": """Batch processing requires lifecycle cleanup planning:
-- **Completed Pod Garbage Collection:** Completed Job pods remain in the cluster in phase `Completed` so operators can inspect logs (`kubectl logs`). Use `ttlSecondsAfterFinished: 300` to automatically delete completed Job records and prevent etcd object accumulation.
-- **Pod Cleanup on Failure:** If a Job fails and uses `restartPolicy: Never`, multiple failed Pod objects will clutter the namespace until the Job is deleted."""
-    },
+```"""
 
-    37: {
-        "tech_disc": """A **CronJob** runs Jobs on a recurring, automated time-based schedule using standard UNIX cron expressions (`minute hour day-of-month month day-of-week`).
+# ==============================================================================
+# TOPIC 37: CronJob
+# ==============================================================================
+T37_TECH = """A **CronJob** runs Jobs on a recurring, automated time-based schedule using standard UNIX cron expressions (`minute hour day-of-month month day-of-week`).
 
 ### What is a CronJob & Why Does It Exist? (Beginner)
 A standard Job runs once when you apply it to the cluster. But in production systems, many critical maintenance tasks must repeat on an automated schedule:
@@ -483,70 +599,12 @@ spec:
           containers:
           - name: backup-agent
             image: registry.k8s.io/pause:3.9
-```""",
-        "tech_persp": """CronJob time scheduling depends on control plane timezone configuration:
-- **Timezone Awareness:** In Kubernetes 1.27+, CronJobs support explicit timezone specifications (`spec.timeZone: "America/New_York"`). By default, all CronJobs evaluate against the UTC system clock of `kube-controller-manager`.
-- **`concurrencyPolicy: Forbid` Sizing:** Long-running cron tasks with short schedules (e.g., every 5 minutes) must use `concurrencyPolicy: Forbid` to prevent runaway compute resource exhaustion if an execution experiences transient delays."""
-    },
+```"""
 
-    38: {
-        "tech_disc": """The **ReplicationController** was the original workload supervisor in Kubernetes v1.0. It introduced the core principle of declarative container supervision, ensuring that a specified number of identical Pod replicas remain running at all times. While now superseded by `ReplicaSets` and `Deployments`, understanding it illuminates why modern Kubernetes controllers were designed the way they are.
-
-### What was a ReplicationController & Why Did It Exist? (Beginner)
-In the earliest days of container operations, if a container crashed, the host system might restart it (using Docker's local restart policy). But if the *entire physical server* crashed or lost power, all containers running on that server were permanently dead until human operators stepped in.
-The ReplicationController revolutionized this by shifting responsibility from the local server to the cluster control plane:
-- You declare: "I want 3 replicas of my web app."
-- If Node 1 dies taking down replica #1, the ReplicationController detects that only 2 replicas exist across the cluster, and automatically tells the scheduler to launch a 3rd replica on Node 2.
-- It was the first true self-healing workload mechanism in Kubernetes.
-
-### Key Architectural Limitations & Why It Was Retired (Intermediate)
-While revolutionary, the ReplicationController had two major architectural limitations that led to its obsolescence:
-1. **Equality-Based Selectors Only:**
-   A ReplicationController can only select Pods using strict equality: `app = frontend` or `tier = cache`. It cannot express complex set-based queries such as:
-   - "Match pods where environment is either `production` OR `staging`" (`environment in (production, staging)`).
-   - "Match pods that have a release label, regardless of value" (`release exists`).
-   This limitation made multi-tier canary deployments and complex label groupings unwieldy.
-2. **No Built-in Rolling Update Orchestration:**
-   The ReplicationController had no native concept of application versioning, canary releases, or rollbacks. Upgrades required client-side tooling (`kubectl rolling-update`) that sent hundreds of individual imperative API commands over the network. If the administrator's laptop battery died or network disconnected midway through the rollout, the cluster was left in a half-deployed, corrupted state.
-
-### Evolution to ReplicaSet & Deployment (Advanced)
-To solve these fundamental limitations, the Kubernetes community split workload management into two cleaner, modular tiers:
-1. **`ReplicaSet` (`apps/v1`):** The direct successor to ReplicationController. It provides the same core replica-guarantee loop, but adds powerful **Set-Based Selectors** (`matchExpressions` with `In`, `NotIn`, and `Exists`).
-2. **`Deployment` (`apps/v1`):** A higher-level controller that manages ReplicaSets. The Deployment controller runs *server-side* on the control plane, orchestrating zero-downtime rolling updates, canary rollouts, and instant rollbacks with full revision history.
-- **Migration Path:** You can seamlessly replace a legacy `ReplicationController` with a `Deployment` by ensuring the label selectors match. The new Deployment will automatically adopt the existing running Pods without terminating or restarting them.
-
-```yaml
-# legacy-replication-controller.yaml
-# WHY THIS YAML: Historical reference only -- do NOT use in new deployments.
-# 'selector: app: legacy-app': only supports equality-based selectors (key=value).
-#   Cannot express 'app in [v1, v2]' or 'env != prod' -- ReplicaSet can.
-# NO 'strategy' field: ReplicationController has no rolling update support.
-#   Updates require manual Pod deletion or blue/green swap -- Deployment automates this.
-# Migration: delete RC, create Deployment with same selector -- it adopts existing Pods.
-apiVersion: v1
-kind: ReplicationController
-metadata:
-  name: legacy-frontend
-spec:
-  replicas: 3
-  selector:
-    app: legacy-app
-  template:
-    metadata:
-      labels:
-        app: legacy-app
-    spec:
-      containers:
-      - name: web
-        image: registry.k8s.io/pause:3.9
-```""",
-        "tech_persp": """CKA Exam & Migration Insight:
-- Modern Kubernetes best practices strictly mandate using **Deployments** for all stateless workloads. Never author new ReplicationController manifests in modern environments.
-- Migrating from ReplicationController to Deployment requires deleting the ReplicationController with `--cascade=orphan` and creating a Deployment matching the existing pod labels to adopt the running pods without downtime."""
-    },
-
-    39: {
-        "tech_disc": r"""The **HorizontalPodAutoscaler (HPA)** automatically scales the number of Pod replicas in a Deployment, ReplicaSet, or StatefulSet up or down in response to observed CPU utilization, memory consumption, or custom application metrics.
+# ==============================================================================
+# TOPIC 39: HorizontalPodAutoscaler (HPA)
+# ==============================================================================
+T39_TECH = """The **HorizontalPodAutoscaler (HPA)** automatically scales the number of Pod replicas in a Deployment, ReplicaSet, or StatefulSet up or down in response to observed CPU utilization, memory consumption, or custom application metrics.
 
 ### What is HPA & Why Does It Exist? (Beginner)
 Application traffic in real-world systems is rarely static:
@@ -562,8 +620,8 @@ The **HorizontalPodAutoscaler** solves this by automating capacity management:
 ### The Autoscaling Algorithm & Metrics (Intermediate)
 The HPA controller queries the `metrics.k8s.io` API (provided by Metrics Server) every 15 seconds (default `--horizontal-pod-autoscaler-sync-period`).
 1. **The Scaling Formula:**
-   $$\text{Desired Replicas} = \left\lceil \text{Current Replicas} \times \left( \frac{\text{Current Metric Value}}{\text{Target Metric Value}} \right) \right\rceil$$
-   *Example:* If you have 2 replicas running at 90% CPU and your target is 60%: $\lceil 2 \times (90 / 60) \rceil = 3$ replicas.
+   $$\\text{Desired Replicas} = \\left\\lceil \\text{Current Replicas} \\times \\left( \\frac{\\text{Current Metric Value}}{\\text{Target Metric Value}} \\right) \\right\\rceil$$
+   *Example:* If you have 2 replicas running at 90% CPU and your target is 60%: $\\lceil 2 \\times (90 / 60) \\rceil = 3$ replicas.
 2. **Metric Types (`autoscaling/v2`):**
    - **Resource Metrics:** Built-in container metrics (`cpu`, `memory`).
    - **Custom Metrics:** Application-specific metrics from Prometheus (e.g., HTTP requests per second, queue depth).
@@ -611,63 +669,12 @@ spec:
       - type: Percent
         value: 10
         periodSeconds: 60
-```""",
-        "tech_persp": """HPA requires explicit resource requests on every target container:
-- **The Missing Requests Pitfall:** If a container does not declare `resources.requests.cpu`, HPA cannot compute percentage utilization! The HPA status will show `unknown / 60%`, and autoscaling will fail to trigger.
-- **Metrics Server Dependency:** HPA requires `metrics-server` running in `kube-system`. Verify with `kubectl top pods` and `kubectl top nodes` before enabling HPA."""
-    },
+```"""
 
-    40: {
-        "tech_disc": """The **VerticalPodAutoscaler (VPA)** automatically right-sizes container CPU and memory requests and limits based on historical resource consumption patterns, avoiding manual guesswork in capacity planning.
-
-### Architecture & Components
-1. **VPA Recommender:** Queries historical usage from metrics-server / Prometheus and computes recommendations (`lowerBound`, `target`, `uncappedTarget`, `upperBound`).
-2. **VPA Updater:** In `Auto` mode, identifies pods running with outdated resource specs and evicts them to trigger replacement.
-3. **VPA Admission Controller:** A Mutating Admission Webhook that intercepts pod creation requests and injects the updated resource requests into the PodSpec before it is persisted to etcd.
-
-### Operating Modes
-- **`Off`:** Computes recommendations without modifying pods (ideal for cost audits).
-- **`Initial`:** Injects recommendations only at pod creation time; never evicts running pods.
-- **`Auto`:** Actively evicts and recreates running pods to apply updated resource values.
-
-```yaml
-# vpa-auto-spec.yaml
-# WHY THIS YAML: VPA's update mode determines how recommendations are applied.
-# 'updateMode: Auto': VPA evicts and recreates Pods with updated resource requests.
-#   In-place resize (no eviction) requires K8s 1.27+ InPlacePodVerticalScaling feature.
-# 'containerPolicies.minAllowed.cpu: 100m / maxAllowed.cpu: "4"': VPA recommendations
-#   are bounded -- never below 100m (starvation floor) or above 4 CPU (cost ceiling).
-# VPA Recommender samples CPU/memory usage over history (default 8 days) and computes
-#   p50 recommendations for requests and p95 for limits.
-# WARNING: VPA and HPA targeting the same metric on the same Deployment WILL conflict.
-apiVersion: autoscaling.k8s.io/v1
-kind: VerticalPodAutoscaler
-metadata:
-  name: api-right-sizer
-spec:
-  targetRef:
-    apiVersion: "apps/v1"
-    kind: Deployment
-    name: core-api
-  updatePolicy:
-    updateMode: "Auto"
-  resourcePolicy:
-    containerPolicies:
-    - containerName: '*'
-      minAllowed:
-        cpu: 100m
-        memory: 128Mi
-      maxAllowed:
-        cpu: 2
-        memory: 4Gi
-```""",
-        "tech_persp": """VPA and HPA must be coordinated carefully:
-- **VPA + HPA Conflict Hazard:** Do NOT use VPA and HPA simultaneously on the same metric (e.g., both targeting CPU utilization). HPA will add pods to lower CPU usage, while VPA will downscale pod CPU requests, creating destructive feedback loops.
-- **Disruption Planning:** In `Auto` mode, VPA evicts running pods to resize them. Always combine VPA with `PodDisruptionBudgets` and multi-replica Deployments to prevent downtime during vertical resizing."""
-    },
-
-    41: {
-        "tech_disc": """A **PodDisruptionBudget (PDB)** limits the number of concurrent voluntary disruptions that an application's Pods can suffer during cluster maintenance operations, safeguarding high availability.
+# ==============================================================================
+# TOPIC 41: PodDisruptionBudget (PDB)
+# ==============================================================================
+T41_TECH = """A **PodDisruptionBudget (PDB)** limits the number of concurrent voluntary disruptions that an application's Pods can suffer during cluster maintenance operations, safeguarding high availability.
 
 ### Voluntary vs. Involuntary Disruptions (Beginner)
 In a Kubernetes cluster, workloads face two completely different categories of disruption:
@@ -727,9 +734,33 @@ spec:
   selector:
     matchLabels:
       app: critical-api
-```""",
-        "tech_persp": """PDBs safeguard high availability during automated platform maintenance:
-- **Voluntary vs. Involuntary Disruptions:** PDBs protect ONLY against **voluntary** disruptions (`kubectl drain`, node scale-down). They CANNOT prevent **involuntary** disruptions (hardware crashes, kernel panics, OOMKilled events, network cuts).
-- **Drain Deadlocks:** A PDB requiring `minAvailable: 100%` or `maxUnavailable: 0` will permanently block `kubectl drain`, preventing cluster upgrades until an administrator intervenes."""
-    }
-}
+```"""
+
+def apply_all():
+    # 1. enriched_topics_21_30.py (Topics 21, 22, 23)
+    with open("scripts/enriched_topics_21_30.py", "r", encoding="utf-8") as f:
+        c21_30 = f.read()
+    c21_30 = re.sub(r'(21:\s*{\s*"tech_disc":\s*""").*?("""\s*,\s*"tech_persp")', r'\g<1>' + T21_TECH.replace('\\', '\\\\') + r'\g<2>', c21_30, flags=re.S)
+    c21_30 = re.sub(r'(22:\s*{\s*"tech_disc":\s*""").*?("""\s*,\s*"tech_persp")', r'\g<1>' + T22_TECH.replace('\\', '\\\\') + r'\g<2>', c21_30, flags=re.S)
+    c21_30 = re.sub(r'(23:\s*{\s*"tech_disc":\s*""").*?("""\s*,\s*"tech_persp")', r'\g<1>' + T23_TECH.replace('\\', '\\\\') + r'\g<2>', c21_30, flags=re.S)
+    with open("scripts/enriched_topics_21_30.py", "w", encoding="utf-8") as f:
+        f.write(c21_30)
+    print("Updated enriched_topics_21_30.py (Topics 21, 22, 23)")
+
+    # 2. enriched_topics_31_41.py (Topics 32, 33, 34, 35, 36, 37, 39, 41)
+    with open("scripts/enriched_topics_31_41.py", "r", encoding="utf-8") as f:
+        c31_41 = f.read()
+    c31_41 = re.sub(r'(32:\s*{\s*"tech_disc":\s*""").*?("""\s*,\s*"tech_persp")', r'\g<1>' + T32_TECH.replace('\\', '\\\\') + r'\g<2>', c31_41, flags=re.S)
+    c31_41 = re.sub(r'(33:\s*{\s*"tech_disc":\s*""").*?("""\s*,\s*"tech_persp")', r'\g<1>' + T33_TECH.replace('\\', '\\\\') + r'\g<2>', c31_41, flags=re.S)
+    c31_41 = re.sub(r'(34:\s*{\s*"tech_disc":\s*""").*?("""\s*,\s*"tech_persp")', r'\g<1>' + T34_TECH.replace('\\', '\\\\') + r'\g<2>', c31_41, flags=re.S)
+    c31_41 = re.sub(r'(35:\s*{\s*"tech_disc":\s*""").*?("""\s*,\s*"tech_persp")', r'\g<1>' + T35_TECH.replace('\\', '\\\\') + r'\g<2>', c31_41, flags=re.S)
+    c31_41 = re.sub(r'(36:\s*{\s*"tech_disc":\s*""").*?("""\s*,\s*"tech_persp")', r'\g<1>' + T36_TECH.replace('\\', '\\\\') + r'\g<2>', c31_41, flags=re.S)
+    c31_41 = re.sub(r'(37:\s*{\s*"tech_disc":\s*""").*?("""\s*,\s*"tech_persp")', r'\g<1>' + T37_TECH.replace('\\', '\\\\') + r'\g<2>', c31_41, flags=re.S)
+    c31_41 = re.sub(r'(39:\s*{\s*"tech_disc":\s*""").*?("""\s*,\s*"tech_persp")', r'\g<1>' + T39_TECH.replace('\\', '\\\\') + r'\g<2>', c31_41, flags=re.S)
+    c31_41 = re.sub(r'(41:\s*{\s*"tech_disc":\s*""").*?("""\s*,\s*"tech_persp")', r'\g<1>' + T41_TECH.replace('\\', '\\\\') + r'\g<2>', c31_41, flags=re.S)
+    with open("scripts/enriched_topics_31_41.py", "w", encoding="utf-8") as f:
+        f.write(c31_41)
+    print("Updated enriched_topics_31_41.py (Topics 32, 33, 34, 35, 36, 37, 39, 41)")
+
+if __name__ == "__main__":
+    apply_all()

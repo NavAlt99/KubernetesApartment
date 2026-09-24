@@ -7,20 +7,33 @@ and production-grade YAML manifests.
 
 ENRICHED_21_30 = {
     21: {
-        "tech_disc": """A **PersistentVolumeClaim (PVC)** is a user's request for storage in a specific namespace. It functions analogously to how a Pod requests compute resources (CPU/RAM): while administrators or StorageClasses provision PersistentVolumes, developers create PVCs declaring required capacity and access modes.
+        "tech_disc": """A **PersistentVolumeClaim (PVC)** is a user's formal request for storage in a specific namespace. It allows developers to consume storage abstractly without needing to understand the underlying physical storage infrastructure (SAN, cloud disks, NFS).
 
-### 1-to-1 Binding Mechanics
-- **Matching Criteria:** The control plane storage controller attempts to bind a PVC to an available PV based on:
-  1. Matching `storageClassName`.
-  2. Matching or compatible `accessModes`.
-  3. PV capacity $\\ge$ PVC requested storage.
-- **Strict 1-to-1 Exclusivity:** Even if a PV has 100Gi and a PVC requests only 10Gi, once bound, that PV is completely consumed by that single claim. No other PVC can attach to the remainder.
-- **PVC Phase Transitions:** `Pending` (no matching PV or waiting for consumer) $\\rightarrow$ `Bound` (successfully paired) $\\rightarrow$ `Lost` (bound PV was deleted).
+### What is a PVC & Why Does It Exist? (Beginner)
+In traditional enterprise IT, when a software developer needed storage for a database, they had to open a ticket with the storage team specifying LUN numbers, IOPS, RAID arrays, and SAN WWNs.
+Kubernetes separates storage responsibilities into two distinct roles:
+1. **The Cluster Administrator:** Provisions and configures physical storage pools (PersistentVolumes or StorageClasses).
+2. **The Application Developer:** Simply requests what their application needs using a **PersistentVolumeClaim** ("I need 20 GiB of ReadWriteOnce storage").
 
-### Workload Consumption
+The developer doesn't need to know whether the storage is an AWS EBS volume, a NetApp filer, or a local SSD. The cluster automatically finds a matching PersistentVolume and binds it to the claim.
+
+### 1-to-1 Binding Mechanics (Intermediate)
+The control plane's persistent volume controller continuously watches for unbound PVCs and attempts to pair them with suitable PVs:
+- **Matching Criteria:**
+  1. `storageClassName`: Must match the PV's StorageClass.
+  2. `accessModes`: The PV must support the claim's required access mode (`ReadWriteOnce`, `ReadWriteMany`, `ReadOnlyMany`).
+  3. `capacity`: The PV capacity must be **greater than or equal to** the requested size in the PVC.
+- **Strict 1-to-1 Exclusivity:** Even if a PV has 100Gi and a PVC requests only 10Gi, once bound, that PV is completely dedicated to that single claim. No other PVC can attach to the remaining 90Gi.
+- **PVC Phase Transitions:**
+  - `Pending`: No matching PV currently exists, or waiting for a consumer pod to be scheduled.
+  - `Bound`: Successfully paired with a volume.
+  - `Lost`: The bound PV was deleted or permanently disconnected.
+
+### Workload Consumption & Mount Mechanics (Advanced)
 From the container's perspective, storage must appear as a standard local folder. The kubelet bridges the cluster storage abstraction to the container using Linux mount namespace mechanics:
 - Pods mount storage by referencing the PVC name under `spec.volumes[*].persistentVolumeClaim.claimName`.
-- Linux mount paths (`mountPath`) are injected into the container's mount namespace (`mnt`) via Linux bind mounts.
+- When the pod is scheduled on a worker node, the kubelet instructs the CSI driver to attach and format the disk, then uses a Linux **bind mount** to inject the volume directory directly into the container's mount namespace (`mnt`) at the declared `mountPath`.
+- **In-Use Protection:** Kubernetes applies the `kubernetes.io/pvc-protection` finalizer. If an operator attempts to delete an active PVC currently mounted by a running Pod, the deletion is deferred until the Pod terminates, preventing sudden filesystem corruption.
 
 ```yaml
 # pvc-workload-claim.yaml
@@ -66,15 +79,32 @@ spec:
     },
 
     22: {
-        "tech_disc": """A **StorageClass** provides dynamic storage provisioning for Kubernetes clusters, eliminating the administrative overhead of manually creating static PersistentVolumes. It acts as an abstraction template defining provisioner plugins, cloud storage parameters, and volume binding behaviors.
+        "tech_disc": """A **StorageClass** provides dynamic, on-demand storage provisioning for Kubernetes clusters, completely eliminating the need for cluster administrators to manually pre-provision static PersistentVolumes.
 
-### Key Architectural Parameters
+### What is a StorageClass & Why Does It Exist? (Beginner)
+In early Kubernetes environments, storage provisioning was purely manual (static provisioning):
+- If a developer needed a 20Gi PVC, an administrator had to first manually log into AWS, create an EBS volume, write a 30-line `PersistentVolume` YAML manifest, and submit it to the cluster before the developer's claim could bind.
+- If 100 microservices needed databases, administrators had to pre-create hundreds of disks ahead of time, guessing sizes and wasting money on idle volumes.
+
+A **StorageClass** automates this by acting as a dynamic disk factory:
+- The administrator creates a single StorageClass definition (e.g., `fast-ssd`).
+- When a developer submits a PVC requesting `storageClassName: fast-ssd`, Kubernetes automatically communicates with the cloud provider (AWS, GCP, Azure, or SAN) to manufacture the physical disk in real time.
+- As soon as the cloud disk is created, Kubernetes creates the PV and binds it to the PVC automatically — zero administrator tickets required.
+
+### Key Architectural Parameters (Intermediate)
 - **`provisioner`:** The CSI plugin driver responsible for communicating with cloud or storage APIs (e.g., `ebs.csi.aws.com`, `pd.csi.storage.gke.io`).
 - **`volumeBindingMode`:**
   - `Immediate` (Default): The PV is provisioned dynamically as soon as the PVC is submitted. (Warning: risks provisioning storage in an Availability Zone where no compute capacity exists).
   - `WaitForFirstConsumer`: Delays volume creation and binding until a Pod using the claim is scheduled. Guarantees that the storage volume is provisioned in the exact same Availability Zone / topology domain as the scheduled worker node.
 - **`allowVolumeExpansion`:** Enables online filesystem expansion without restarting workloads (`true`).
-- **`reclaimPolicy`:** Sets whether dynamically provisioned volumes are `Delete` or `Retain`.
+- **`reclaimPolicy`:** Sets whether dynamically provisioned volumes are `Delete` (cloud disk deleted with PVC) or `Retain` (cloud disk preserved).
+- **`parameters`:** Vendor-specific configurations passed to the storage engine (e.g., IOPS, disk type `gp3`, disk encryption keys).
+
+### Dynamic Provisioning Lifecycle & CSI Controllers (Advanced)
+1. **The Claim Watch:** The CSI `external-provisioner` sidecar watches the API server for newly submitted PVCs referencing its StorageClass.
+2. **Topology Discovery:** When `volumeBindingMode: WaitForFirstConsumer` is active, the scheduler selects a node first, passing the node's zone labels (`topology.kubernetes.io/zone=us-east-1a`) to the provisioner.
+3. **RPC Volume Creation:** The provisioner issues a gRPC `CreateVolume` call to the cloud vendor's API, requesting an encrypted volume in that specific zone.
+4. **Automatic Object Construction:** Upon receiving the cloud disk ID, the provisioner constructs a corresponding `PersistentVolume` object in etcd with matching capacity and access modes, instantly transitioning the developer's PVC to `Bound`.
 
 ```yaml
 # dynamic-storage-class.yaml
@@ -105,13 +135,32 @@ parameters:
     },
 
     23: {
-        "tech_disc": """A **Role** is a namespaced Role-Based Access Control (RBAC) resource that defines a discrete set of additive permissions within a single Kubernetes namespace. Permissions cannot deny access; access is denied by default unless explicitly granted by a rule.
+        "tech_disc": """A **Role** is a namespaced Role-Based Access Control (RBAC) resource that defines a discrete set of additive permissions within a single Kubernetes namespace.
 
-### Anatomy of RBAC Policy Rules
-- **`apiGroups`:** The core API group is denoted by `""`. Other groups include `"apps"`, `"batch"`, `"networking.k8s.io"`.
-- **`resources`:** The target objects (`pods`, `services`, `deployments`, `configmaps`). Subresources are targeted using slashes (e.g., `pods/log`, `pods/exec`, `pods/status`).
-- **`resourceNames`:** (Optional) Restricts access to specific named instances of a resource (e.g., only the ConfigMap named `app-config`).
-- **`verbs`:** Allowed API operations (`get`, `list`, `watch`, `create`, `update`, `patch`, `delete`, `deletecollection`).
+### What is an RBAC Role & Why Does It Exist? (Beginner)
+Without access controls, anyone with access to the cluster could run `kubectl delete pods --all` and destroy production.
+In Kubernetes, **access is denied by default**. A **Role** is how administrators declare what actions are permitted within a specific project or environment.
+Think of a Role as an unassigned job description:
+- It defines what tasks are allowed (e.g., "can view pods and read logs, but cannot delete anything").
+- Crucially, a Role grants permissions to *nobody* by itself. It is purely a policy definition waiting to be bound to a person or service account using a `RoleBinding`.
+
+### Anatomy of RBAC Policy Rules (Intermediate)
+A Role contains an array of `rules`. Every rule evaluates three dimensions:
+1. **`apiGroups`:** Which API group contains the resource.
+   - Core resources (`pods`, `services`, `configmaps`, `secrets`) belong to the empty group `""`.
+   - Workload controllers (`deployments`, `statefulsets`) belong to `"apps"`.
+   - Batch workloads (`jobs`, `cronjobs`) belong to `"batch"`.
+2. **`resources`:** The specific target objects (`pods`, `services`, `deployments`).
+   - Subresources are targeted using slashes (e.g., `pods/log`, `pods/exec`, `pods/status`).
+   - `resourceNames` (optional): Restricts the rule to specific named objects (e.g., only the Secret named `db-credentials`).
+3. **`verbs`:** The allowed operations:
+   - Read operations: `get` (single object), `list` (collection), `watch` (stream changes).
+   - Write operations: `create`, `update` (replace), `patch` (partial update), `delete`, `deletecollection`.
+
+### Namespace Scope & Security Boundaries (Advanced)
+- **Strict Namespace Scoping:** A `Role` exists inside a single namespace and can *never* grant access to resources in other namespaces or cluster-scoped objects (like Nodes or PVs).
+- **Additive Security Model:** Rules can only grant permissions; there is no "deny" verb in Kubernetes RBAC. If multiple roles apply to a user, their permissions are combined (union).
+- **Privilege Escalation Prevention:** Kubernetes enforces that a user cannot create or update a Role containing permissions that the user does not already possess themselves, preventing developers from granting themselves superuser access.
 
 ```yaml
 # namespaced-developer-role.yaml
@@ -307,15 +356,36 @@ spec:
     },
 
     28: {
-        "tech_disc": """The **Node Controller** is an internal control loop running inside `kube-controller-manager` responsible for managing the registration, health tracking, and eviction lifecycle of worker nodes.
+        "tech_disc": """A **Node** is a worker machine in Kubernetes — either a physical bare-metal server or a cloud virtual machine (VM) — that provides the actual compute, memory, storage, and networking capacity to execute containerized applications. A Kubernetes cluster is essentially a unified pool of compute resources created by aggregating multiple nodes together.
 
-### Health Tracking & Taint Enforcement Lifecycle
-1. **Registration & CIDR Assignment:** Assigns an isolated PodCIDR subnet block (e.g., `10.244.1.0/24`) to newly joined nodes when `--allocate-node-cidrs=true`.
-2. **Lease Monitoring:** Watches the `kube-node-lease` namespace. If a node fails to renew its lease within `--node-monitor-grace-period` (default 40s), the controller marks the Node status as `NotReady` or `Unknown`.
-3. **Automatic Tainting:** Applies built-in condition taints:
-   - `node.kubernetes.io/not-ready:NoSchedule`
-   - `node.kubernetes.io/unreachable:NoExecute`
-4. **Eviction Execution:** If a node remains unreachable past `--pod-eviction-timeout` (default 5m), the controller initiates pod evictions, triggering workload controllers to recreate pods on healthy nodes.
+### What is a Node & Why Does It Exist? (Beginner)
+In traditional operations, applications are installed directly onto individual servers, requiring administrators to track hostnames, IP addresses, and which software runs on which box. If that server crashes, someone must manually SSH into a replacement machine and reinstall the service.
+Kubernetes abstracts physical machines away. Instead of deploying to a specific server, you submit your workload to the cluster control plane, and Kubernetes automatically finds an available node with sufficient CPU and RAM. If a node fails, Kubernetes automatically evacuates and reschedules the workloads onto surviving nodes.
+
+### Node Architecture & Anatomy (Intermediate)
+Every node runs three core software components that allow it to be managed by the cluster:
+1. **`kubelet`:** The primary node agent that registers the node with the API server, watches for Pod assignments, communicates with the container runtime to start/stop containers, runs health probes, and continuously reports node health.
+2. **Container Runtime:** The underlying engine (such as `containerd` or `CRI-O`) that pulls container images, creates Linux namespaces/cgroups, and executes container processes.
+3. **`kube-proxy`:** The network component that maintains host network routing and packet-filtering rules (using iptables or IPVS) to direct Service traffic to backend Pods.
+
+#### Node Status & Capacity Metrics
+When inspecting a node (`kubectl describe node <name>`), Kubernetes reports:
+- **Addresses:** `InternalIP` (routable inside cluster), `ExternalIP` (public IP if cloud-hosted), and `Hostname`.
+- **Capacity vs. Allocatable:** Total hardware capacity minus OS reservations (`system-reserved`) and kubelet reservations (`kube-reserved`). Schedulers place Pods strictly against **Allocatable** resources.
+- **Conditions:** Binary health signals including `Ready` (node is healthy and accepting pods), `MemoryPressure`, `DiskPressure`, and `PIDPressure`.
+
+#### Node Maintenance Operations
+- **`kubectl cordon <node>`:** Marks the node as unschedulable (`spec.unschedulable: true`). Existing running pods continue uninterrupted, but the scheduler will place no new pods on this node.
+- **`kubectl drain <node>`:** Cordons the node and gracefully evicts all existing pods via the Eviction API, respecting PodDisruptionBudgets so maintenance (OS patching, kernel upgrades) can occur safely.
+
+### Node Lifecycle & The Node Controller (Advanced)
+The **Node Controller** is an automated control loop running inside `kube-controller-manager` that actively manages node lifecycle transitions:
+1. **Registration & PodCIDR Assignment:** When a new node joins the cluster, the controller assigns it a dedicated, non-overlapping subnet (PodCIDR, e.g., `10.244.1.0/24`) from the cluster IP pool.
+2. **Heartbeat Monitoring via NodeLeases:** Modern nodes maintain lightweight heartbeats by updating a micro-object called a `Lease` in the `kube-node-lease` namespace every 10 seconds.
+3. **Failure Detection & Automatic Tainting:** If a node misses heartbeats past `--node-monitor-grace-period` (default 40s), the Node Controller marks its condition as `NotReady` or `Unknown` and attaches built-in condition taints:
+   - `node.kubernetes.io/not-ready:NoSchedule` (prevents new pods from landing on it)
+   - `node.kubernetes.io/unreachable:NoExecute` (begins the eviction countdown)
+4. **Eviction Execution:** If the node remains unreachable past `--pod-eviction-timeout` (default 5m), the controller initiates pod evictions, instructing workload controllers to recreate replacement replicas on healthy nodes.
 
 ```yaml
 # toleration-node-failure.yaml
@@ -350,15 +420,47 @@ spec:
     },
 
     29: {
-        "tech_disc": """The **Namespace Controller** manages the lifecycle, state reconciliation, and cascading deletion of `Namespace` resources in a cluster.
+        "tech_disc": """A **Namespace** is a logical virtual cluster inside a physical Kubernetes cluster. It provides a scope for resource names, role-based access control (RBAC), compute resource limits, and administrative boundaries, allowing multiple teams, projects, or environments to safely share the same physical cluster infrastructure.
 
-### Scoping & Lifecycle Transitions
-A Kubernetes namespace is a logical administrative boundary in the API server, fundamentally distinct from Linux kernel namespaces (`pid`, `net`, `mnt`) which isolate processes on individual hosts. While Linux namespaces partition host OS resources, Kubernetes namespaces partition object names, RBAC rules, and capacity policies:
-- **Logical Administrative Scope:** Namespaces partition object names, RBAC boundaries, ResourceQuotas, and LimitRanges within a single physical cluster. (Note: Namespaces do **not** provide network isolation by default; NetworkPolicies must be applied).
-- **Phases:**
-  - `Active`: Operating normally; accepting new resources.
-  - `Terminating`: Deletion initiated. The controller rejects all new resource creation requests and walks through every namespaced resource to execute graceful cleanup.
-- **Finalizer Pipeline:** Namespaces contain the `kubernetes` finalizer. The controller recursively deletes all Pods, Services, PVCs, ConfigMaps, and custom resources before releasing the namespace record from etcd.
+### What is a Namespace & Why Does It Exist? (Beginner)
+Imagine a company running 20 different software development teams. If everyone deployed applications to a single shared space, naming chaos would quickly occur: Team Alpha and Team Beta might both try to create a database Service named `db` or a deployment named `frontend`, causing conflicts. Furthermore, a developer on Team Alpha could accidentally delete Team Beta's pods.
+Namespaces solve this by partitioning the cluster into isolated workspaces:
+- **Name Collision Avoidance:** Resource names only need to be unique *within* a namespace. Both `team-alpha` and `team-beta` can have their own Service named `redis` without conflict.
+- **Environment Separation:** You can run `development`, `staging`, and `production` namespaces on the exact same worker nodes, maximizing hardware utilization while keeping configurations separated.
+- **Access Control Boundaries:** Security administrators can grant developers full administrative access to the `development` namespace while restricting them to read-only access in `production`.
+
+### Core Namespace Rules & Mechanics (Intermediate)
+#### Default Built-in Namespaces
+Every standard Kubernetes cluster initializes with four default namespaces:
+- **`default`:** The sandbox namespace used when no `--namespace` flag or context is specified.
+- **`kube-system`:** The protected namespace containing cluster control plane components, CoreDNS, kube-proxy, and network plugins.
+- **`kube-public`:** Readable by all users (including unauthenticated callers); typically stores public cluster discovery info (`cluster-info`).
+- **`kube-node-lease`:** Holds lightweight `Lease` heartbeat objects for each worker node.
+
+#### Namespaced vs. Cluster-Scoped Resources
+Not every object in Kubernetes belongs to a namespace:
+- **Namespaced Resources:** Workloads and application configurations (`Pods`, `Services`, `Deployments`, `ConfigMaps`, `Secrets`, `PersistentVolumeClaims`).
+- **Cluster-Scoped Resources:** Underlying infrastructure and cluster-wide governance primitives (`Nodes`, `PersistentVolumes`, `StorageClasses`, `ClusterRoles`, and `Namespaces` themselves). You can verify an object's scope with:
+  ```bash
+  kubectl api-resources --namespaced=true   # lists namespaced resources
+  kubectl api-resources --namespaced=false  # lists cluster-scoped resources
+  ```
+
+#### Service Discovery Across Namespaces
+DNS makes inter-service communication intuitive:
+- **Same Namespace:** A Pod in `production` can reach a service named `api-svc` in the same namespace using just `http://api-svc:8080`.
+- **Cross-Namespace:** To reach a service across namespaces, use the Fully Qualified Domain Name (FQDN): `http://api-svc.other-namespace.svc.cluster.local:8080`.
+*(Note: Namespaces do **not** provide network packet isolation by default. Pods in different namespaces can communicate freely unless a `NetworkPolicy` firewall is applied).*
+
+### Namespace Governance & The Namespace Controller (Advanced)
+The **Namespace Controller** running inside `kube-controller-manager` is responsible for enforcing namespace lifecycle transitions and cleanups:
+1. **Capacity Fencing:** Namespaces act as the boundary for `ResourceQuota` (capping aggregate CPU, memory, and object counts) and `LimitRange` (enforcing min/max sizes on individual Pods).
+2. **Pod Security Standards (PSS):** Modern clusters enforce security profiles (`privileged`, `baseline`, `restricted`) by adding labels to the Namespace manifest (e.g., `pod-security.kubernetes.io/enforce: restricted`).
+3. **Namespace Deletion & Cascading Teardown:**
+   - When an operator deletes a namespace (`kubectl delete ns team-alpha`), the namespace enters the **`Terminating`** phase.
+   - The API server immediately rejects any attempts to create new resources within that namespace.
+   - The Namespace Controller initiates a recursive cascading cleanup, systematically deleting all child resources (Pods, Services, PVCs, ConfigMaps, Secrets, RoleBindings).
+   - Once all child resources are completely finalized, the controller removes the `kubernetes` finalizer, allowing etcd to permanently purge the namespace.
 
 ```yaml
 # labeled-namespace-spec.yaml
@@ -386,17 +488,39 @@ metadata:
     },
 
     30: {
-        "tech_disc": """A **ResourceQuota** enforces aggregate resource consumption limits within a namespace, preventing individual teams or runaway workloads from monopolizing cluster compute and storage capacity.
+        "tech_disc": """A **ResourceQuota** is a cluster governance policy that enforces aggregate resource consumption limits inside a single namespace, preventing any individual team, environment, or runaway application from consuming all cluster capacity.
 
-### Quota Dimension Categories
-- **Compute Resources:** Enforces total CPU and Memory reservations across all pods in the namespace (`requests.cpu`, `limits.cpu`, `requests.memory`, `limits.memory`).
-- **Storage Subsystems:** Enforces total capacity requests (`requests.storage`) and PVC counts, optionally qualified by StorageClass (e.g., `fast-nvme.storageclass/requests.storage: 500Gi`).
-- **Object Counts:** Restricts total API instances (`pods`, `services`, `services.loadbalancers`, `configmaps`, `secrets`).
+### What is a ResourceQuota & Why Does It Exist? (Beginner)
+In a multi-tenant cluster where development, staging, and microservices share the same worker nodes, computing resources are finite. A single poorly tested pod with an infinite memory leak or CPU spin could exhaust all physical RAM on a worker node, triggering the Linux kernel Out-Of-Memory (OOM) killer to terminate adjacent critical workloads.
+A ResourceQuota acts as an organizational boundary fence:
+- It allocates a fixed slice of total cluster capacity to a specific team (e.g., Team Alpha gets at most 8 CPU cores and 16 GiB RAM).
+- It prevents unexpected cloud billing spikes by capping total resource requests.
+- It prevents object flooding attacks (e.g., creating 10,000 Services or Secrets).
 
-### Admission Enforcement
-While Linux kernel cgroups enforce physical CPU and memory limits on running processes, ResourceQuota operates earlier in the deployment pipeline — preventing resource over-allocation at the API level before containers are ever dispatched to worker nodes:
-- Enforced synchronously by the **`ResourceQuota` Admission Plugin** on `kube-apiserver`.
-- **Mandatory Request Requirement:** If a namespace defines a compute quota for CPU or memory, **every single container** created in that namespace must explicitly declare that resource request/limit, or creation is rejected with HTTP 403 Forbidden (unless a `LimitRange` automatically injects defaults).
+### Quota Dimensions & Resource Categories (Intermediate)
+ResourceQuotas enforce limits across three distinct categories:
+1. **Compute Resource Quotas:**
+   - `requests.cpu` & `requests.memory`: Limits the cumulative sum of compute *guarantees* that pods in the namespace can request from the scheduler.
+   - `limits.cpu` & `limits.memory`: Limits the cumulative ceiling of compute *burst capacity* that containers can consume before throttling or OOM kills occur.
+2. **Storage Resource Quotas:**
+   - `requests.storage`: Caps the total storage capacity requested across all PersistentVolumeClaims in the namespace (e.g., max 500Gi total disk).
+   - `persistentvolumeclaims`: Limits the total number of storage claims allowed.
+   - StorageClass-specific quotas: e.g., `<storage-class-name>.storageclass.storage.k8s.io/requests.storage`.
+3. **Object Count Quotas:**
+   - Restricts total instances of standard resources: `count/pods`, `count/services`, `count/secrets`, `count/configmaps`, `count/replicationcontrollers`.
+
+#### Mandatory Request Requirement & LimitRange Synergy
+When a ResourceQuota is applied to a namespace for CPU or memory, **every single container** created in that namespace must explicitly declare compute requests and limits. If a developer attempts to create a Pod without specifying `resources.requests`, the API server rejects it with an HTTP 403 Forbidden error because it cannot calculate quota usage.
+To streamline developer experience, cluster operators deploy a **LimitRange** alongside the ResourceQuota. The LimitRange automatically injects default request and limit values into any incoming Pod that omitted them.
+
+### Admission Enforcement & Scope Selectors (Advanced)
+The **`ResourceQuota` Admission Controller** plugin evaluates requests synchronously inside the `kube-apiserver`:
+- **Atomic Transaction Check:** When a pod creation request arrives, the admission plugin computes: `Current Usage + Incoming Request`. If the total exceeds the quota limit, the request is immediately rejected before etcd write.
+- **Quota Scopes:** Quotas can be configured with `scopes` to apply only to specific pod subsets:
+  - `Terminating`: Applies only to Pods with a finite runtime (`spec.activeDeadlineSeconds`).
+  - `NotTerminating`: Applies to long-running service pods (Deployments, StatefulSets).
+  - `BestEffort`: Applies only to pods with no compute requests/limits defined.
+  - `PriorityClass`: Scopes quota limits to specific workload priority tiers.
 
 ```yaml
 # team-resource-quota.yaml
@@ -410,32 +534,16 @@ While Linux kernel cgroups enforce physical CPU and memory limits on running pro
 apiVersion: v1
 kind: ResourceQuota
 metadata:
-  name: compute-storage-quota
-  namespace: development
+  name: team-compute-quota
+  namespace: team-alpha
 spec:
   hard:
-    requests.cpu: "4"
-    requests.memory: 8Gi
-    limits.cpu: "8"
-    limits.memory: 16Gi
-    pods: "10"
-    services.loadbalancers: "1"
-    requests.storage: 100Gi
----
-apiVersion: v1
-kind: LimitRange
-metadata:
-  name: default-compute-limits
-  namespace: development
-spec:
-  limits:
-  - default:
-      cpu: 500m
-      memory: 512Mi
-    defaultRequest:
-      cpu: 100m
-      memory: 128Mi
-    type: Container
+    requests.cpu: "8"
+    requests.memory: 16Gi
+    limits.cpu: "16"
+    limits.memory: 32Gi
+    count/pods: "50"
+    persistentvolumeclaims: "10"
 ```""",
         "tech_persp": """ResourceQuotas are vital for multi-tenant cluster cost governance:
 - **Quota Tracking Commands:** Administrators inspect current quota usage vs. hard limits using:

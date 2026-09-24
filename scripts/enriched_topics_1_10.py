@@ -7,19 +7,29 @@ and production-grade YAML manifests.
 
 ENRICHED_1_10 = {
     1: {
-        "tech_disc": """Kubernetes is an open-source, production-grade container orchestration system designed to automate the deployment, scaling, and operational lifecycle of containerized application workloads across distributed server clusters. Rather than managing physical or virtual servers as independent hosts requiring manual intervention, Kubernetes unifies compute, storage, and networking into a single declarative API plane.
+        "tech_disc": """Kubernetes is an open-source, production-grade container orchestration system designed to automate the deployment, scaling, management, and self-healing of containerized applications across a distributed fleet of machines.
 
-### Core Architecture & Reconciliation Engine
-- **Declarative State Model:** System state is declared as intent-driven objects (Pods, Deployments, Services). Operators never imperatively configure machines; instead, they declare the *target state*, and Kubernetes executes continuous reconciliation.
-- **Continuous Control Loops:** Autonomous controllers repeatedly query actual cluster state against declared state in etcd. Any detected drift (e.g., node failure, process termination, network partition) triggers corrective reconciliation workflows.
-- **Bin-Packing & Resource Efficiency:** The platform schedules containers dynamically based on declared resource requests and limits, maximizing host density while respecting compute, memory, and topology boundaries.
-- **Three-Way Merge Apply:** Modern cluster management relies on `kubectl apply`, which computes a three-way diff between the local configuration manifest, the live cluster state, and the `kubectl.kubernetes.io/last-applied-configuration` annotation.
+### What is a Cluster & Why Does It Exist? (Beginner)
+In the early days of containerization, developers ran Docker containers on standalone Virtual Machines (VMs). While running a container on a single machine was straightforward, running an application in production revealed serious operational limitations:
+- **Manual Host Management:** If an application needed 20 containers, an operator had to manually choose which VM had free RAM, SSH into each machine, and run `docker run`.
+- **No Self-Healing:** If a physical host crashed at 2 AM, every container on that host died. Nothing automatically detected the outage or restarted those containers on surviving machines.
+- **Port Conflicts & Fragile Networking:** Two containers on the same host could not easily listen on port 80 without complex port-mapping tricks.
+- **Configuration Drift:** Manually tweaking configuration files on 50 different servers inevitably led to snowflake servers that nobody could reproduce.
 
-### Linux Kernel & OS Foundation
+Kubernetes solves this by abstracting a collection of separate physical or virtual machines into a **single, unified, self-healing computer**. You stop managing individual servers; instead, you declare your desired application state to the cluster, and Kubernetes figures out where to run it, connects the networking, monitors health, and restarts failed components automatically.
+
+### Core Architecture & The Declarative Model (Intermediate)
+Kubernetes fundamentally shifts operations from an **Imperative Model** ("SSH into server X and start container Y") to a **Declarative Model** ("ensure 3 replicas of the web app are always running"):
+- **Declarative Manifests:** You describe the target state of your application using declarative YAML manifests (specifying container images, port configurations, CPU/RAM needs, and replica counts).
+- **The Reconciliation Loop:** Autonomous software control loops continuously compare the **actual state** of the cluster with the **desired state** recorded in etcd. If a node fails or a process crashes, the controller detects the gap and creates replacement pods.
+- **Bin-Packing & Resource Scheduling:** Instead of guessing which server has free space, the cluster's scheduler reads your declared CPU and memory requests and automatically packs containers onto nodes to maximize hardware efficiency.
+- **Three-Way Merge Apply:** With `kubectl apply`, Kubernetes calculates a three-way diff between your local YAML file, the live cluster state in etcd, and the recorded `last-applied-configuration` annotation, safely merging updates without overwriting fields managed by other controllers.
+
+### Linux Kernel & Distributed System Foundations (Advanced)
 Before Kubernetes can schedule multiple workloads on shared machines, the Linux kernel must provide isolation so containers cannot interfere with each other's processes, files, or network. Two foundational kernel primitives make this multi-tenant execution possible:
 - **Namespaces (Isolation):** Linux namespaces (`pid`, `net`, `mnt`, `ipc`, `uts`, `user`) partition kernel resources so containers operate in isolated process spaces on shared Linux kernels.
 - **Control Groups (cgroups v1/v2):** Kernel cgroups enforce granular compute constraints (CFS CPU bandwidth quota in `cpu.cfs_quota_us`, hard memory limits in `memory.max`, and block I/O priorities).
-- **Systemd & Container Daemons:** Nodes execute as Linux systems managed by systemd, with system daemons (`kubelet`, `containerd`) running as prioritized system units.
+- **Distributed State Synchronization:** Kubernetes control planes rely on etcd and the Raft consensus algorithm to maintain linearizable, distributed state across multiple masters, ensuring no single point of failure in cluster decision-making.
 
 ```yaml
 # cluster-workload-foundation.yaml
@@ -64,12 +74,37 @@ spec:
     },
 
     2: {
-        "tech_disc": """A Kubernetes cluster is strictly divided into two functional tiers: the **Control Plane** (the cluster brain responsible for state, decisions, and API orchestration) and **Worker Nodes** (the execution engines that run containerized workloads).
+        "tech_disc": """A Kubernetes cluster is strictly divided into two distinct functional tiers: the **Control Plane** (the cluster's brain that makes global decisions and orchestrates state) and **Worker Nodes** (the execution muscle that runs actual containerized workloads).
 
-### Control Plane Anatomy & Topologies
-- **Stacked Control Plane Topology:** Control plane components (`kube-apiserver`, `kube-controller-manager`, `kube-scheduler`) co-locate with etcd instances on dedicated control plane nodes. Recommended minimum: 3 nodes for quorum.
-- **External etcd Topology:** etcd runs on dedicated external servers separated from API servers, isolating storage I/O from API compute workloads.
-- **Node Heartbeats via NodeLeases:** In modern Kubernetes, worker nodes report heartbeats through lightweight `Lease` objects in the `kube-node-lease` namespace every 10 seconds, drastically reducing `kube-apiserver` etcd write load compared to full Node status updates.
+### The Two Halves of a Cluster (Beginner)
+To run a reliable distributed system, you must separate **decision-making** from **physical execution**:
+- **The Brain (Control Plane):** Responsible for maintaining cluster state, evaluating scheduling algorithms, monitoring system health, and reacting to cluster events. Crucially, the control plane *does not* run your user-facing business applications; its sole job is to manage the cluster.
+- **The Muscle (Worker Nodes):** The machines (VMs or physical bare-metal servers) that provide raw compute power. They host the application containers, execute local health checks, and forward network traffic.
+
+#### What Happens When Things Fail? (The Core Architectural Principle)
+The decoupling of control plane and worker nodes provides critical failure isolation:
+- **If a Worker Node crashes:** The control plane detects the missed heartbeats, marks the node `NotReady`, and automatically reschedules the dead node's pods onto surviving healthy worker nodes.
+- **If the Control Plane goes offline:** Existing worker nodes and running application pods continue operating and serving customer traffic uninterrupted. The data plane is independent. However, no *changes* can occur: new pods cannot be scheduled, auto-scaling is frozen, and crashed pods cannot be replaced until the control plane recovers.
+
+### Component Breakdown by Tier (Intermediate)
+#### 1. Control Plane Tier Components
+- **`kube-apiserver`:** The front door of the cluster. Every command (`kubectl`), controller, and node agent communicates exclusively through this REST API.
+- **`etcd`:** The strongly consistent, distributed key-value database that stores the entire cluster's configuration, secrets, and live state.
+- **`kube-scheduler`:** The matchmaker. It inspects newly created pods that lack a node assignment and selects the best worker node based on available resources, taints, and affinity rules.
+- **`kube-controller-manager`:** The automated supervisor running loops that continuously reconcile actual state with desired state (e.g., node controller, replica controller).
+
+#### 2. Worker Node Tier Components
+- **`kubelet`:** The primary node daemon that receives pod specifications from the API server and coordinates with the container runtime to start and monitor containers.
+- **Container Runtime (e.g., `containerd`):** The software that pulls container images and executes processes inside Linux cgroups and namespaces.
+- **`kube-proxy`:** Manages network routing rules (iptables/IPVS) on each host to provide virtual Service IPs (ClusterIP).
+
+### Topologies, Taints & Production Isolation (Advanced)
+Control plane nodes must be protected from resource starvation caused by runaway user applications:
+- **Control Plane Taints:** By default, control plane nodes carry the taint `node-role.kubernetes.io/control-plane:NoSchedule`. The scheduler will refuse to place regular business workloads on these nodes, reserving all CPU and memory for `etcd` and `kube-apiserver`.
+- **Stacked vs. External etcd Topologies:**
+  - *Stacked Topology:* etcd runs co-located on the same nodes as the API server. Simpler to manage and requires fewer VMs (minimum 3 for HA).
+  - *External etcd Topology:* etcd runs on dedicated standalone server clusters separated from API servers. Provides maximum performance and I/O isolation, preventing heavy API traffic from impacting etcd disk sync latency.
+- **Node Heartbeats via NodeLeases:** Worker nodes report health by updating lightweight `Lease` objects in `kube-node-lease` every 10 seconds, drastically reducing etcd write amplification compared to legacy full-node status updates.
 
 ### Linux OS Node Requirements
 Worker nodes run standard Linux distributions whose default network and memory settings conflict with container orchestration. The host kernel must be explicitly tuned to permit cross-interface forwarding and predictable memory allocation:
@@ -267,18 +302,32 @@ spec:
     },
 
     6: {
-        "tech_disc": """The `kube-controller-manager` is a single binary that bundles dozens of distinct, autonomous control loops into a single process. Each controller is responsible for reconciling a specific slice of cluster state towards its declared intent.
+        "tech_disc": """The `kube-controller-manager` is the cluster's continuous automation engine. It bundles dozens of distinct, autonomous control loops into a single binary, running continuously to reconcile the cluster's observed real-world state with the user's declared desired state.
 
-### Core Bundled Controllers
-- **Node Lifecycle Controller:** Monitors node health leases, assigns CIDR blocks, manages node taints (`node.kubernetes.io/unreachable`), and handles eviction timeouts.
-- **ReplicaSet / Deployment Controller:** Ensures the exact number of Pod replicas declared in workload specs are running, creating or deleting pods as needed.
-- **EndpointSlice Controller:** Watches Services and Pods to maintain updated network routing endpoint collections.
-- **Job / CronJob Controller:** Spawns batch pods according to schedule and monitors them to completion exit codes.
-- **ServiceAccount & Namespace Controllers:** Generates default ServiceAccounts and default tokens; cleans up resources during namespace deletion.
+### The Controller Pattern in Kubernetes (Beginner)
+In traditional server management, operations are imperative: an administrator logs into a server, runs a command to install an app, and manually restarts it if it crashes.
+Kubernetes uses the **Declarative Model**. Instead of issuing imperative instructions, you define your *desired end state* in YAML (e.g., "always keep 3 copies of nginx running").
+Software robots called **Controllers** constantly monitor the system. If a worker node crashes and takes down a copy of your app, the controller detects that 2 copies exist instead of the desired 3, and immediately creates a replacement. You never have to manually instruct the cluster to fix itself.
 
-### High Availability & Leader Election
-- When multiple control plane nodes run the controller manager, only **one** instance acts as active leader at any given time.
-- Active leadership is acquired via a distributed lease lock stored as a `Lease` object in `kube-system` (`coordination.k8s.io/v1`). Standby instances continuously poll the lease, taking over immediately if the leader fails to renew within the renewal interval.
+### Architecture of kube-controller-manager (Intermediate)
+Rather than executing 40 separate daemon processes on the control plane, Kubernetes combines all core control loops into one multi-threaded daemon: `kube-controller-manager`.
+Core bundled controllers include:
+- **Deployment & ReplicaSet Controllers:** Watch deployment manifests and scale Pods up or down to match `spec.replicas`.
+- **Node Lifecycle Controller:** Monitors node heartbeats, applies condition taints, and initiates pod evictions during hardware failures.
+- **EndpointSlice Controller:** Watches Services and Pods to maintain live network routing directories for kube-proxy.
+- **Job & CronJob Controllers:** Supervise batch workloads, tracking processes to exit code 0 and triggering scheduled tasks.
+- **Namespace Controller:** Enforces clean cascading deletions of all child resources when a namespace is deleted.
+- **ServiceAccount Controller:** Automatically generates default ServiceAccounts and projected security tokens for new namespaces.
+
+### Controller Internals: Informers, WorkQueues & Leader Election (Advanced)
+A naive controller would repeatedly poll the API server (`GET /api/v1/pods` every 5 seconds), which would quickly overwhelm etcd and exhaust control plane CPU. Instead, controllers use a high-performance event-driven pipeline:
+1. **Reflector & List-Watch:** The controller initiates an HTTP/2 streaming `watch` request to `kube-apiserver`, receiving asynchronous change deltas (Added, Modified, Deleted) in real time.
+2. **Informer & Local Cache:** An Informer stores received objects in an in-memory local cache (`Indexer`). Read queries are resolved against local RAM with zero API server load.
+3. **WorkQueue with Deduplication:** When a resource changes, the Informer pushes the object's key (e.g., `default/nginx-deployment`) into a rate-limited WorkQueue. Rapid bursts of changes to the same object are collapsed into a single queue entry.
+4. **Reconciliation Loop:** Available worker threads pop keys from the WorkQueue and execute `Reconcile(key)`:
+   - Query local cache for desired state vs actual state.
+   - If drift exists, construct and send a single corrective PATCH request to the API server.
+5. **Leader Election for High Availability:** When multiple control-plane instances run `kube-controller-manager`, only **one** instance acts as the active leader by holding a `Lease` lock in `kube-system`. Follower instances standby and take over within seconds if the leader crashes.
 
 ```yaml
 # /etc/kubernetes/manifests/kube-controller-manager.yaml -- Flags excerpt
@@ -298,12 +347,12 @@ spec:
     image: registry.k8s.io/kube-controller-manager:v1.28.0
     command:
     - kube-controller-manager
-    - --leader-elect=true
-    - --node-monitor-grace-period=40s
-    - --node-monitor-period=5s
-    - --pod-eviction-timeout=5m0s
     - --allocate-node-cidrs=true
     - --cluster-cidr=10.244.0.0/16
+    - --leader-elect=true
+    - --node-monitor-grace-period=40s
+    - --pod-eviction-timeout=5m0s
+    - --use-service-account-credentials=true
 ```""",
         "tech_persp": """Controllers operate on an **eventual consistency** paradigm. They are designed to be idempotent: running the reconciliation loop multiple times with the same input produces the exact same cluster state:
 - **Rate-Limiting & Backoff:** If a controller repeatedly fails an operation (such as failing to create a Pod due to quota exhaustion), it applies exponential backoff to protect the API server from request flooding.
@@ -311,15 +360,37 @@ spec:
     },
 
     7: {
-        "tech_disc": """The `cloud-controller-manager` (CCM) isolates cloud-vendor-specific control loops from core Kubernetes codebase. Historically, cloud provider logic (AWS, Azure, GCP, OpenStack) was compiled directly into `kube-controller-manager` ("in-tree"). The modern architecture moves all vendor integration to an external out-of-tree binary.
+        "tech_disc": """The `cloud-controller-manager` (CCM) is the dedicated control plane component that connects Kubernetes to external cloud infrastructure, allowing clusters running in AWS, Google Cloud, Azure, or OpenStack to provision and manage native cloud resources.
 
-### Key CCM Controllers
-- **Node Controller:** Periodically checks cloud provider APIs to confirm if nodes that became unresponsive in Kubernetes have actually been terminated or deleted in the cloud console, cleaning them up promptly.
-- **Route Controller:** Configures VPC routing tables and subnets so that Pod CIDR network packets can route between distinct VMs across cloud availability zones.
-- **Service Controller:** Watches Services of `type: LoadBalancer` and interacts with cloud provider APIs to provision, configure, and delete cloud load balancers (AWS NLB/ALB, Google Cloud Load Balancing, Azure Load Balancer).
+### Why Does cloud-controller-manager Exist? (Beginner)
+Core Kubernetes is completely open-source and cloud-agnostic — it contains no vendor-specific code. A vanilla Kubernetes cluster knows what a "Pod" or "Service" is, but has no built-in knowledge of an AWS Network Load Balancer, an Azure Virtual Network, or a GCP Persistent Disk.
+However, when you run Kubernetes in the cloud, you frequently need real cloud infrastructure:
+- You want an external public IP address that automatically provisions a cloud load balancer.
+- You want the cluster to automatically know if an underlying cloud VM has been shut down or terminated in your cloud management console.
+The `cloud-controller-manager` acts as the translator: it watches Kubernetes resource requests and translates them into authenticated API calls to your cloud provider.
 
-### Operational Integration
-- The kubelet runs with `--cloud-provider=external`, marking the node with a taint `node.cloudprovider.kubernetes.io/uninitialized:NoSchedule` until the CCM initializes the node with cloud metadata (Zone, Region, InstanceType, ProviderID).
+### Core Cloud Controller Loops (Intermediate)
+The CCM runs three primary internal controllers:
+1. **Node Controller:**
+   - When a new worker node boots up, the CCM queries the cloud API to obtain cloud-specific metadata: the VM's cloud provider ID, instance type, and failure-domain topology labels (`topology.kubernetes.io/zone`, `topology.kubernetes.io/region`).
+   - If a node stops responding, the CCM queries the cloud API to check if the underlying VM was deleted or terminated in the cloud console. If the VM is gone, the CCM immediately deletes the Node object from the cluster rather than waiting for lengthy timeout countdowns.
+2. **Service Controller:**
+   - Watches for Kubernetes Services configured with `type: LoadBalancer`.
+   - Makes authenticated API requests to the cloud provider to provision a managed cloud load balancer (e.g., AWS NLB, GCP Cloud Load Balancing).
+   - Once the cloud provider assigns a public IP address or DNS hostname, the controller writes it into `Service.status.loadBalancer.ingress`.
+3. **Route Controller:**
+   - In cloud environments without an overlay CNI (like AWS VPC CNI or GKE native networking), the Route Controller configures cloud VPC route tables so that packets destined for a node's PodCIDR are correctly forwarded across VPC subnets.
+
+### Out-of-Tree Cloud Provider Architecture (Advanced)
+In early versions of Kubernetes, cloud provider code was compiled directly inside `kube-controller-manager` and `kubelet` (known as "in-tree" cloud providers, enabled via `--cloud-provider=aws`).
+This legacy model had major architectural flaws:
+- Cloud vendors could only fix bugs or add new load balancer features by waiting for core Kubernetes quarterly releases.
+- Security vulnerabilities in cloud SDKs required patching the entire Kubernetes control plane.
+- The Kubernetes binary was bloated with gigabytes of third-party cloud SDK dependencies.
+Modern Kubernetes has completely migrated to the **Out-of-Tree Cloud Provider** model:
+- Core Kubernetes binaries contain zero cloud SDKs (`--cloud-provider=external`).
+- Cloud providers maintain their own independent open-source CCM binaries (e.g., `aws-cloud-controller-manager`, `cloud-provider-azure`).
+- Cloud vendors release updates, security patches, and support for new cloud services independently from the core Kubernetes release cycle.
 
 ```yaml
 # cloud-loadbalancer-service.yaml
@@ -332,7 +403,8 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: cloud-service
+  name: cloud-public-api
+  namespace: production
   annotations:
     service.beta.kubernetes.io/aws-load-balancer-type: "external"
     service.beta.kubernetes.io/aws-load-balancer-nlb-target-type: "instance"
@@ -340,10 +412,10 @@ metadata:
 spec:
   type: LoadBalancer
   selector:
-    app: public-web
+    app: backend-gateway
   ports:
-  - port: 80
-    targetPort: 8080
+  - port: 443
+    targetPort: 8443
     protocol: TCP
 ```""",
         "tech_persp": """Running out-of-tree CCM decouples Kubernetes releases from cloud provider bugfixes:
@@ -352,18 +424,38 @@ spec:
     },
 
     8: {
-        "tech_disc": """**Static Pods** are pods managed directly and exclusively by the local `kubelet` daemon on a specific node, completely bypassing the `kube-apiserver`, `kube-scheduler`, and workload controllers.
+        "tech_disc": """**Static Pods** are specialized pods managed directly and exclusively by the local `kubelet` daemon on a single host, without involvement from the `kube-apiserver` or `kube-scheduler`.
 
-### Bootstrapping & Discovery Mechanism
-- **Manifest Directory:** The kubelet periodically scans a local filesystem directory (configured via `staticPodPath` in `/var/lib/kubelet/config.yaml`, standard path: `/etc/kubernetes/manifests/`) using Linux `inotify` watches.
-- **Local Supervision:** When a valid Pod manifest is written into this directory, the kubelet directly instructs the local container runtime to launch the containers. If the manifest is deleted, the kubelet terminates the containers immediately.
-- **Mirror Pods:** To provide cluster observability, the kubelet creates a read-only **Mirror Pod** in the `kube-system` namespace on `kube-apiserver`. The mirror pod reflects status in `kubectl get pods`, but cannot be deleted or modified through the API.
-- **Control Plane Self-Hosting:** Standard tools like `kubeadm` use static pods to bootstrap the entire Kubernetes control plane (`kube-apiserver`, `etcd`, `kube-controller-manager`, `kube-scheduler`).
+### The Chicken-and-Egg Dilemma & Why Static Pods Exist (Beginner)
+In standard Kubernetes operations, when you create a Pod, the request is sent to the `kube-apiserver`, saved in `etcd`, and scheduled by `kube-scheduler` onto a worker node. The node's `kubelet` then receives the assignment and starts the container.
+This raises a fundamental architectural paradox:
+*If Kubernetes runs applications as containerized Pods, how do you run the control plane itself?*
+You cannot ask the `kube-apiserver` to schedule the `kube-apiserver` Pod because it doesn't exist yet!
+Static Pods resolve this chicken-and-egg problem. They allow the `kubelet` to run containers directly by reading manifest files from the local host disk, allowing the control plane components to bootstrap themselves before any cluster API exists.
 
-### Linux OS Integration
-Static Pods solve a chicken-and-egg dilemma: components like the API server and etcd must run as containers, but the API server does not exist yet to schedule them. The kubelet uses the host's Linux filesystem directly to bootstrap these core services:
-- Static pods execute container runtimes while the control plane is offline or uninitialized.
-- File ownership in `/etc/kubernetes/manifests/` must be restricted to `root:root` with permissions `0600` or `0644`.
+### How Static Pods Work (Intermediate)
+The mechanism is deliberately simple and resilient:
+1. **File Drop:** An operator or bootstrap tool (like `kubeadm`) places regular Pod manifest YAML files into a designated local directory on the control plane node (conventionally `/etc/kubernetes/manifests/`).
+2. **Local inotify Watch:** The local `kubelet` monitors this directory using Linux kernel `inotify` file-system events.
+3. **Local Execution:** Whenever a YAML file is added or modified in that directory, the `kubelet` reads it and directly instructs the local container runtime (`containerd`) to launch the pod.
+4. **Autonomous Self-Healing:** If a static pod crashes or is killed, the local `kubelet` immediately restarts it. The kubelet maintains this pod even if the network is completely down or all other control plane components are offline.
+
+#### Mirror Pods on the API Server
+Because static pods are created without the API server, other cluster components and administrators wouldn't normally know they exist.
+To provide cluster-wide visibility, once the `kube-apiserver` becomes available, the `kubelet` automatically registers a **Mirror Pod** in the `kube-system` namespace.
+- You can inspect static pods with standard commands: `kubectl get pods -n kube-system`.
+- Their names typically append the node name (e.g., `kube-apiserver-control-plane-node1`).
+- Mirror pods are strictly **read-only reflections**: running `kubectl delete pod kube-apiserver-...` will delete the mirror representation momentarily, but the local `kubelet` continues running the container and immediately recreates the mirror pod.
+
+### Production Realities & Troubleshooting (Advanced)
+- **Modifying or Deleting Static Pods:** To update or remove a static pod, you must log into the physical host machine and modify or delete the YAML file directly in `/etc/kubernetes/manifests/`.
+- **Host Resource Access:** Control plane static pods frequently use `hostNetwork: true` and host filesystem volume mounts (`/etc/kubernetes/pki`, `/var/lib/etcd`) because they must bind directly to host network ports (such as `6443` or `2379`) before any container overlay network (CNI) is functional.
+- **Troubleshooting When API Server Fails:** When a control plane crashes, `kubectl` is unusable. Engineers troubleshoot static pods directly on the host using the Container Runtime CLI (`crictl`):
+  ```bash
+  crictl ps              # view active containers
+  crictl pods            # view active pod sandboxes
+  crictl logs <id>       # view crash logs of failing static pod
+  ```
 
 ```yaml
 # /etc/kubernetes/manifests/node-diagnostics.yaml
@@ -382,7 +474,7 @@ spec:
   hostNetwork: true
   hostPID: true
   containers:
-  - name: diagnostic-agent
+  - name: inspector
     image: registry.k8s.io/pause:3.9
     volumeMounts:
     - name: host-log

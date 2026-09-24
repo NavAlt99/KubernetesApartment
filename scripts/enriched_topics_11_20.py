@@ -251,17 +251,41 @@ data:
     },
 
     16: {
-        "tech_disc": """A **Service** is a durable, stable REST abstraction that defines a logical set of Pods and a policy to access them. Because Pods are ephemeral and receive dynamic IP addresses upon recreation, Services provide persistent network endpoints and decoupled internal load balancing.
+        "tech_disc": """A **Service** is an abstract REST object in Kubernetes that defines a logical set of Pods and a consistent policy by which to access them, providing a stable network endpoint (IP address and DNS name) for an ephemeral population of containers.
 
-### Service Types & Port Mapping
-- **ClusterIP (Default):** Exposes the Service on an internal virtual IP reachable only from within the cluster.
-- **NodePort:** Allocates a dedicated port from the cluster-wide range (default `30000-32767`) across every worker node's physical IP address.
-- **LoadBalancer:** Builds upon NodePort by calling cloud provider APIs to provision an external Layer-4 cloud load balancer.
-- **ExternalName:** Maps the Service to an external DNS CNAME record (e.g., `db.external.com`) without proxying.
-- **Headless (`clusterIP: None`):** Bypasses kube-proxy load balancing, allowing clients to connect directly to Pod IPs via DNS.
+### Why Do We Need Services? (Beginner)
+In Kubernetes, **Pods are mortal and ephemeral**:
+- A Pod can crash, be killed by the out-of-memory killer, or be deleted during a rolling deployment.
+- When a replacement Pod is created, it receives a **completely new, dynamic IP address** from the node's PodCIDR pool.
+- Furthermore, horizontally scaled applications have multiple identical Pod replicas running simultaneously across different nodes.
 
-### Network Mechanics: Virtual IP translation
-- The ClusterIP has no network interface or MAC address. It exists solely as a destination matching rule in host kernel Netfilter/IPVS tables.
+If frontend applications attempted to connect directly to backend Pod IP addresses, every pod restart or scale event would break network connections, requiring constant manual updates to client configurations.
+A **Service** solves this by acting as a permanent front desk:
+- It assigns a single, unchanging virtual IP (**ClusterIP**) and a stable internal DNS name (e.g., `auth-service`).
+- Clients send traffic to the Service's stable IP or name, and Kubernetes automatically load-balances requests across all healthy backend Pods.
+- As backend Pods appear, disappear, or restart, the Service updates its routing targets automatically. The client never needs to know the real Pod IPs.
+
+### How Services Select Pods & Route Traffic (Intermediate)
+Services decouple callers from backends using **Label Selectors**:
+1. **The Selector Contract:** A Service declares a `spec.selector` (e.g., `app: web-frontend`). Any Pod in the same namespace with matching labels is automatically included in the Service's routing pool.
+2. **Health Gating via Readiness Probes:** A Pod is only included in the Service's active routing pool if it passes its **readiness probe**. Crashing or booting Pods receive zero traffic.
+3. **Port Mapping Decoupling:**
+   - `port`: The port that the Service exposes to internal callers (e.g., port 80).
+   - `targetPort`: The actual port the application container is listening on inside the Pod (e.g., port 8080).
+   - This mapping allows microservices to expose clean standard ports (80/443) while internal applications run on arbitrary internal ports.
+
+#### The 5 Service Types
+- **`ClusterIP` (Default):** Exposes the Service on an internal virtual IP reachable *only* from within the cluster. Ideal for internal databases, caching layers, and private microservices.
+- **`NodePort`:** Allocates a dedicated port from the cluster-wide range (default `30000-32767`) across every worker node's physical IP address. External traffic hitting `<Any-Node-IP>:<NodePort>` is forwarded to the Service.
+- **`LoadBalancer`:** Extends NodePort by making cloud API calls (AWS, GCP, Azure) to automatically provision a dedicated public cloud load balancer with an external IP address.
+- **`ExternalName`:** Acts as an internal DNS alias, redirecting internal cluster requests directly to an external third-party DNS CNAME (e.g., `db.vendor.com`) without proxying packets.
+- **`Headless` (`clusterIP: None`):** Bypasses single virtual IP proxying. CoreDNS returns individual `A` records for each matching Pod, allowing clients (like database clusters) to connect directly to specific peer replicas.
+
+### Virtual IPs & Kernel Netfilter Translation (Advanced)
+A ClusterIP has no network interface card (NIC), no MAC address, and does not respond to ICMP ping. It is purely a routing rule programmed into the Linux kernel:
+- **kube-proxy's Role:** kube-proxy watches the API server for changes to Services and EndpointSlices. On each worker node, it writes packet rewriting rules into host Linux Netfilter `iptables` or `IPVS` kernel tables.
+- **Destination NAT (DNAT):** When a container sends a packet to a ClusterIP (`10.96.0.15:80`), the kernel's PREROUTING hook intercepts the packet before standard IP routing and transparently rewrites the destination IP and port to one of the healthy Pod IPs (`10.244.2.45:8080`).
+- **Connection Tracking (conntrack):** The Linux kernel conntrack module remembers the translation so that return packets from the Pod have their source IP rewritten back to the ClusterIP before returning to the client container.
 
 ```yaml
 # nodeport-service-spec.yaml
@@ -345,16 +369,30 @@ endpoints:
     },
 
     18: {
-        "tech_disc": """**Ingress** is an API object that manages external Layer-7 (HTTP and HTTPS) access to Services within a cluster. It provides application-layer routing features including hostname routing, URL path prefix matching, SSL/TLS termination, and basic authentication.
+        "tech_disc": """An **Ingress** is an API resource in Kubernetes that manages external Layer-7 (HTTP and HTTPS) routing to Services within a cluster, providing hostname routing, URL path matching, and centralized TLS/SSL termination.
 
-### Ingress vs. Ingress Controller
-- **Ingress Resource:** Metadata-only declaration defining HTTP routing rules.
-- **Ingress Controller:** The active reverse proxy process (e.g., ingress-nginx, Traefik, HAProxy, Envoy) that watches the Ingress API, parses annotations, dynamically generates proxy configuration, and routes real HTTP requests.
+### Why Do We Need Ingress? (Beginner)
+In a production microservice architecture, you might deploy 30 different web applications (e.g., `checkout`, `catalog`, `user-profile`, `auth`).
+If you exposed each of these applications using a `LoadBalancer` Service:
+- Your cloud provider would create **30 separate cloud load balancers**, incurring massive monthly cloud infrastructure costs.
+- You would have to manage 30 separate public IP addresses, 30 DNS records, and 30 distinct SSL/TLS certificates.
 
-### Path Matching & Gateway API Evolution
-- `pathType: Exact`: Strict match on URL path.
-- `pathType: Prefix`: Hierarchical matching based on `/`-delimited URL elements.
-- **Gateway API (`gateway.networking.k8s.io`):** The next-generation evolutionary successor to Ingress, splitting configuration across roles (`GatewayClass` for infrastructure providers, `Gateway` for cluster operators, `HTTPRoute` for application developers).
+An **Ingress** solves this by acting as an intelligent reverse-proxy gateway:
+- You provision **one single cloud load balancer** for the entire cluster.
+- The Ingress controller accepts all external HTTP/HTTPS traffic at this single public IP.
+- Based on the request's **hostname** (e.g., `api.example.com` vs `store.example.com`) or **URL path** (e.g., `/users` vs `/orders`), Ingress intelligently routes traffic to the appropriate internal ClusterIP Service.
+- SSL certificates are installed once on the Ingress resource, providing centralized TLS termination for all backend microservices.
+
+### Ingress Resource vs. Ingress Controller (Intermediate)
+Understanding Ingress requires understanding a fundamental Kubernetes architectural distinction:
+1. **The Ingress Resource:** A declarative YAML manifest where you write your routing rules (hosts, paths, backend services, and TLS secrets). Creating an Ingress resource in etcd does *nothing* on its own.
+2. **The Ingress Controller:** A specialized reverse proxy (such as Ingress-NGINX, Traefik, HAProxy, or cloud ALB ingress) deployed as a pod inside the cluster. The controller continuously watches the API server for Ingress resources, dynamically generating its own internal proxy configuration (e.g., `nginx.conf`) and reloading routing tables on the fly.
+3. **`IngressClass`:** Because multiple ingress controllers can run in the same cluster (e.g., an external public Ingress and an internal corporate VPN Ingress), each Ingress manifest specifies an `ingressClassName: nginx` to declare which controller should process it.
+
+### Layer-7 Routing, TLS & Dataplane Proxies (Advanced)
+- **Layer-7 vs. Layer-4 Routing:** Standard Kubernetes Services operate strictly at Layer-4 (TCP/UDP transport layer) using kernel NAT rules — they cannot inspect HTTP headers, cookies, or URL paths. Ingress operates at Layer-7 (application layer), allowing deep HTTP inspection, path rewriting, rate limiting, and header manipulation.
+- **TLS Termination:** The Ingress controller mounts a Kubernetes `Secret` of type `kubernetes.io/tls` containing `tls.crt` and `tls.key`. It terminates the encrypted HTTPS session at the edge and forwards plain HTTP traffic to backend pods over the internal overlay network, offloading CPU-intensive crypto operations from your application containers.
+- **Traffic Bypassing kube-proxy:** Modern Ingress controllers do not route packets through the Service ClusterIP. Instead, they query the `EndpointSlice` API directly and route HTTP requests straight to the container's Pod IP, reducing network hops and latency.
 
 ```yaml
 # tls-ingress-spec.yaml
@@ -368,26 +406,26 @@ endpoints:
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: production-ingress
+  name: core-ingress
   annotations:
-    nginx.ingress.kubernetes.io/rewrite-target: /$2
     nginx.ingress.kubernetes.io/ssl-redirect: "true"
 spec:
+  ingressClassName: nginx
   tls:
   - hosts:
     - api.example.com
-    secretName: example-tls-cert
+    secretName: tls-cert
   rules:
   - host: api.example.com
     http:
       paths:
-      - path: /users(/|$)(.*)
-        pathType: ImplementationSpecific
+      - path: /v1
+        pathType: Prefix
         backend:
           service:
-            name: user-service
+            name: core-app-service
             port:
-              number: 8080
+              number: 80
 ```""",
         "tech_persp": """Ingress controllers operate as the public-facing edge of the cluster:
 - **TLS Secret Management:** TLS certificates are stored in `kubernetes.io/tls` Secrets containing `tls.crt` and `tls.key`. Automatic certificate issuance and renewal are standardly delegated to `cert-manager` via ACME/Let's Encrypt.
@@ -395,19 +433,51 @@ spec:
     },
 
     19: {
-        "tech_disc": """**NetworkPolicy** is an application-centric firewall specification that controls Layer-3 and Layer-4 packet flow between Pods and network endpoints. By default, Kubernetes networks operate in **permissive mode** (all Pods can communicate freely with all other Pods).
+        "tech_disc": """A **NetworkPolicy** is a declarative firewall specification in Kubernetes that controls Layer-3 and Layer-4 network traffic flow between Pods, namespaces, and external IP blocks.
 
-### Policy Evaluation & Selectors
-- **Isolation On Select:** As soon as a NetworkPolicy selects a Pod via `spec.podSelector`, that Pod becomes **isolated** for the declared `policyTypes` (`Ingress`, `Egress`). All traffic not explicitly permitted by a rule is dropped (default deny).
-- **Rule Selectors (Additive OR vs. AND):**
-  - Combining `podSelector` and `namespaceSelector` under separate list items evaluates as a logical **OR**.
-  - Combining `podSelector` and `namespaceSelector` within the same item evaluates as a logical **AND**.
-  - `ipBlock`: Specifies external CIDR ranges with optional `except` blocks.
+### Why Do We Need NetworkPolicies? (Beginner)
+By default, Kubernetes implements an entirely **flat and open network model**:
+- Every Pod can communicate with every other Pod in the cluster without NAT.
+- Cross-namespace traffic is completely unrestricted by default.
+- If a hacker compromises an untrusted frontend pod (such as a public-facing website), they can immediately probe and communicate with sensitive internal databases, caching layers, or payment processors in any namespace across the cluster.
 
-### Linux Kernel Enforcement
-A NetworkPolicy is purely a declarative specification in etcd; core Kubernetes contains no packet filtering engine. Real traffic filtering depends entirely on kernel-level packet inspection configured by the CNI:
-- NetworkPolicies are **not** enforced by core Kubernetes or kube-proxy; they require a policy-capable CNI plugin (Calico, Cilium, Antrea, Weave).
-- The CNI translates NetworkPolicy YAML rules into host Linux Netfilter `iptables` filter chains or Linux kernel `eBPF` maps evaluated directly on virtual interfaces.
+A **NetworkPolicy** acts as an internal network firewall:
+- By default, all Pods are unisolated (allow-all).
+- As soon as a NetworkPolicy selects a Pod via label matching, that Pod transitions into **isolated mode**.
+- All incoming and outgoing connections are dropped *except* those explicitly permitted by whitelist rules in the policy.
+- This enforces the security principle of **least privilege**: a frontend pod can only talk to the API gateway on port 8080, and the API gateway can only talk to PostgreSQL on port 5432.
+
+### Policy Structure: Ingress & Egress Rules (Intermediate)
+A NetworkPolicy defines directional filtering:
+1. **`podSelector`:** Identifies which Pods this policy governs using label matching (e.g., `role: db`).
+2. **`policyTypes`:** Specifies whether the policy controls `Ingress` (incoming traffic), `Egress` (outgoing traffic), or both.
+3. **Whitelist Matching Criteria (3 Match Vectors):**
+   - **`podSelector`:** Permits traffic from/to specific Pods in the same namespace.
+   - **`namespaceSelector`:** Permits traffic from/to all Pods residing in namespaces that match specific labels.
+   - **`ipBlock`:** Permits or blocks CIDR ranges (e.g., allowing outbound traffic to the company VPN while blocking public internet).
+4. **Port Enforcement:** Rules specify exact transport protocols (`TCP`, `UDP`, `SCTP`) and destination ports (e.g., port 5432).
+
+#### The Default-Deny Security Baseline
+Production clusters establish a zero-trust posture by deploying a **Default-Deny All Ingress** policy in every namespace:
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+spec:
+  podSelector: {}  # selects all pods in namespace
+  policyTypes:
+  - Ingress        # no ingress rules defined = drop all incoming traffic
+```
+Engineers then add granular policies to explicitly permit only legitimate traffic paths.
+
+### CNI Implementation & Kernel Packet Filtering (Advanced)
+A critical architectural detail: **Kubernetes itself does not enforce NetworkPolicies!**
+- **CNI Plugin Requirement:** Neither `kube-apiserver` nor `kube-proxy` filter packets. NetworkPolicies require a policy-capable **Container Network Interface (CNI)** plugin installed in the cluster (such as Calico, Cilium, Antrea, or Weave Net).
+- **Silent Failure Warning:** If you deploy a NetworkPolicy on a cluster running a basic CNI that lacks policy support (like basic Flannel), the API server will save the policy without errors, but **no traffic will be filtered**.
+- **Kernel-Level Enforcement:** Policy-aware CNIs translate NetworkPolicy YAML into Linux kernel filtering structures:
+  - *Calico:* Writes granular Linux `iptables` and `ipset` rules directly into host filter chains.
+  - *Cilium:* Compiles policies into high-performance Linux kernel **eBPF (Extended Berkeley Packet Filter)** bytecode attached to virtual ethernet (`veth`) network interfaces, evaluating rules with near-zero latency.
 
 ```yaml
 # strict-backend-network-policy.yaml
@@ -421,12 +491,12 @@ A NetworkPolicy is purely a declarative specification in etcd; core Kubernetes c
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: secure-db-policy
+  name: backend-policy
   namespace: production
 spec:
   podSelector:
     matchLabels:
-      role: database
+      app: backend
   policyTypes:
   - Ingress
   - Egress
@@ -434,18 +504,18 @@ spec:
   - from:
     - namespaceSelector:
         matchLabels:
-          environment: production
-      podSelector:
+          tier: frontend
+    ports:
+    - protocol: TCP
+      port: 8080
+  egress:
+  - to:
+    - podSelector:
         matchLabels:
-          role: backend-api
+          app: postgres
     ports:
     - protocol: TCP
       port: 5432
-  egress:
-  - to:
-    - ports:
-      - protocol: UDP
-        port: 53
 ```""",
         "tech_persp": """NetworkPolicies are a mandatory requirement for PCI-DSS, HIPAA, and SOC2 compliance:
 - **Flannel Gotcha:** Flannel does NOT enforce NetworkPolicies! Clusters using pure Flannel will silently ignore NetworkPolicy manifests, leaving workloads completely unisolated. Canal (Flannel + Calico policy engine) or Calico must be used.
@@ -453,23 +523,40 @@ spec:
     },
 
     20: {
-        "tech_disc": """A **PersistentVolume (PV)** is a piece of networked or local storage provisioned in the cluster that exists as an independent, cluster-scoped resource with a lifecycle decoupled from any individual Pod that consumes it.
+        "tech_disc": """A **PersistentVolume (PV)** is an API resource representing a piece of networked or local storage in the cluster, provisioned ahead of time by an administrator or dynamically via a StorageClass, that exists independently of any Pod that consumes it.
 
-### Core PV Attributes
-- **Capacity:** Declared disk size (e.g., `storage: 50Gi`).
-- **Access Modes:**
-  - `ReadWriteOnce` (RWO): Can be mounted as read-write by a single node.
-  - `ReadOnlyMany` (ROX): Can be mounted as read-only by many nodes simultaneously.
-  - `ReadWriteMany` (RWX): Can be mounted as read-write by many nodes (NFS, CephFS, AWS EFS).
-  - `ReadWriteOncePod` (RWOP): Mountable as read-write by a single Pod exclusively.
-- **Reclaim Policies:**
-  - `Retain`: Preserves data when PVC is deleted; requires manual administrator reclamation.
-  - `Delete`: Deletes the backing storage asset in the cloud provider automatically upon PVC deletion.
-  - `Recycle` (Deprecated): Performed basic scrub (`rm -rf /volume/*`).
+### Why Do We Need PersistentVolumes? (Beginner)
+Containers were originally designed to be completely **stateless and ephemeral**:
+- When a container writes a file to its local filesystem (like `/var/lib/mysql`), that data is written to a thin, temporary container write layer.
+- If the container crashes, restarts, or is rescheduled to another worker node, that local write layer is wiped out. **All data is permanently lost.**
+- Normal Pod volumes (`emptyDir`) only survive as long as the Pod lives; deleting the Pod destroys the volume.
 
-### Linux Storage Subsystem Integration
-Kubernetes PersistentVolumes abstract away cloud and SAN storage systems. However, before an application container can read or write files, the host Linux kernel must format the physical block device and bind-mount it into the container's isolated filesystem:
-- Backed by the **Container Storage Interface (CSI)** standard. Kubelet coordinates with CSI node plugins to format block storage (`mkfs.ext4`, `mkfs.xfs`) and execute kernel `mount` system calls into the host directory before bind-mounting into the container's mount namespace.
+Stateful applications (databases, key-value stores, document repositories) require storage that survives container terminations and node crashes.
+A **PersistentVolume (PV)** solves this by decoupling storage from the compute lifecycle:
+- A PV represents actual physical storage (e.g., an AWS EBS volume, a Google Persistent Disk, an NFS network share, or a local NVMe disk).
+- It is a **cluster-scoped resource** (it does not belong to a namespace), meaning it exists independently of any application.
+- When a Pod mounts a PV, it can write data safely. If the Pod crashes and restarts three days later on a different physical server, Kubernetes reconnects that exact same storage volume with all data intact.
+
+### Core PV Attributes & Access Modes (Intermediate)
+When a storage volume is defined in Kubernetes, it declares three fundamental properties:
+1. **Capacity:** The size of storage provided (e.g., `storage: 50Gi`).
+2. **Access Modes:** Dictates how many nodes can mount the storage simultaneously:
+   - **`ReadWriteOnce` (RWO):** Can be mounted as read-write by a **single worker node** at a time. Standard for cloud block storage (AWS EBS, GCP Persistent Disk) where a physical virtual disk cannot be attached to multiple VMs concurrently.
+   - **`ReadOnlyMany` (ROX):** Can be mounted as read-only by multiple worker nodes simultaneously (e.g., shared reference datasets).
+   - **`ReadWriteMany` (RWX):** Can be mounted as read-write by **many worker nodes** simultaneously. Requires network-attached filesystems (NFS, CephFS, AWS EFS).
+   - **`ReadWriteOncePod` (RWOP):** Enforces that only a single *Pod* across the entire cluster can mount the volume at a time.
+3. **PersistentVolume Reclaim Policy:** Determines what happens to the underlying storage when an application is done with it:
+   - **`Retain`:** The PV and its physical storage data are preserved. The volume enters `Released` status and an administrator must manually recover or clean the data.
+   - **`Delete`:** Deleting the application's claim automatically destroys the physical cloud disk, preventing runaway cloud storage costs.
+
+### The Storage Subsystem & CSI Node Plugins (Advanced)
+A PersistentVolume is an API abstraction, but actual data lives on a Linux block device or network mount. The mounting sequence involves a coordinated pipeline:
+1. **Container Storage Interface (CSI):** Standard gRPC specification allowing third-party storage vendors (AWS, NetApp, Dell) to write out-of-tree storage plugins for Kubernetes.
+2. **Attach Phase (`AttachVolume`):** The control plane storage controller calls the cloud API to attach the virtual disk to the specific worker node VM where the Pod was scheduled.
+3. **Mount Phase (`NodeStageVolume` & `NodePublishVolume`):** On the worker node, the local `kubelet` calls the CSI node driver:
+   - The driver formats the raw disk with a Linux filesystem (`mkfs.ext4` or `mkfs.xfs`) if newly provisioned.
+   - It executes a kernel `mount` system call to attach the device to a host directory (`/var/lib/kubelet/pods/<pod-id>/volumes/...`).
+   - Finally, it uses a Linux **bind mount** to inject that host directory directly into the container's isolated mount namespace (`mnt`).
 
 ```yaml
 # nfs-persistent-volume.yaml
@@ -483,16 +570,16 @@ Kubernetes PersistentVolumes abstract away cloud and SAN storage systems. Howeve
 apiVersion: v1
 kind: PersistentVolume
 metadata:
-  name: shared-nfs-pv
+  name: static-nfs-pv
 spec:
   capacity:
-    storage: 100Gi
+    storage: 50Gi
   accessModes:
     - ReadWriteMany
   persistentVolumeReclaimPolicy: Retain
-  storageClassName: manual
+  storageClassName: ""
   nfs:
-    path: /srv/nfs/shared
+    path: /srv/nfs/shared-data
     server: 192.168.1.100
 ```""",
         "tech_persp": """PVs decouple storage provisioning from application deployment:
